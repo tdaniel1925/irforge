@@ -154,7 +154,7 @@ export function ErrorBanner({ message, onDismiss }: { message: string; onDismiss
   return <Banner message={message} tone="error" onDismiss={onDismiss} />;
 }
 
-export type Notice = { text: string; tone: "error" | "success" } | null;
+export type Notice = { text: string; tone: "error" | "success" | "info" } | null;
 
 export function timeAgo(isoTs: string): string {
   const s = Math.max(0, (Date.now() - new Date(isoTs).getTime()) / 1000);

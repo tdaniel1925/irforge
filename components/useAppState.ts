@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Database } from "@/lib/types";
 
-export type AppState = Database & { hasAi?: boolean; hasAyrshare?: boolean };
+export type AppState = Database & { hasAi?: boolean; hasAyrshare?: boolean; hasSupabase?: boolean; stripeMode?: string; authed?: boolean };
 
 export function useAppState() {
   const [db, setDb] = useState<AppState | null>(null);
