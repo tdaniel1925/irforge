@@ -50,6 +50,8 @@ export async function POST(req: Request) {
   db.pressReleases = [];
   db.disclosureChecks = [];
   db.calendar = [];
+  db.contacts = [];
+  db.documents = [];
 
   // Pull the new company's REAL filings from EDGAR and draft real posts about them.
   let draftedCount = 0;

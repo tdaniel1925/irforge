@@ -133,11 +133,56 @@ export function buildSeed(): Database {
     { id: "cal_004", date: isoDate(-45), title: "Lithium & Battery Metals Conference", type: "conference" as const, note: "Non-deal roadshow, NYC" },
   ];
 
+  const contacts = [
+    {
+      id: "con_001", name: "Tidewater Resource Partners", firm: "Tidewater Resource Partners", type: "fund" as const,
+      stage: "contacted" as const, peersHeld: ["PLL", "SGML"], aum: "$1.4B",
+      notes: "Concentrated small-cap lithium book. Initiated PLL Q3 2025.",
+      interactions: [
+        { id: "int_1", ts: iso(12), kind: "email" as const, summary: "Sent intro deck referencing their PLL/SGML positions." },
+        { id: "int_2", ts: iso(4), kind: "call" as const, summary: "20-min intro call with PM. Interested post-Phase 3 results." },
+      ],
+      nextFollowUp: isoDate(-7), createdAt: iso(14),
+    },
+    {
+      id: "con_002", name: "Aldercrest Family Office", firm: "Aldercrest Family Office", type: "fund" as const,
+      stage: "identified" as const, peersHeld: ["LAC"], aum: "$600M",
+      notes: "Long-term LAC holder. Patient capital, pre-feasibility appetite.",
+      interactions: [], nextFollowUp: isoDate(-3), createdAt: iso(8),
+    },
+    {
+      id: "con_003", name: "Dana Reyes", firm: "Cormark Securities", type: "analyst" as const,
+      stage: "meeting" as const, email: "dreyes@example.com",
+      notes: "Covers junior lithium names. Open to initiating coverage after next resource update.",
+      interactions: [{ id: "int_3", ts: iso(6), kind: "meeting" as const, summary: "Coffee in Toronto. Walked through Clearwater economics." }],
+      nextFollowUp: isoDate(-10), createdAt: iso(20),
+    },
+    {
+      id: "con_004", name: "Bluffview Capital Management", firm: "Bluffview Capital", type: "fund" as const,
+      stage: "holder" as const, peersHeld: ["PLL"], aum: "$340M",
+      notes: "Took a starter position after our last raise. Now a holder.",
+      interactions: [{ id: "int_4", ts: iso(30), kind: "meeting" as const, summary: "Closed — participated in the financing." }],
+      createdAt: iso(35),
+    },
+  ];
+
+  const documents = [
+    { id: "doc_001", name: "Q1 2026 10-Q", category: "filing" as const, url: "https://www.sec.gov/cgi-bin/browse-edgar", filedDate: isoDate(18), uploadedAt: iso(18), source: "edgar" as const },
+    { id: "doc_002", name: "Phase 2 Drill Results 8-K", category: "filing" as const, url: "https://www.sec.gov/cgi-bin/browse-edgar", filedDate: isoDate(2), uploadedAt: iso(2), source: "edgar" as const },
+    { id: "doc_003", name: "Insider Trading Policy", category: "policy" as const, note: "Board-approved Jan 2026. Blackout windows defined.", uploadedAt: iso(120), source: "uploaded" as const },
+    { id: "doc_004", name: "Disclosure & Reg FD Policy", category: "policy" as const, note: "Designates @MeridianLithium and the company page as disclosure channels.", uploadedAt: iso(120), source: "uploaded" as const },
+    { id: "doc_005", name: "Audit Committee Charter", category: "governance" as const, uploadedAt: iso(200), source: "uploaded" as const },
+    { id: "doc_006", name: "December 2025 Financing — Subscription Docs", category: "financing" as const, note: "$14M raise. Closed.", uploadedAt: iso(95), source: "uploaded" as const },
+    { id: "doc_007", name: "Corporate Investor Deck (v12)", category: "ir_material" as const, note: "Current version used for NDRs.", uploadedAt: iso(10), source: "uploaded" as const },
+  ];
+
   return {
     scoreHistory,
     pressReleases: [],
     disclosureChecks: [],
     calendar,
+    contacts,
+    documents,
     publicQuestions: [
       {
         id: "puq_001", ticker: "MLTH", author: "Ray (retail investor)",

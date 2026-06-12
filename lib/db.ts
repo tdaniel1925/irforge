@@ -19,6 +19,8 @@ export function getDb(): Database {
     if (!cache.pressReleases) cache.pressReleases = [];
     if (!cache.disclosureChecks) cache.disclosureChecks = [];
     if (!cache.calendar) cache.calendar = [];
+    if (!cache.contacts) cache.contacts = [];
+    if (!cache.documents) cache.documents = [];
   } else {
     cache = buildSeed();
     persist(cache);

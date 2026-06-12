@@ -105,6 +105,7 @@ export async function setCollection<T>(companyId: string, collection: string, it
 const COLLECTIONS = [
   "filings", "drafts", "audit", "investors", "mentions", "metrics",
   "scoreHistory", "publicQuestions", "pressReleases", "disclosureChecks", "calendar",
+  "contacts", "documents",
 ] as const;
 
 import type { Database } from "../types";

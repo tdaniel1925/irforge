@@ -33,6 +33,45 @@ export interface CalendarEvent {
   note?: string;
 }
 
+export type ContactType = "fund" | "analyst" | "broker" | "shareholder" | "media" | "advisor" | "other";
+export type ContactStage = "identified" | "contacted" | "meeting" | "holder" | "passed";
+
+export interface ContactInteraction {
+  id: string;
+  ts: string;
+  kind: "call" | "meeting" | "email" | "note";
+  summary: string;
+}
+
+export interface Contact {
+  id: string;
+  name: string;
+  firm?: string;
+  type: ContactType;
+  email?: string;
+  phone?: string;
+  stage: ContactStage;
+  peersHeld?: string[]; // tickers this contact's fund holds (13F intel)
+  aum?: string;
+  notes?: string;
+  interactions: ContactInteraction[];
+  nextFollowUp?: string; // ISO date
+  createdAt: string;
+}
+
+export type DocCategory = "filing" | "governance" | "financing" | "policy" | "ir_material" | "other";
+
+export interface CompanyDoc {
+  id: string;
+  name: string;
+  category: DocCategory;
+  url?: string; // link (e.g. EDGAR) or stored file URL
+  note?: string;
+  filedDate?: string; // for filings
+  uploadedAt: string;
+  source: "edgar" | "uploaded" | "link";
+}
+
 export interface PublicQuestion {
   id: string;
   ticker: string;
@@ -164,4 +203,6 @@ export interface Database {
   pressReleases: PressRelease[];
   disclosureChecks: DisclosureCheck[];
   calendar: CalendarEvent[];
+  contacts: Contact[];
+  documents: CompanyDoc[];
 }
