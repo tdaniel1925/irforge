@@ -21,6 +21,9 @@ export function getDb(): Database {
     if (!cache.calendar) cache.calendar = [];
     if (!cache.contacts) cache.contacts = [];
     if (!cache.documents) cache.documents = [];
+    if (!cache.docAnalyses) cache.docAnalyses = [];
+    if (!cache.convertibleNotes) cache.convertibleNotes = [];
+    if (!cache.capTable) cache.capTable = [];
   } else {
     cache = buildSeed();
     persist(cache);

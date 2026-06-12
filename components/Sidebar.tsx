@@ -10,6 +10,8 @@ const NAV: { href: string; label: string; icon: string; hint?: string; section?:
   { href: "/studio", label: "Writing Studio", icon: "📝", hint: "Draft press releases + disclosure checks" },
   { href: "/calendar", label: "IR Calendar", icon: "📅", hint: "Earnings, deadlines, auto quiet periods" },
   { href: "/crm", label: "Investor CRM", icon: "👥", hint: "Funds, analysts, shareholders + 13F intel" },
+  { href: "/captable", label: "Cap Table", icon: "📈", hint: "Ownership, dilution, convertible notes" },
+  { href: "/analyzer", label: "Doc Analyzer", icon: "🔬", hint: "AI reads any document, flags risks + disclosure" },
   { href: "/documents", label: "Document Vault", icon: "🗂", hint: "Filings, board docs, policies, decks" },
   { href: "/proof", label: "Your Results", icon: "📊", hint: "Numbers to show your board" },
   { href: "/learn", label: "Public Company 101", icon: "📚", hint: "Plain-English IR & filing guides" },

@@ -176,6 +176,21 @@ export function buildSeed(): Database {
     { id: "doc_007", name: "Corporate Investor Deck (v12)", category: "ir_material" as const, note: "Current version used for NDRs.", uploadedAt: iso(10), source: "uploaded" as const },
   ];
 
+  const convertibleNotes = [
+    { id: "note_001", holder: "Bridgewater Bridge Capital", principal: 2000000, issueDate: isoDate(180), maturityDate: isoDate(-185), interestRate: 8, conversionType: "fixed" as const, conversionPrice: 1.25, note: "Standard bridge note from last round.", status: "outstanding" as const },
+    { id: "note_002", holder: "Anson Funds", principal: 1500000, issueDate: isoDate(90), maturityDate: isoDate(-275), interestRate: 10, conversionType: "variable" as const, discountPct: 20, note: "⚠ Variable conversion at 20% discount — dilution rises if price falls.", status: "outstanding" as const },
+  ];
+
+  const capTable = [
+    { id: "cap_001", holder: "Founders & Management", class: "insider" as const, shares: 12000000, intent: "holding" as const, updatedAt: iso(30) },
+    { id: "cap_002", holder: "Tidewater Resource Partners", class: "common" as const, shares: 4200000, costBasis: 0.95, contactId: "con_001", intent: "accumulating" as const, notes: "Added on the last drill results.", updatedAt: iso(4) },
+    { id: "cap_003", holder: "Bluffview Capital", class: "common" as const, shares: 1800000, costBasis: 1.10, contactId: "con_004", intent: "holding" as const, updatedAt: iso(30) },
+    { id: "cap_004", holder: "Retail & Other", class: "common" as const, shares: 9500000, intent: "unknown" as const, updatedAt: iso(10) },
+    { id: "cap_005", holder: "Series A Preferred (Aldercrest)", class: "preferred" as const, shares: 3000000, costBasis: 1.00, intent: "holding" as const, updatedAt: iso(95) },
+    { id: "cap_006", holder: "Employee Option Pool", class: "options" as const, shares: 2500000, strikePrice: 1.15, updatedAt: iso(60) },
+    { id: "cap_007", holder: "Financing Warrants (Dec 2025)", class: "warrants" as const, shares: 1750000, strikePrice: 1.50, updatedAt: iso(95) },
+  ];
+
   return {
     scoreHistory,
     pressReleases: [],
@@ -183,6 +198,9 @@ export function buildSeed(): Database {
     calendar,
     contacts,
     documents,
+    docAnalyses: [],
+    convertibleNotes,
+    capTable,
     publicQuestions: [
       {
         id: "puq_001", ticker: "MLTH", author: "Ray (retail investor)",

@@ -59,6 +59,49 @@ export interface Contact {
   createdAt: string;
 }
 
+export interface DocAnalysis {
+  id: string;
+  docName: string;
+  summary: string;
+  keyTerms: { label: string; value: string }[];
+  risks: string[];
+  disclosureTrigger: string; // "Likely 8-K Item X.XX" or "Probably not 8-K-triggering"
+  createdAt: string;
+  engine: "claude" | "template";
+}
+
+export type NoteConversionType = "fixed" | "variable";
+
+export interface ConvertibleNote {
+  id: string;
+  holder: string;
+  principal: number;
+  issueDate: string;
+  maturityDate: string;
+  interestRate: number; // annual %
+  conversionType: NoteConversionType;
+  conversionPrice?: number; // fixed: $/share; variable: effective floor or n/a
+  discountPct?: number; // variable: discount to market
+  note?: string;
+  status: "outstanding" | "converted" | "repaid";
+}
+
+export type HolderClass = "common" | "preferred" | "insider" | "options" | "warrants";
+export type HolderIntent = "accumulating" | "holding" | "trimming" | "exiting" | "unknown";
+
+export interface CapTableEntry {
+  id: string;
+  holder: string;
+  class: HolderClass;
+  shares: number; // or units for options/warrants
+  costBasis?: number; // $/share
+  strikePrice?: number; // options/warrants
+  contactId?: string; // link to CRM contact
+  intent?: HolderIntent;
+  notes?: string;
+  updatedAt: string;
+}
+
 export type DocCategory = "filing" | "governance" | "financing" | "policy" | "ir_material" | "other";
 
 export interface CompanyDoc {
@@ -205,4 +248,7 @@ export interface Database {
   calendar: CalendarEvent[];
   contacts: Contact[];
   documents: CompanyDoc[];
+  docAnalyses: DocAnalysis[];
+  convertibleNotes: ConvertibleNote[];
+  capTable: CapTableEntry[];
 }

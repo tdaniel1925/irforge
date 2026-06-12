@@ -52,6 +52,9 @@ export async function POST(req: Request) {
   db.calendar = [];
   db.contacts = [];
   db.documents = [];
+  db.docAnalyses = [];
+  db.convertibleNotes = [];
+  db.capTable = [];
 
   // Pull the new company's REAL filings from EDGAR and draft real posts about them.
   let draftedCount = 0;

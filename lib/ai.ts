@@ -301,6 +301,49 @@ export async function checkDisclosure(
   };
 }
 
+// Document analyzer — summarize, extract terms, flag risks, and assess disclosure impact.
+export async function analyzeDocument(
+  docName: string,
+  text: string,
+  company: Company
+): Promise<{ summary: string; keyTerms: { label: string; value: string }[]; risks: string[]; disclosureTrigger: string; engine: "claude" | "template" }> {
+  const ai = await claude(
+    `You are an IR/finance analyst assistant for ${company.name} ($${company.ticker}). You are NOT a lawyer — flag, don't adjudicate. ` +
+      `Analyze a document and return ONLY JSON: {"summary":"3-4 sentences plain English","keyTerms":[{"label":"...","value":"..."}],"risks":["..."],"disclosureTrigger":"Likely 8-K Item X.XX — confirm with counsel | Probably not 8-K-triggering"}. ` +
+      `keyTerms = the most material specifics (amounts, dates, parties, rates, conversion terms). risks = what the company should watch. Be concrete.`,
+    `Document: "${docName}"\nContents:\n${text.slice(0, 6000)}`
+  );
+  // No isRefusal() check here — this returns JSON whose risk text legitimately contains
+  // words like "misleading"/"not" that would false-positive the refusal guard. A genuine
+  // refusal simply won't parse as our JSON shape and falls through to the template.
+  if (ai) {
+    try {
+      const m = ai.match(/\{[\s\S]*\}/);
+      if (m) {
+        const v = JSON.parse(m[0]);
+        if (v.summary || v.keyTerms || v.risks) {
+          return {
+            summary: String(v.summary ?? "").slice(0, 800),
+            keyTerms: Array.isArray(v.keyTerms) ? v.keyTerms.slice(0, 12).map((t: { label?: string; value?: string }) => ({ label: String(t.label ?? "").slice(0, 60), value: String(t.value ?? "").slice(0, 120) })) : [],
+            risks: Array.isArray(v.risks) ? v.risks.slice(0, 8).map((r: string) => String(r).slice(0, 200)) : [],
+            disclosureTrigger: String(v.disclosureTrigger ?? "Review with counsel").slice(0, 120),
+            engine: "claude",
+          };
+        }
+      }
+    } catch {
+      /* fall through */
+    }
+  }
+  return {
+    engine: "template",
+    summary: `${docName}: AI analysis is unavailable right now (no API key or the model declined). The document text was captured for your records.`,
+    keyTerms: [],
+    risks: ["AI analysis unavailable — review manually with counsel."],
+    disclosureTrigger: "Review with counsel",
+  };
+}
+
 export async function generateReplyDraft(
   mention: Mention,
   company: Company,
