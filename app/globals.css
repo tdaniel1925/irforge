@@ -2,32 +2,126 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+  Theming strategy: the app is authored in a dark palette (slate-950/900/800…).
+  Light mode is the DEFAULT. We achieve it by remapping the exact slate shades the
+  components use to light equivalents via CSS variables, then flipping them back
+  under .dark. This avoids touching every component while giving a real two-theme UI.
+*/
+
 :root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 214, 219, 220;
-  --background-end-rgb: 255, 255, 255;
+  /* LIGHT (default) — remap the dark slate scale to a light scale.
+     Text tokens chosen for WCAG AA contrast on white/very-light surfaces. */
+  --c-bg: #f8fafc; /* page background (was slate-950) */
+  --c-surface: #ffffff; /* cards (was slate-900/60) */
+  --c-surface-2: #f1f5f9; /* inset surfaces (was slate-950/60) */
+  --c-border: #cbd3de; /* borders — stronger so cards separate clearly from the bg */
+  --c-border-strong: #aab4c2; /* (was slate-700) */
+  --c-text: #0f172a; /* primary text — ~16:1 on white */
+  --c-text-muted: #3f4b5e; /* secondary text — ~9:1, was too light at #475569 */
+  --c-text-faint: #5b6573; /* tertiary/hint text — ~6:1, was #94a3b8 (~2.8:1, FAILED) */
+  --c-hover: #eef2f7;
+  color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 0, 0, 0;
-    --background-end-rgb: 0, 0, 0;
-  }
+.dark {
+  --c-bg: #020617;
+  --c-surface: rgba(15, 23, 42, 0.6);
+  --c-surface-2: rgba(2, 6, 23, 0.6);
+  --c-border: #1e293b;
+  --c-border-strong: #334155;
+  --c-text: #e2e8f0;
+  --c-text-muted: #94a3b8;
+  --c-text-faint: #64748b;
+  --c-hover: #0f172a;
+  color-scheme: dark;
 }
 
 body {
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+  background: var(--c-bg);
+  color: var(--c-text);
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
-}
+/* Semantic helpers used by newer components (board, tabs, theme toggle). */
+.bg-app { background: var(--c-bg); }
+.bg-surface { background: var(--c-surface); }
+.bg-surface-2 { background: var(--c-surface-2); }
+.bg-app-hover:hover { background: var(--c-hover); }
+.border-app { border-color: var(--c-border); }
+.text-app { color: var(--c-text); }
+.text-muted { color: var(--c-text-muted); }
+.text-faint { color: var(--c-text-faint); }
+
+/*
+  Bridge layer: the existing components hardcode slate utilities. We re-point the
+  most-used ones to the themeable variables so they invert with the theme.
+  Tailwind emits these as plain classes; overriding here is safe and global.
+*/
+.bg-slate-950 { background-color: var(--c-bg) !important; }
+.bg-slate-900\/60 { background-color: var(--c-surface) !important; }
+.bg-slate-900\/60 { background-color: var(--c-surface) !important; }
+.bg-slate-950\/60, .bg-slate-950\/70, .bg-slate-950\/40 { background-color: var(--c-surface-2) !important; }
+.border-slate-800 { border-color: var(--c-border) !important; }
+.border-slate-700 { border-color: var(--c-border-strong) !important; }
+.bg-slate-950:where(input, textarea, select) { background-color: var(--c-surface) !important; }
+
+/* Text colors invert too. The slate text scale → muted/faint.
+   NOTE: text-white is handled separately below — it must stay white when it sits on a
+   colored button/badge, but become dark when it's a heading on the page background. */
+.text-slate-200 { color: var(--c-text) !important; }
+.text-slate-300 { color: var(--c-text) !important; }
+.text-slate-400 { color: var(--c-text-muted) !important; }
+.text-slate-500 { color: var(--c-text-faint) !important; }
+.text-slate-600 { color: var(--c-text-faint) !important; }
+
+/* text-white as a HEADING on the page → darken in light mode. But when text-white is
+   paired with a solid colored background (buttons/badges), keep it white. We can't read
+   sibling classes in CSS, so we whitelist the colored-fill backgrounds to win. */
+html:not(.dark) .text-white { color: var(--c-text) !important; }
+html:not(.dark) .bg-emerald-500.text-white,
+html:not(.dark) .bg-emerald-400.text-white,
+html:not(.dark) .bg-amber-400.text-white,
+html:not(.dark) .bg-amber-500.text-white,
+html:not(.dark) .bg-red-500.text-white,
+html:not(.dark) .bg-sky-500.text-white { color: #ffffff !important; }
+
+/* White text on emerald-500 is only 2.5:1 — darken the button fill in light mode so
+   white text clears 3:1 for UI elements. Keeps the brand green, just deeper. */
+html:not(.dark) .bg-emerald-500.text-white { background-color: #059669 !important; } /* emerald-600 */
+html:not(.dark) .bg-emerald-500.text-white:hover,
+html:not(.dark) .hover\:bg-emerald-400.text-white:hover { background-color: #047857 !important; } /* emerald-700 */
+/* Secondary buttons use a dark fill in dark mode; lighten them in light mode. */
+.bg-slate-800 { background-color: var(--c-surface-2) !important; }
+.bg-slate-800:hover, .hover\:bg-slate-700:hover, .hover\:bg-slate-800:hover { background-color: var(--c-hover) !important; }
+.bg-slate-700 { background-color: var(--c-border-strong) !important; }
+
+/* Accent FILL chips (e.g. bg-emerald-500/15 with colored text) read fine on both themes.
+   But bare accent TEXT on white (text-emerald-400 etc.) is a pastel that fails contrast in
+   light mode. Remap those text shades to darker, readable equivalents — LIGHT MODE ONLY,
+   so dark mode keeps its bright accents. Opacity variants (/80, /90) map to the same solid. */
+html:not(.dark) .text-emerald-300,
+html:not(.dark) .text-emerald-400,
+html:not(.dark) .text-emerald-400\/80 { color: #047857 !important; } /* emerald-700 */
+html:not(.dark) .text-sky-300,
+html:not(.dark) .text-sky-400 { color: #0369a1 !important; } /* sky-700 */
+html:not(.dark) .text-amber-300,
+html:not(.dark) .text-amber-400,
+html:not(.dark) .text-amber-200\/90,
+html:not(.dark) .text-amber-300\/80,
+html:not(.dark) .text-amber-400\/80 { color: #b45309 !important; } /* amber-700 */
+html:not(.dark) .text-orange-300,
+html:not(.dark) .text-orange-400 { color: #c2410c !important; } /* orange-700 */
+html:not(.dark) .text-red-300,
+html:not(.dark) .text-red-400 { color: #b91c1c !important; } /* red-700 */
+
+/* Accent text that sits INSIDE a same-color low-opacity fill (chips/badges) needs the
+   bright shade to stay legible on the tinted bg — keep those bright even in light mode.
+   These chips already pair dark:text-*-300 with text-*-600, so nothing to override. */
+
+/* Sidebar + main shell */
+.shell-bg { background: var(--c-bg); }
+.shell-border { border-color: var(--c-border); }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--c-border-strong); border-radius: 6px; }
+::-webkit-scrollbar-track { background: transparent; }

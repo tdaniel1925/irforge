@@ -1,36 +1,56 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# IRForge — AI-Powered Investor Relations for Public Companies
 
-## Getting Started
+Turns SEC filings into compliant X (Twitter) communications. Watches EDGAR, drafts threads,
+enforces disclosure law in code, and never posts anything without human approval.
 
-First, run the development server:
+## Run it (zero setup)
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000. The app seeds itself with a demo company
+(Meridian Lithium Corp., $MLTH) on first launch — every feature works
+immediately, fully offline. No database, no API keys required.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Optional integrations
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+| Feature | How to enable |
+|---|---|
+| Claude AI drafting | Add `ANTHROPIC_API_KEY=sk-ant-...` to `.env.local` and restart. Without it, deterministic templates are used — everything else is identical. |
+| Live EDGAR sync | Works out of the box when online — set your company's real SEC CIK in Settings, then click **Sync EDGAR** on the Filings page. |
 
-## Learn More
+## What it does
 
-To learn more about Next.js, take a look at the following resources:
+- **Filings** — watches EDGAR for 8-K/10-Q/10-K filings; one click turns a filing into a draft thread.
+- **Approvals** — every draft requires a human decision. Approve, edit, reject. Publishing appends the
+  Section 17(b) disclosure and forward-looking-statements notice automatically — the publish path
+  physically cannot skip them.
+- **Compliance engine** — banned-claims filter blocks price predictions, valuation claims
+  ("undervalued"), investment advice ("buy now"), and guarantees before a human ever sees them.
+  Blocked drafts cannot be approved until edited clean.
+- **Quiet mode** — one switch suspends all publishing (pre-earnings / offering windows).
+- **Mentions** — shareholder questions get replies citation-locked to public filings; questions that
+  would require non-public information get a safe Reg FD deflection instead.
+- **Investor Targets** — 13F-style peer-holder mapping with drafted outreach notes (sent by the
+  company's own team — IRForge never solicits investors).
+- **Metrics** — followers, impressions, mentions, sentiment; board-ready weekly numbers.
+- **Audit log** — append-only record of every draft, decision, block, and publish.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Compliance posture (by design, not by policy)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+1. Flat fee, never compensation tied to investment outcomes.
+2. Nothing publishes without named-human approval — no auto-approve, ever.
+3. Disclosures are appended in the publish function, not in a template someone can edit out.
+4. AI drafts only from the public record (filings, releases).
+5. Every action is audit-logged.
 
-## Deploy on Vercel
+> Demo/local build: "publishing" marks posts as posted in the local store. Wiring a real X API
+> client means replacing the publish branch in `app/api/drafts/[id]/route.ts` — every compliance
+> gate stays in front of it.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Stack
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+Next.js 14 (App Router) · TypeScript · Tailwind · local JSON store (`data/db.json`, auto-seeded,
+delete it or use Settings → Reset to start fresh) · SEC EDGAR API · Anthropic Claude (optional).

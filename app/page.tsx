@@ -1,113 +1,394 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import Link from "next/link";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import ThemeToggle from "@/components/ThemeToggle";
+
+export default function Landing() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">app/page.tsx</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:size-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
+    <div className="bg-app text-app">
+      <Nav />
+      <Hero />
+      <LogoStrip />
+      <Pillars />
+      <HowItWorks />
+      <Compliance />
+      <Comparison />
+      <Stats />
+      <Pricing />
+      <FinalCta />
+      <Footer />
+    </div>
+  );
+}
+
+/* ---------------------------------- Nav ---------------------------------- */
+function Nav() {
+  return (
+    <header className="sticky top-0 z-30 border-b border-app bg-app/80 backdrop-blur">
+      <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+        <Link href="/" className="flex items-baseline gap-0.5 text-4xl font-bold tracking-tight">
+          <span className="text-app">ir</span><span className="text-emerald-600 dark:text-emerald-400">forge</span><span className="text-emerald-600 dark:text-emerald-400">.</span>
+        </Link>
+        <nav className="hidden items-center gap-7 text-sm text-muted sm:flex">
+          <a href="#how" className="hover:text-app">How it works</a>
+          <a href="#compliance" className="hover:text-app">Compliance</a>
+          <a href="#pricing" className="hover:text-app">Pricing</a>
+        </nav>
+        <div className="flex items-center gap-3">
+          <ThemeToggle />
+          <Link href="/app" className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500">
+            Open the app
+          </Link>
         </div>
       </div>
+    </header>
+  );
+}
 
-      <div className="relative z-[-1] flex place-items-center before:absolute before:h-[300px] before:w-full before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-full after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 sm:before:w-[480px] sm:after:w-[240px] before:lg:h-[360px]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
+/* --------------------------------- Hero ---------------------------------- */
+function Hero() {
+  return (
+    <section className="relative overflow-hidden border-b border-app">
+      <div className="pointer-events-none absolute -top-32 left-1/2 h-96 w-[48rem] -translate-x-1/2 rounded-full bg-emerald-500/10 blur-3xl" />
+      <div className="mx-auto grid max-w-6xl items-center gap-12 px-6 py-20 lg:grid-cols-2">
+        <div>
+          <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-app bg-surface px-3 py-1 text-xs font-medium text-muted">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> AI investor relations for public companies
+          </div>
+          <h1 className="text-4xl font-bold leading-[1.1] tracking-tight text-app sm:text-5xl">
+            Your investors are talking about you.{" "}
+            <span className="text-emerald-600 dark:text-emerald-400">Now you can talk back — legally.</span>
+          </h1>
+          <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted">
+            IRForge turns your SEC filings into compliant investor updates, answers shareholder questions
+            from your public record, and defends your name when bashers attack — all approved by you with one tap.
+          </p>
+          <TickerLookup />
+          <p className="mt-3 text-xs text-faint">Free report · no signup · uses only public data</p>
+        </div>
+        <div className="space-y-5">
+          <div className="overflow-hidden rounded-2xl border border-app bg-surface">
+            <Image src="/img/hero.png" alt="A company finally having a voice with investors" width={1024} height={576} className="w-full" priority />
+          </div>
+          <HeroMock />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function TickerLookup() {
+  const router = useRouter();
+  const [ticker, setTicker] = useState("");
+  return (
+    <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+      <div className="flex flex-1 overflow-hidden rounded-xl border border-app bg-surface focus-within:border-emerald-500">
+        <span className="flex items-center pl-4 text-faint">$</span>
+        <input
+          value={ticker}
+          onChange={(e) => setTicker(e.target.value.toUpperCase())}
+          onKeyDown={(e) => e.key === "Enter" && ticker && router.push(`/t/${ticker}`)}
+          placeholder="Enter your ticker — e.g. LAC"
+          className="w-full bg-transparent px-2 py-3 text-app uppercase tracking-wide placeholder:normal-case placeholder:tracking-normal focus:outline-none"
         />
       </div>
+      <button
+        onClick={() => ticker && router.push(`/t/${ticker}`)}
+        className="rounded-xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500"
+      >
+        See your company&apos;s score →
+      </button>
+    </div>
+  );
+}
 
-      <div className="mb-32 grid text-center lg:mb-0 lg:w-full lg:max-w-5xl lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Docs{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Learn{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Templates{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Explore starter templates for Next.js.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Deploy{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-balance text-sm opacity-50">
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
+function HeroMock() {
+  return (
+    <div className="relative">
+      <div className="rounded-2xl border border-app bg-surface p-5 shadow-xl shadow-slate-900/5">
+        <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-faint">About your latest SEC filing</p>
+        <p className="mb-3 text-sm font-medium text-app">We want to post this to X:</p>
+        <div className="space-y-2">
+          <div className="rounded-lg border border-app bg-surface-2 p-3 text-sm text-app">
+            <span className="text-xs text-faint">@yourcompany · 1/3</span>
+            <p className="mt-1">We just filed our Q1 results. Three numbers shareholders ask about most: cash, burn, and runway. 🧵</p>
+          </div>
+          <div className="rounded-lg border border-app bg-surface-2 p-3 text-sm text-app">
+            <span className="text-xs text-faint">@yourcompany · 2/3</span>
+            <p className="mt-1">$11.2M cash, zero debt. Runway extends past our next milestones. Full detail in the 10-Q on EDGAR.</p>
+          </div>
+        </div>
+        <div className="mt-4 flex gap-2">
+          <button className="flex-1 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white">✓ Approve &amp; let it post</button>
+          <button className="rounded-lg border border-app px-3 py-2 text-sm text-app">✎ Edit</button>
+          <button className="rounded-lg border border-app px-3 py-2 text-sm text-app">✕ Skip</button>
+        </div>
+        <p className="mt-3 text-center text-[11px] text-faint">Disclosures attach automatically on post. Nothing goes out until you tap.</p>
       </div>
-    </main>
+    </div>
+  );
+}
+
+/* ------------------------------- Logo strip ------------------------------ */
+function LogoStrip() {
+  return (
+    <section className="border-b border-app bg-surface-2/40">
+      <div className="mx-auto max-w-6xl px-6 py-8 text-center">
+        <p className="text-sm text-faint">
+          Built for companies on <span className="font-medium text-muted">NASDAQ</span> · <span className="font-medium text-muted">NYSE American</span> · <span className="font-medium text-muted">TSX Venture</span> · <span className="font-medium text-muted">OTC Markets</span>
+        </p>
+      </div>
+    </section>
+  );
+}
+
+/* -------------------------------- Pillars -------------------------------- */
+function Pillars() {
+  const items = [
+    { img: "/img/defend.png", title: "Defend", body: "When someone spreads false info or sentiment turns against you, you'll know within minutes — with a fact-based, filing-cited response ready to approve. On other platforms you're defenseless. Here you have a voice." },
+    { img: "/img/grow.png", title: "Grow", body: "We turn every filing into investor content, answer questions from your public record, and track one Visibility Score — so you can prove it's working to your board." },
+    { img: "/img/control.png", title: "Control", body: "Nothing posts without your tap. Every post carries your legal disclosures automatically. Every action is logged for your compliance record." },
+  ];
+  return (
+    <section className="mx-auto max-w-6xl px-6 py-20">
+      <h2 className="text-center text-3xl font-bold tracking-tight text-app">Three jobs. One platform. One number.</h2>
+      <p className="mx-auto mt-3 max-w-2xl text-center text-muted">Everything IRForge does maps to defending your name, growing your reach, or keeping you in control — and all of it moves your Visibility Score.</p>
+      <div className="mt-12 grid gap-6 md:grid-cols-3">
+        {items.map((it) => (
+          <div key={it.title} className="overflow-hidden rounded-2xl border border-app bg-surface">
+            <div className="relative aspect-[4/3] w-full overflow-hidden border-b border-app">
+              <Image src={it.img} alt={it.title} fill className="object-cover" sizes="(max-width: 768px) 100vw, 33vw" />
+            </div>
+            <div className="p-6">
+              <h3 className="text-lg font-semibold text-app">{it.title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-muted">{it.body}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/* ------------------------------ How it works ----------------------------- */
+function HowItWorks() {
+  const steps = [
+    { n: 1, t: "Connect your ticker", b: "We pull your SEC filings and public data automatically — your profile is ready in minutes." },
+    { n: 2, t: "We draft, you approve", b: "Read what we wrote, tap approve, and it posts to X with your legal disclosures attached. Edit or skip anything." },
+    { n: 3, t: "Watch your score climb", b: "Track your Visibility Score over time, and hand the proof to your board." },
+  ];
+  return (
+    <section id="how" className="border-y border-app bg-surface-2/40">
+      <div className="mx-auto max-w-6xl px-6 py-20">
+        <h2 className="text-center text-3xl font-bold tracking-tight text-app">From filing to posted in minutes — not days.</h2>
+        <div className="mx-auto mt-8 max-w-3xl overflow-hidden rounded-2xl border border-app bg-surface">
+          <Image src="/img/how.png" alt="Filing to approval to growth — a simple three-step flow" width={1024} height={576} className="w-full" />
+        </div>
+        <div className="mt-12 grid gap-8 md:grid-cols-3">
+          {steps.map((s) => (
+            <div key={s.n} className="relative">
+              <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-full bg-emerald-600 text-base font-bold text-white">{s.n}</div>
+              <h3 className="text-lg font-semibold text-app">{s.t}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-muted">{s.b}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ------------------------------ Compliance ------------------------------- */
+function Compliance() {
+  const checks = [
+    "Nothing posts without a named human's approval",
+    "Disclosures attach automatically — Section 17(b) + forward-looking statements",
+    "AI answers only from your public filings — Reg FD-safe by design",
+    "A complete audit log, ready for regulators or your exchange",
+  ];
+  return (
+    <section id="compliance" className="mx-auto max-w-6xl px-6 py-20">
+      <div className="rounded-3xl border border-emerald-500/30 bg-emerald-500/5 p-8 sm:p-12">
+        <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
+          <div>
+            <h2 className="text-3xl font-bold tracking-tight text-app">Built for compliance, not around it.</h2>
+            <p className="mt-3 text-muted">
+              Promoting a public company is not like marketing a restaurant. IRForge is designed so the safe path is the only path —
+              reviewed with securities counsel in mind, so the answer to &ldquo;is this legal?&rdquo; is always yes.
+            </p>
+            <ul className="mt-6 space-y-3">
+              {checks.map((c) => (
+                <li key={c} className="flex items-start gap-3">
+                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-xs text-white">✓</span>
+                  <span className="text-sm text-app">{c}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="overflow-hidden rounded-2xl border border-app bg-surface">
+            <Image src="/img/compliance.png" alt="Compliance, trust, and legal safety" width={1024} height={576} className="w-full" />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ------------------------------ Comparison ------------------------------- */
+function Comparison() {
+  const rows = [
+    ["Speed (filing → post)", "—", "2–3 days", "Minutes"],
+    ["Monthly cost", "$0", "$10,000+", "From $1,500"],
+    ["Defends you from attacks", "No", "Rarely", "Yes — in minutes"],
+    ["Answers shareholders legally", "No", "Slowly", "Yes — Reg FD-safe"],
+    ["Proof for your board", "None", "Quarterly deck", "Live score + log"],
+    ["Always on", "No", "Business hours", "24/7"],
+  ];
+  return (
+    <section className="border-y border-app bg-surface-2/40">
+      <div className="mx-auto max-w-5xl px-6 py-20">
+        <h2 className="text-center text-3xl font-bold tracking-tight text-app">Why companies switch.</h2>
+        <div className="mt-10 overflow-hidden rounded-2xl border border-app">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-surface text-left">
+                <th className="px-4 py-3 font-medium text-muted"></th>
+                <th className="px-4 py-3 text-center font-medium text-muted">Doing nothing</th>
+                <th className="px-4 py-3 text-center font-medium text-muted">$10k/mo agency</th>
+                <th className="px-4 py-3 text-center font-semibold text-emerald-600 dark:text-emerald-400">IRForge</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r, i) => (
+                <tr key={i} className="border-t border-app bg-surface">
+                  <td className="px-4 py-3 font-medium text-app">{r[0]}</td>
+                  <td className="px-4 py-3 text-center text-faint">{r[1]}</td>
+                  <td className="px-4 py-3 text-center text-muted">{r[2]}</td>
+                  <td className="px-4 py-3 text-center font-semibold text-app">{r[3]}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* --------------------------------- Stats --------------------------------- */
+function Stats() {
+  const stats = [
+    ["11", "public data sources, in one score"],
+    ["Minutes", "from a filing to a ready-to-post update"],
+    ["100%", "of posts compliance-checked before you see them"],
+  ];
+  return (
+    <section className="mx-auto max-w-5xl px-6 py-16">
+      <div className="grid gap-8 text-center sm:grid-cols-3">
+        {stats.map(([big, small]) => (
+          <div key={small}>
+            <p className="text-4xl font-bold text-emerald-600 dark:text-emerald-400">{big}</p>
+            <p className="mt-1 text-sm text-muted">{small}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/* -------------------------------- Pricing -------------------------------- */
+function Pricing() {
+  const tiers = [
+    { name: "Starter", price: "$1,500", popular: false, features: ["Verified company page", "Filing-to-post drafting", "The investor board", "Monthly proof report"] },
+    { name: "Growth", price: "$3,500", popular: true, features: ["Everything in Starter", "Threat Radar + AI rebuttals", "AI shareholder Q&A", "13F investor targeting", "Publishing to X"] },
+    { name: "Command", price: "$6,000", popular: false, features: ["Everything in Growth", "Short-attack defense", "Earnings-call support", "Dedicated onboarding"] },
+  ];
+  return (
+    <section id="pricing" className="border-y border-app bg-surface-2/40">
+      <div className="mx-auto max-w-6xl px-6 py-20">
+        <h2 className="text-center text-3xl font-bold tracking-tight text-app">Simple pricing. Less than one junior hire.</h2>
+        <p className="mt-3 text-center text-muted">A local IR agency charges $10,000+ a month to do less. Billed quarterly.</p>
+        <div className="mt-12 grid gap-6 lg:grid-cols-3">
+          {tiers.map((t) => (
+            <div key={t.name} className={`relative rounded-2xl border p-6 ${t.popular ? "border-emerald-500 bg-surface shadow-lg" : "border-app bg-surface"}`}>
+              {t.popular && <span className="absolute -top-3 left-6 rounded-full bg-emerald-600 px-3 py-1 text-xs font-bold text-white">MOST POPULAR</span>}
+              <h3 className="text-lg font-semibold text-app">{t.name}</h3>
+              <p className="mt-2 text-3xl font-bold text-app">{t.price}<span className="text-base font-normal text-faint">/mo</span></p>
+              <ul className="mt-5 space-y-2.5">
+                {t.features.map((f) => (
+                  <li key={f} className="flex items-start gap-2 text-sm text-muted">
+                    <span className="mt-0.5 text-emerald-600 dark:text-emerald-400">✓</span> {f}
+                  </li>
+                ))}
+              </ul>
+              <Link href="/app" className={`mt-6 block rounded-lg px-4 py-2.5 text-center text-sm font-semibold ${t.popular ? "bg-emerald-600 text-white hover:bg-emerald-500" : "border border-app text-app hover:bg-app-hover"}`}>
+                Get started
+              </Link>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ------------------------------- Final CTA ------------------------------- */
+function FinalCta() {
+  const router = useRouter();
+  const [ticker, setTicker] = useState("");
+  return (
+    <section className="mx-auto max-w-4xl px-6 py-24 text-center">
+      <h2 className="text-3xl font-bold tracking-tight text-app sm:text-4xl">Stop letting strangers write your story.</h2>
+      <p className="mx-auto mt-4 max-w-xl text-muted">See exactly what investors find when they look you up — and what we&apos;d do about it. Free, instant, public data only.</p>
+      <div className="mx-auto mt-8 flex max-w-md flex-col gap-3 sm:flex-row">
+        <div className="flex flex-1 overflow-hidden rounded-xl border border-app bg-surface focus-within:border-emerald-500">
+          <span className="flex items-center pl-4 text-faint">$</span>
+          <input value={ticker} onChange={(e) => setTicker(e.target.value.toUpperCase())} onKeyDown={(e) => e.key === "Enter" && ticker && router.push(`/t/${ticker}`)}
+            placeholder="Your ticker" className="w-full bg-transparent px-2 py-3 uppercase text-app focus:outline-none" />
+        </div>
+        <button onClick={() => ticker && router.push(`/t/${ticker}`)} className="rounded-xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white hover:bg-emerald-500">
+          See your free report →
+        </button>
+      </div>
+    </section>
+  );
+}
+
+/* -------------------------------- Footer --------------------------------- */
+function Footer() {
+  return (
+    <footer className="border-t border-app">
+      <div className="mx-auto max-w-6xl px-6 py-12">
+        <div className="flex flex-wrap items-start justify-between gap-8">
+          <div>
+            <Link href="/" className="flex items-baseline gap-0.5 text-lg font-bold">
+              <span className="text-app">ir</span><span className="text-emerald-600 dark:text-emerald-400">forge</span><span className="text-emerald-600 dark:text-emerald-400">.</span>
+            </Link>
+            <p className="mt-2 max-w-xs text-sm text-faint">AI investor relations for public companies. Talk back to your investors — legally.</p>
+          </div>
+          <div className="flex gap-12 text-sm">
+            <div className="space-y-2">
+              <p className="font-medium text-app">Product</p>
+              <a href="#how" className="block text-muted hover:text-app">How it works</a>
+              <a href="#pricing" className="block text-muted hover:text-app">Pricing</a>
+              <Link href="/app" className="block text-muted hover:text-app">Open the app</Link>
+            </div>
+            <div className="space-y-2">
+              <p className="font-medium text-app">Company</p>
+              <a href="#compliance" className="block text-muted hover:text-app">Compliance</a>
+              <a href="#" className="block text-muted hover:text-app">Contact</a>
+            </div>
+          </div>
+        </div>
+        <div className="mt-10 border-t border-app pt-6 text-xs leading-relaxed text-faint">
+          IRForge is a compensated service provider, not an investment adviser. Nothing on this site or produced by the
+          platform is investment advice. All company data is drawn from public sources and may be incomplete or delayed.
+          © {new Date().getFullYear()} IRForge.
+        </div>
+      </div>
+    </footer>
   );
 }
