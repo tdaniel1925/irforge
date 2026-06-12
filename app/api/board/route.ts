@@ -1,12 +1,17 @@
 import { NextResponse } from "next/server";
-import { addBoardPost, getBoardPosts, reactToPost, type ReactionKind } from "@/lib/publicStats";
+import { addBoardPost, getBoardPage, reactToPost, type ReactionKind } from "@/lib/publicStats";
 import { moderateBoardPost } from "@/lib/ai";
 
 export const dynamic = "force-dynamic";
 
+const PAGE_SIZE = 15;
+
 export async function GET(req: Request) {
-  const ticker = new URL(req.url).searchParams.get("ticker") ?? "";
-  return NextResponse.json({ posts: getBoardPosts(ticker) });
+  const u = new URL(req.url);
+  const ticker = u.searchParams.get("ticker") ?? "";
+  const offset = Math.max(0, Number(u.searchParams.get("offset")) || 0);
+  const { posts, totalRoots } = getBoardPage(ticker, offset, PAGE_SIZE);
+  return NextResponse.json({ posts, totalRoots, offset, pageSize: PAGE_SIZE, hasMore: offset + PAGE_SIZE < totalRoots });
 }
 
 // Public message board post. Runs through the same banned-claims filter as everything

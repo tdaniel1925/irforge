@@ -43,14 +43,39 @@ export default function MessageBoard({ ticker }: { ticker: string }) {
   const [error, setError] = useState("");
   const [filter, setFilter] = useState("all");
   const [sort, setSort] = useState<Sort>("top");
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
+  // Reload from the start (page 0) — used on mount and after posting/reacting.
   const load = async () => {
     try {
-      const res = await fetch(`/api/board?ticker=${encodeURIComponent(ticker)}`, { cache: "no-store" });
+      const res = await fetch(`/api/board?ticker=${encodeURIComponent(ticker)}&offset=0`, { cache: "no-store" });
       const data = await res.json();
       setPosts(data.posts ?? []);
+      setOffset(data.pageSize ?? 15);
+      setHasMore(Boolean(data.hasMore));
     } catch {
       /* ignore */
+    }
+  };
+
+  // Append the next page of root threads.
+  const loadMore = async () => {
+    setLoadingMore(true);
+    try {
+      const res = await fetch(`/api/board?ticker=${encodeURIComponent(ticker)}&offset=${offset}`, { cache: "no-store" });
+      const data = await res.json();
+      setPosts((prev) => {
+        const seen = new Set(prev.map((p) => p.id));
+        return [...prev, ...(data.posts ?? []).filter((p: BoardPost) => !seen.has(p.id))];
+      });
+      setOffset(offset + (data.pageSize ?? 15));
+      setHasMore(Boolean(data.hasMore));
+    } catch {
+      /* ignore */
+    } finally {
+      setLoadingMore(false);
     }
   };
 
@@ -162,6 +187,14 @@ export default function MessageBoard({ ticker }: { ticker: string }) {
           {community.map((p) => (
             <PostCard key={p.id} post={p} flagOf={flagOf} replies={repliesByParent[p.id] ?? []} onReact={react} onReply={post} repliesByParent={repliesByParent} />
           ))}
+        </div>
+      )}
+
+      {hasMore && (
+        <div className="mt-5 text-center">
+          <button onClick={loadMore} disabled={loadingMore} className="rounded-lg border border-app px-5 py-2.5 text-sm font-medium text-muted transition hover:bg-app-hover hover:text-app disabled:opacity-50">
+            {loadingMore ? "Loading…" : "Load more posts"}
+          </button>
         </div>
       )}
     </div>

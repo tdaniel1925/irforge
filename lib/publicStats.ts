@@ -101,6 +101,29 @@ export function getBoardPosts(ticker: string, limit = 200): BoardPost[] {
   return s.board.filter((p) => p.ticker === T).slice(0, limit).map((p) => ({ ...p, reactions: { ...EMPTY_REACTIONS, ...(p.reactions ?? {}) } }));
 }
 
+// Paged board read: returns a page of ROOT posts plus all their replies (so threads stay
+// intact), and the total root count so the UI knows whether more remain.
+export function getBoardPage(ticker: string, offset = 0, limit = 15): { posts: BoardPost[]; totalRoots: number } {
+  const all = getBoardPosts(ticker, 4000);
+  const roots = all.filter((p) => !p.parentId);
+  const pageRoots = roots.slice(offset, offset + limit);
+  const pageIds = new Set(pageRoots.map((r) => r.id));
+  // Collect replies (and nested replies) belonging to the paged roots.
+  const replies = all.filter((p) => p.parentId && belongsTo(p, pageIds, all));
+  return { posts: [...pageRoots, ...replies], totalRoots: roots.length };
+}
+
+function belongsTo(post: BoardPost, rootIds: Set<string>, all: BoardPost[]): boolean {
+  let cur: BoardPost | undefined = post;
+  const seen = new Set<string>();
+  while (cur?.parentId && !seen.has(cur.id)) {
+    seen.add(cur.id);
+    if (rootIds.has(cur.parentId)) return true;
+    cur = all.find((p) => p.id === cur!.parentId);
+  }
+  return false;
+}
+
 export function reactToPost(postId: string, kind: ReactionKind): BoardPost | null {
   const s = read();
   const post = s.board.find((p) => p.id === postId);
