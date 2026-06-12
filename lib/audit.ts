@@ -27,6 +27,11 @@ export interface MarketStat {
   changePct3mo?: number;
   lastVolume?: number;
   avgVolume3mo?: number;
+  priceSeries?: number[]; // ~3mo daily closes for charting
+  high52?: number;
+  low52?: number;
+  marketCap?: number;
+  currency?: string;
 }
 
 export interface NewsStat {
@@ -337,11 +342,17 @@ async function yahooMarket(ticker: string): Promise<MarketStat> {
   const validVols = volumes.filter((v): v is number => typeof v === "number" && v > 0);
   const price = result.meta?.regularMarketPrice ?? validCloses[validCloses.length - 1];
   const first = validCloses[0];
+  const meta = result.meta ?? {};
   return {
     price,
     changePct3mo: first && price ? ((price - first) / first) * 100 : undefined,
     lastVolume: validVols[validVols.length - 1],
     avgVolume3mo: validVols.length ? Math.round(validVols.reduce((a, b) => a + b, 0) / validVols.length) : undefined,
+    // Downsample to ~60 points so the payload stays small.
+    priceSeries: validCloses.length > 60 ? validCloses.filter((_, i) => i % Math.ceil(validCloses.length / 60) === 0) : validCloses,
+    high52: meta.fiftyTwoWeekHigh ?? (validCloses.length ? Math.max(...validCloses) : undefined),
+    low52: meta.fiftyTwoWeekLow ?? (validCloses.length ? Math.min(...validCloses) : undefined),
+    currency: meta.currency,
   };
 }
 

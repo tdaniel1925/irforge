@@ -116,6 +116,33 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
         </div>
       )}
 
+      {/* Stock chart + market data */}
+      {typeof audit.market.price === "number" && (
+        <Section title="Stock price" badge="live · Yahoo Finance · 3-month">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="text-3xl font-bold text-white">
+                {audit.market.currency === "USD" || !audit.market.currency ? "$" : ""}{audit.market.price.toFixed(2)}
+                {audit.market.currency && audit.market.currency !== "USD" ? ` ${audit.market.currency}` : ""}
+              </p>
+              {typeof audit.market.changePct3mo === "number" && (
+                <p className={`text-sm font-medium ${audit.market.changePct3mo >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                  {audit.market.changePct3mo >= 0 ? "▲" : "▼"} {Math.abs(audit.market.changePct3mo).toFixed(1)}% over 3 months
+                </p>
+              )}
+            </div>
+            <div className="flex gap-6 text-sm">
+              {typeof audit.market.high52 === "number" && <div><p className="text-xs text-slate-500">52-wk high</p><p className="font-medium text-slate-200">{audit.market.high52.toFixed(2)}</p></div>}
+              {typeof audit.market.low52 === "number" && <div><p className="text-xs text-slate-500">52-wk low</p><p className="font-medium text-slate-200">{audit.market.low52.toFixed(2)}</p></div>}
+              {typeof audit.market.lastVolume === "number" && <div><p className="text-xs text-slate-500">Volume</p><p className="font-medium text-slate-200">{(audit.market.lastVolume / 1e6).toFixed(2)}M</p></div>}
+            </div>
+          </div>
+          {audit.market.priceSeries && audit.market.priceSeries.length > 2 && (
+            <PriceChart series={audit.market.priceSeries} up={(audit.market.changePct3mo ?? 0) >= 0} />
+          )}
+        </Section>
+      )}
+
       {/* AI overview */}
       <Section title="Overview" badge={explainer.engine === "claude" ? "AI-written from observed facts" : "generated from observed facts"}>
         <p className="text-sm leading-relaxed text-slate-300">{explainer.text}</p>
@@ -496,6 +523,24 @@ function Fact({ label, value }: { label: string; value: string }) {
       <p className="text-xs text-slate-500">{label}</p>
       <p className="mt-0.5 font-medium text-slate-200">{value}</p>
     </div>
+  );
+}
+
+function PriceChart({ series, up }: { series: number[]; up: boolean }) {
+  const W = 720, H = 160, pad = 6;
+  const min = Math.min(...series), max = Math.max(...series), range = max - min || 1;
+  const pts = series.map((v, i) => ({
+    x: pad + (i / (series.length - 1)) * (W - pad * 2),
+    y: H - pad - ((v - min) / range) * (H - pad * 2),
+  }));
+  const line = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+  const area = `${line} L${pts[pts.length - 1].x.toFixed(1)},${H - pad} L${pts[0].x.toFixed(1)},${H - pad} Z`;
+  const color = up ? "#34d399" : "#f87171";
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="mt-4 w-full">
+      <path d={area} fill={color} opacity={0.1} />
+      <path d={line} fill="none" stroke={color} strokeWidth={2} />
+    </svg>
   );
 }
 
