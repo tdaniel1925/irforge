@@ -16,7 +16,7 @@ export async function GET() {
 
   const { data: companies } = await svc
     .from("companies")
-    .select("id, name, ticker, tier, subscription_status, onboarding_complete, created_at")
+    .select("id, name, ticker, tier, subscription_status, onboarding_complete, created_at, stripe_customer_id, stripe_subscription_id")
     .order("created_at", { ascending: false });
   const { data: claims } = await svc
     .from("claim_requests")

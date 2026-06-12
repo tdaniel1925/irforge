@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Banner, Button, Card, LoadingState, PageHeader } from "@/components/ui";
 
 interface AdminData {
@@ -43,7 +44,9 @@ export default function Admin() {
 
   return (
     <div>
-      <PageHeader title="Admin Console" subtitle="Every company, your revenue, and the claim-request queue. Admins only." />
+      <PageHeader title="Admin Console" subtitle="Every company, your revenue, and the claim-request queue. Admins only.">
+        <Link href="/admin/customers" className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">Customer management →</Link>
+      </PageHeader>
 
       <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-5">
         <Stat label="Companies" value={data.stats.total} />

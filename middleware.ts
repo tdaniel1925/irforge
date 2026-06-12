@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 // Refreshes the Supabase session cookie on every request and gates the app routes.
 // Public routes (landing, login, public ticker pages, public APIs) stay open.
-const PUBLIC_PREFIXES = ["/", "/login", "/auth", "/t", "/api/board", "/api/claim", "/api/questions", "/api/ticker-audit", "/_next", "/img", "/favicon"];
+const PUBLIC_PREFIXES = ["/", "/login", "/auth", "/privacy", "/terms", "/t", "/api/board", "/api/claim", "/api/questions", "/api/ticker-audit", "/api/sec-feed", "/_next", "/img", "/favicon"];
 
 function isPublic(pathname: string): boolean {
   if (pathname === "/") return true;

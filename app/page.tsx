@@ -69,10 +69,7 @@ function Hero() {
           <TickerLookup />
           <p className="mt-3 text-xs text-faint">Free report · no signup · uses only public data</p>
         </div>
-        <div className="space-y-5">
-          <div className="overflow-hidden rounded-2xl border border-app bg-surface">
-            <Image src="/img/hero.png" alt="A company finally having a voice with investors" width={1024} height={576} className="w-full" priority />
-          </div>
+        <div>
           <HeroMock />
         </div>
       </div>
@@ -379,7 +376,8 @@ function Footer() {
             <div className="space-y-2">
               <p className="font-medium text-app">Company</p>
               <a href="#compliance" className="block text-muted hover:text-app">Compliance</a>
-              <a href="#" className="block text-muted hover:text-app">Contact</a>
+              <Link href="/privacy" className="block text-muted hover:text-app">Privacy Policy</Link>
+              <Link href="/terms" className="block text-muted hover:text-app">Terms &amp; Conditions</Link>
             </div>
           </div>
         </div>
