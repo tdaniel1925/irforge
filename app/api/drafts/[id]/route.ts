@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDb, logAudit, saveDb } from "@/lib/db";
+import { getStore, logAudit } from "@/lib/db";
 import { buildPublishedThread, checkContent, hasBlockingFlags, publishGate } from "@/lib/compliance";
 import { postThreadToX } from "@/lib/ayrshare";
 
@@ -13,7 +13,7 @@ type Action =
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const body = (await req.json()) as Action;
-  const db = getDb();
+  const { db, save } = await getStore();
   const draft = db.drafts.find((d) => d.id === params.id);
   if (!draft) return NextResponse.json({ error: "Draft not found" }, { status: 404 });
 
@@ -55,14 +55,14 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       const gate = publishGate({ status: draft.status, flags: draft.complianceFlags, quietMode: db.company.quietMode });
       if (!gate.ok) {
         logAudit(db, "compliance-engine", "PUBLISH_REFUSED", `${draft.id}: ${gate.reason}`);
-        saveDb(db);
+        await save();
         return NextResponse.json({ error: gate.reason }, { status: 422 });
       }
       const finalThread = buildPublishedThread(draft.tweets, db.company);
       const result = await postThreadToX(finalThread);
       if (!result.ok) {
         logAudit(db, "system", "PUBLISH_FAILED", `${draft.id}: ${result.error}`);
-        saveDb(db);
+        await save();
         return NextResponse.json({ error: result.error }, { status: 502 });
       }
       draft.tweets = finalThread;
@@ -93,6 +93,6 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     }
   }
 
-  saveDb(db);
+  await save();
   return NextResponse.json(draft);
 }

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { addLead } from "@/lib/publicStats";
-import { getDb, logAudit, saveDb } from "@/lib/db";
+import { getStore, logAudit } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -17,9 +17,9 @@ export async function POST(req: Request) {
 
   addLead({ ticker, name, email, role, ts: new Date().toISOString() });
 
-  const db = getDb();
+  const { db, save } = await getStore();
   logAudit(db, "public-site", "LEAD_CAPTURED", `$${ticker} claim request from ${name} (${role || "role n/a"})`);
-  saveDb(db);
+  await save();
 
   return NextResponse.json({ ok: true });
 }

@@ -3,7 +3,7 @@ import type { Database } from "./types";
 
 // The Visibility Score — the number the whole product is organized around.
 // External pillars come from the live audit; the Engine pillar comes from
-// work done inside IRForge, so using the app visibly moves the score.
+// work done inside PubcoZone, so using the app visibly moves the score.
 
 export interface Pillar {
   key: string;
@@ -213,7 +213,7 @@ export function buildScorecard(audit: TickerAudit | null, internal: InternalStat
     pillars.push({ key: "reddit", label: "Community Reach", score, weight: 0.05, detail, action: { label: "Audit the channels", href: "/ticker-audit" } });
   }
 
-  // --- IR Engine: work done inside IRForge ---
+  // --- IR Engine: work done inside PubcoZone ---
   {
     const postingScore = clamp((internal.posted30d / 12) * 100);
     const responsiveness = internal.unansweredQuestions === 0 ? 100 : internal.unansweredQuestions <= 2 ? 50 : 0;
@@ -240,7 +240,7 @@ export function buildScorecard(audit: TickerAudit | null, internal: InternalStat
   const externalLive = live.filter((p) => p.key !== "engine");
   if (externalLive.length === 0) {
     findings.unshift(
-      `External sources couldn't verify $${audit?.ticker ?? "your ticker"} — the score currently reflects only work done inside IRForge. If this is the demo company, its ticker is fictional: set your real ticker and peers in Settings, then refresh.`
+      `External sources couldn't verify $${audit?.ticker ?? "your ticker"} — the score currently reflects only work done inside PubcoZone. If this is the demo company, its ticker is fictional: set your real ticker and peers in Settings, then refresh.`
     );
   }
 

@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { getDb, logAudit, saveDb } from "@/lib/db";
+import { getStore, logAudit } from "@/lib/db";
 import { fetchEdgarFilings } from "@/lib/edgar";
 
 export const dynamic = "force-dynamic";
 
 export async function POST() {
-  const db = getDb();
+  const { db, save } = await getStore();
   const result = await fetchEdgarFilings(db.company.cik);
 
   if ("error" in result) {
@@ -19,6 +19,6 @@ export async function POST() {
   if (fresh.length > 0) {
     logAudit(db, "system", "EDGAR_SYNC", `Pulled ${fresh.length} new filing(s) from EDGAR for CIK ${db.company.cik}`);
   }
-  saveDb(db);
+  await save();
   return NextResponse.json({ ok: true, added: fresh.length });
 }

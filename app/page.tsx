@@ -30,7 +30,7 @@ function Nav() {
     <header className="sticky top-0 z-30 border-b border-app bg-app/80 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
         <Link href="/" className="flex items-baseline gap-0.5 text-4xl font-bold tracking-tight">
-          <span className="text-app">ir</span><span className="text-emerald-600 dark:text-emerald-400">forge</span><span className="text-emerald-600 dark:text-emerald-400">.</span>
+          <span className="text-app">Pubco</span><span className="text-emerald-600 dark:text-emerald-400">Zone</span><span className="text-emerald-600 dark:text-emerald-400">.</span>
         </Link>
         <nav className="hidden items-center gap-7 text-sm text-muted sm:flex">
           <a href="#how" className="hover:text-app">How it works</a>
@@ -63,7 +63,7 @@ function Hero() {
             <span className="text-emerald-600 dark:text-emerald-400">Now you can talk back — legally.</span>
           </h1>
           <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted">
-            IRForge turns your SEC filings into compliant investor updates, answers shareholder questions
+            PubcoZone turns your SEC filings into compliant investor updates, answers shareholder questions
             from your public record, and defends your name when bashers attack — all approved by you with one tap.
           </p>
           <TickerLookup />
@@ -155,7 +155,7 @@ function Pillars() {
   return (
     <section className="mx-auto max-w-6xl px-6 py-20">
       <h2 className="text-center text-3xl font-bold tracking-tight text-app">Three jobs. One platform. One number.</h2>
-      <p className="mx-auto mt-3 max-w-2xl text-center text-muted">Everything IRForge does maps to defending your name, growing your reach, or keeping you in control — and all of it moves your Visibility Score.</p>
+      <p className="mx-auto mt-3 max-w-2xl text-center text-muted">Everything PubcoZone does maps to defending your name, growing your reach, or keeping you in control — and all of it moves your Visibility Score.</p>
       <div className="mt-12 grid gap-6 md:grid-cols-3">
         {items.map((it) => (
           <div key={it.title} className="overflow-hidden rounded-2xl border border-app bg-surface">
@@ -216,7 +216,7 @@ function Compliance() {
           <div>
             <h2 className="text-3xl font-bold tracking-tight text-app">Built for compliance, not around it.</h2>
             <p className="mt-3 text-muted">
-              Promoting a public company is not like marketing a restaurant. IRForge is designed so the safe path is the only path —
+              Promoting a public company is not like marketing a restaurant. PubcoZone is designed so the safe path is the only path —
               reviewed with securities counsel in mind, so the answer to &ldquo;is this legal?&rdquo; is always yes.
             </p>
             <ul className="mt-6 space-y-3">
@@ -258,7 +258,7 @@ function Comparison() {
                 <th className="px-4 py-3 font-medium text-muted"></th>
                 <th className="px-4 py-3 text-center font-medium text-muted">Doing nothing</th>
                 <th className="px-4 py-3 text-center font-medium text-muted">$10k/mo agency</th>
-                <th className="px-4 py-3 text-center font-semibold text-emerald-600 dark:text-emerald-400">IRForge</th>
+                <th className="px-4 py-3 text-center font-semibold text-emerald-600 dark:text-emerald-400">PubcoZone</th>
               </tr>
             </thead>
             <tbody>
@@ -365,7 +365,7 @@ function Footer() {
         <div className="flex flex-wrap items-start justify-between gap-8">
           <div>
             <Link href="/" className="flex items-baseline gap-0.5 text-lg font-bold">
-              <span className="text-app">ir</span><span className="text-emerald-600 dark:text-emerald-400">forge</span><span className="text-emerald-600 dark:text-emerald-400">.</span>
+              <span className="text-app">Pubco</span><span className="text-emerald-600 dark:text-emerald-400">Zone</span><span className="text-emerald-600 dark:text-emerald-400">.</span>
             </Link>
             <p className="mt-2 max-w-xs text-sm text-faint">AI investor relations for public companies. Talk back to your investors — legally.</p>
           </div>
@@ -384,9 +384,9 @@ function Footer() {
           </div>
         </div>
         <div className="mt-10 border-t border-app pt-6 text-xs leading-relaxed text-faint">
-          IRForge is a compensated service provider, not an investment adviser. Nothing on this site or produced by the
+          PubcoZone is a compensated service provider, not an investment adviser. Nothing on this site or produced by the
           platform is investment advice. All company data is drawn from public sources and may be incomplete or delayed.
-          © {new Date().getFullYear()} IRForge.
+          © {new Date().getFullYear()} PubcoZone.
         </div>
       </div>
     </footer>

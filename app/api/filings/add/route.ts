@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDb, logAudit, newId, saveDb } from "@/lib/db";
+import { getStore, logAudit, newId } from "@/lib/db";
 import type { Filing } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -21,7 +21,7 @@ export async function POST(req: Request) {
   if (url && !text) {
     try {
       const res = await fetch(url, {
-        headers: { "User-Agent": "IRForge IR disclosure importer (company-authorized)" },
+        headers: { "User-Agent": "PubcoZone IR disclosure importer (company-authorized)" },
         signal: AbortSignal.timeout(15000),
       });
       if (!res.ok) return NextResponse.json({ error: `Couldn't fetch that URL (HTTP ${res.status}). Paste the text instead.` }, { status: 422 });
@@ -45,7 +45,7 @@ export async function POST(req: Request) {
   const fullText = text.slice(0, 8000);
   const summary = fullText.slice(0, 400) + (fullText.length > 400 ? "…" : "");
 
-  const db = getDb();
+  const { db, save } = await getStore();
   const filing: Filing = {
     id: newId("cmp"),
     form,
@@ -58,7 +58,7 @@ export async function POST(req: Request) {
   };
   db.filings = [filing, ...db.filings].sort((a, b) => b.filedAt.localeCompare(a.filedAt));
   logAudit(db, `${db.company.approverName} (${db.company.approverTitle})`, "FILING_ADDED", `Company-provided disclosure: ${form} — ${title}`);
-  saveDb(db);
+  await save();
 
   return NextResponse.json(filing);
 }

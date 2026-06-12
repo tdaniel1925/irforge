@@ -164,7 +164,7 @@ export function buildSeed(): Database {
       approverName: "Sarah Okafor",
       approverTitle: "CFO",
       quietMode: false,
-      disclosureText: "Disclosure: This account is operated on behalf of Meridian Lithium Corp. via IRForge, a compensated service provider. Not investment advice. See SEC filings at sec.gov for complete information.",
+      disclosureText: "Disclosure: This account is operated on behalf of Meridian Lithium Corp. via PubcoZone, a compensated service provider. Not investment advice. See SEC filings at sec.gov for complete information.",
       flsText: "This post contains forward-looking statements subject to risks and uncertainties described in our SEC filings. Actual results may differ materially.",
       peers: ["PLL", "SGML", "LAC", "ALB"],
       xHandle: "@MeridianLithium",

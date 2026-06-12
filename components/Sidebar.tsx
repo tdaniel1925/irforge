@@ -24,8 +24,8 @@ export default function Sidebar() {
     <aside className="flex w-56 shrink-0 flex-col border-r border-app bg-app p-4">
       <div className="mb-8 flex items-center justify-between px-2">
         <Link href="/app" className="flex items-baseline gap-1">
-          <span className="text-xl font-bold text-app">ir</span>
-          <span className="text-xl font-bold text-emerald-400">forge</span>
+          <span className="text-xl font-bold text-app">Pubco</span>
+          <span className="text-xl font-bold text-emerald-400">Zone</span>
           <span className="text-emerald-400">.</span>
         </Link>
         <ThemeToggle />

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDb, logAudit, newId, saveDb } from "@/lib/db";
+import { getStore, logAudit, newId } from "@/lib/db";
 import { fetchEdgarFilings } from "@/lib/edgar";
 import { generateFilingThread } from "@/lib/ai";
 import { checkContent, hasBlockingFlags } from "@/lib/compliance";
@@ -13,7 +13,7 @@ export const maxDuration = 90;
 // mock data from a different company ever survives onboarding.
 export async function POST(req: Request) {
   const b = await req.json().catch(() => ({}));
-  const db = getDb();
+  const { db, save } = await getStore();
 
   // CIK comes ONLY from the verified lookup. If the lookup found no CIK (ticker not on
   // EDGAR), we store an EMPTY cik — never inherit a previous company's CIK, or we'd pull
@@ -65,7 +65,7 @@ export async function POST(req: Request) {
           if (filing.url) {
             try {
               const docRes = await fetch(filing.url, {
-                headers: { "User-Agent": "IRForge IR tool contact@irforge.app" },
+                headers: { "User-Agent": "PubcoZone IR tool contact@irforge.app" },
                 signal: AbortSignal.timeout(12000),
               });
               if (docRes.ok) {
@@ -127,7 +127,7 @@ export async function POST(req: Request) {
   }
 
   logAudit(db, "system", "ONBOARDED", `${db.company.name} ($${db.company.ticker}) set up on the ${db.company.tier} tier — ${db.filings.length} filings imported, ${db.drafts.length} post(s) drafted`);
-  saveDb(db);
+  await save();
 
   return NextResponse.json({ ok: true, company: db.company, filings: db.filings.length, drafts: db.drafts.length });
 }

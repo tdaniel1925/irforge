@@ -9,7 +9,7 @@ export async function fetchEdgarFilings(cik: string): Promise<Filing[] | { error
   const padded = cik.replace(/\D/g, "").padStart(10, "0");
   try {
     const res = await fetch(`https://data.sec.gov/submissions/CIK${padded}.json`, {
-      headers: { "User-Agent": "IRForge Demo contact@irforge.app" },
+      headers: { "User-Agent": "PubcoZone Demo contact@irforge.app" },
       signal: AbortSignal.timeout(8000),
       cache: "no-store",
     });

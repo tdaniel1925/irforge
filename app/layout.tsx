@@ -6,7 +6,7 @@ import AppFrame from "@/components/AppFrame";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "IRForge — Talk back to your investors. Legally.",
+  title: "PubcoZone — Talk back to your investors. Legally.",
   description:
     "AI-powered investor relations for public companies. Turn SEC filings into compliant updates, answer shareholders from the public record, and defend your name — all approved by you with one tap.",
 };

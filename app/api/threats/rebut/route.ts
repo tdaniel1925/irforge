@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDb, logAudit, newId, saveDb } from "@/lib/db";
+import { getStore, logAudit, newId } from "@/lib/db";
 import { generateRebuttal } from "@/lib/ai";
 import { checkContent } from "@/lib/compliance";
 import type { Draft } from "@/lib/types";
@@ -14,7 +14,7 @@ export async function POST(req: Request) {
   const evidence = body.evidence ? String(body.evidence).slice(0, 400) : undefined;
   if (!title) return NextResponse.json({ error: "Missing threat." }, { status: 422 });
 
-  const db = getDb();
+  const { db, save } = await getStore();
   const publicContext = db.filings.slice(0, 4).map((f) => `${f.form} (${f.filedAt.slice(0, 10)}): ${f.summary}`).join(" | ");
   const { tweets, engine } = await generateRebuttal(title, evidence, db.company, publicContext);
 
@@ -30,7 +30,7 @@ export async function POST(req: Request) {
   };
   db.drafts.unshift(draft);
   logAudit(db, "threat-radar", "REBUTTAL_DRAFTED", `Filing-cited rebuttal drafted for: ${title}`);
-  saveDb(db);
+  await save();
 
   return NextResponse.json(draft);
 }

@@ -165,7 +165,7 @@ export interface TickerAudit {
   findings: string[];
 }
 
-const UA = { "User-Agent": "IRForge TickerAudit research tool contact@irforge.app" };
+const UA = { "User-Agent": "PubcoZone TickerAudit research tool contact@irforge.app" };
 const timeout = (ms: number) => AbortSignal.timeout(ms);
 
 async function getJson(url: string, headers: Record<string, string> = {}): Promise<any> {

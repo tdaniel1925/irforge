@@ -36,8 +36,8 @@ export default function InvestorsPage() {
 
       <Card className="mb-5 border-amber-500/20 bg-amber-500/5">
         <p className="text-xs text-amber-200/90">
-          Compliance note: IRForge charges a flat fee and never compensation tied to investment outcomes. Target lists are built
-          from public 13F filings. Your company conducts its own outreach — IRForge does not solicit investors on your behalf.
+          Compliance note: PubcoZone charges a flat fee and never compensation tied to investment outcomes. Target lists are built
+          from public 13F filings. Your company conducts its own outreach — PubcoZone does not solicit investors on your behalf.
         </p>
       </Card>
 

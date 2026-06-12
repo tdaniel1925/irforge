@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDb, logAudit, saveDb } from "@/lib/db";
+import { getStore, logAudit } from "@/lib/db";
 import { runTickerAudit } from "@/lib/audit";
 import { buildScorecard, internalStats } from "@/lib/score";
 
@@ -8,7 +8,7 @@ export const maxDuration = 60;
 
 // POST — refresh the company's Visibility Score from live sources + internal activity.
 export async function POST() {
-  const db = getDb();
+  const { db, save } = await getStore();
 
   let audit = null;
   try {
@@ -29,7 +29,7 @@ export async function POST() {
   if (db.scoreHistory.length > 60) db.scoreHistory = db.scoreHistory.slice(-60);
 
   logAudit(db, "system", "SCORE_REFRESHED", `Visibility Score refreshed: ${scorecard.score}/100 (${scorecard.grade})`);
-  saveDb(db);
+  await save();
 
   return NextResponse.json(scorecard);
 }

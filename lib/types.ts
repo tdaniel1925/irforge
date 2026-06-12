@@ -1,4 +1,4 @@
-// Core domain types for IRForge
+// Core domain types for PubcoZone
 
 export type DraftStatus = "pending" | "approved" | "rejected" | "posted" | "blocked";
 export type DraftKind = "filing_thread" | "cadence" | "reply" | "public_answer" | "press_release";

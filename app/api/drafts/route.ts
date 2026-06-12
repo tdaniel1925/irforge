@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDb, logAudit, newId, saveDb } from "@/lib/db";
+import { getStore, logAudit, newId } from "@/lib/db";
 import { generateCadencePost } from "@/lib/ai";
 import { checkContent, hasBlockingFlags } from "@/lib/compliance";
 import type { Draft } from "@/lib/types";
@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 // POST — generate a new cadence (between-news) draft
 export async function POST() {
-  const db = getDb();
+  const { db, save } = await getStore();
   const recentTitles = db.drafts.filter((d) => d.kind === "cadence").slice(0, 5).map((d) => d.title);
   const { tweets, engine, title } = await generateCadencePost(db.company, recentTitles);
   const flags = checkContent(tweets);
@@ -25,6 +25,6 @@ export async function POST() {
   };
   db.drafts.unshift(draft);
   logAudit(db, "system", "DRAFT_CREATED", `Generated cadence draft via ${engine}`);
-  saveDb(db);
+  await save();
   return NextResponse.json(draft);
 }

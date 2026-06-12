@@ -114,7 +114,7 @@ export function LoadingState() {
   return (
     <div className="flex items-center gap-3 p-10 text-sm text-slate-500">
       <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
-      Loading IRForge…
+      Loading PubcoZone…
     </div>
   );
 }

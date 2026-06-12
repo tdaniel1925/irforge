@@ -20,7 +20,7 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const t = params.ticker.toUpperCase();
   return {
-    title: `$${t} — Investor Visibility Report | IRForge`,
+    title: `$${t} — Investor Visibility Report | PubcoZone`,
     description: `Live investor-visibility intelligence on $${t}: SEC filings, social sentiment, news coverage, and trading pulse — aggregated from public sources in real time.`,
   };
 }
@@ -457,7 +457,7 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
       <p className="mt-8 text-xs leading-relaxed text-slate-600">
         Not investment advice. This report aggregates publicly available data (SEC EDGAR, StockTwits, Reddit, Yahoo Finance,
         GDELT) at generation time and may be incomplete or delayed. Verify all figures against official SEC filings at sec.gov
-        before making any decision. IRForge is a compensated service provider to companies that claim their pages; claimed
+        before making any decision. PubcoZone is a compensated service provider to companies that claim their pages; claimed
         pages are labeled.
       </p>
     </PageShell>
@@ -471,7 +471,7 @@ function PageShell({ children }: { children: React.ReactNode }) {
         <Link href="/t" className="text-sm text-slate-400 hover:text-slate-200">
           ← All ticker reports
         </Link>
-        <span className="text-xs text-slate-600">irforge · live public-data intelligence</span>
+        <span className="text-xs text-slate-600">PubcoZone · live public-data intelligence</span>
       </div>
       {children}
     </div>

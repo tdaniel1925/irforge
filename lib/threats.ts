@@ -3,7 +3,7 @@ import { getBoardPosts } from "./publicStats";
 import { runTickerAudit, type TickerAudit } from "./audit";
 
 // The Threat Radar — detects negative narratives a company would otherwise miss,
-// from data IRForge already pulls. Each threat carries a severity and is wired so the
+// from data PubcoZone already pulls. Each threat carries a severity and is wired so the
 // company can draft a filing-cited rebuttal and get alerted.
 
 export type ThreatSeverity = "high" | "medium" | "low";

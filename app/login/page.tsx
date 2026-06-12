@@ -38,7 +38,7 @@ export default function Login() {
     <div className="flex min-h-screen items-center justify-center bg-app px-6">
       <div className="w-full max-w-sm">
         <Link href="/" className="mb-8 flex items-baseline justify-center gap-0.5 text-3xl font-bold">
-          <span className="text-app">ir</span><span className="text-emerald-600 dark:text-emerald-400">forge</span><span className="text-emerald-600 dark:text-emerald-400">.</span>
+          <span className="text-app">Pubco</span><span className="text-emerald-600 dark:text-emerald-400">Zone</span><span className="text-emerald-600 dark:text-emerald-400">.</span>
         </Link>
 
         {!configured ? (

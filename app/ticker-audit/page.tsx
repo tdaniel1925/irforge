@@ -55,7 +55,7 @@ export default function TickerAuditPage() {
     <div>
       <PageHeader
         title="Ticker Audit"
-        subtitle="Type any ticker and get a live intelligence report from SEC EDGAR, StockTwits, and Reddit — real public data, scanned right now. This is the demo that sells IRForge."
+        subtitle="Type any ticker and get a live intelligence report from SEC EDGAR, StockTwits, and Reddit — real public data, scanned right now. This is the demo that sells PubcoZone."
       />
 
       <Card className="mb-6">
@@ -229,7 +229,7 @@ export default function TickerAuditPage() {
             <Card>
               <h3 className="mb-1 font-semibold text-white">Influencer leads — accounts already talking about ${report.ticker}</h3>
               <p className="mb-3 text-xs text-slate-500">
-                Sorted by audience size. These are the warmest outreach targets: they already cover this ticker. Your team reaches out — IRForge never contacts anyone on your behalf.
+                Sorted by audience size. These are the warmest outreach targets: they already cover this ticker. Your team reaches out — PubcoZone never contacts anyone on your behalf.
               </p>
               <table className="w-full text-sm">
                 <thead>

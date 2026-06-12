@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDb, logAudit, newId, saveDb } from "@/lib/db";
+import { getStore, logAudit, newId } from "@/lib/db";
 import { generatePublicAnswer } from "@/lib/ai";
 import { checkContent } from "@/lib/compliance";
 import type { Draft } from "@/lib/types";
@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 // POST — draft a compliance-checked answer to a public question (lands in the Do queue as a pending draft).
 export async function POST(_req: Request, { params }: { params: { id: string } }) {
-  const db = getDb();
+  const { db, save } = await getStore();
   const q = db.publicQuestions.find((x) => x.id === params.id);
   if (!q) return NextResponse.json({ error: "Question not found" }, { status: 404 });
   if (q.answerDraftId) return NextResponse.json({ error: "Answer already drafted" }, { status: 409 });
@@ -42,6 +42,6 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
       ? `${q.id} asks for non-public info — safe deflection drafted (Reg FD guard)`
       : `Public answer drafted for ${q.id} from the public record via ${engine}`
   );
-  saveDb(db);
+  await save();
   return NextResponse.json(draft);
 }

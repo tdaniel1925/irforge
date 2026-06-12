@@ -107,6 +107,36 @@ const COLLECTIONS = [
   "scoreHistory", "publicQuestions", "pressReleases", "disclosureChecks", "calendar",
 ] as const;
 
+import type { Database } from "../types";
+
+// A mutable, app-shaped DB view backed by Supabase for the logged-in user.
+// Load it, mutate db.drafts/db.filings/etc. in place, then call save().
+// Returns null when not authenticated (caller falls back to the local JSON store).
+export async function loadCompanyDb(): Promise<{ db: Database; companyId: string; save: () => Promise<void> } | null> {
+  const mine = await getMyCompany();
+  if (!mine) return null;
+  const supabase = await createServerSupabase();
+  const { data } = await supabase.from("company_data").select("collection, data").eq("company_id", mine.id);
+
+  const db = { company: mine.company } as unknown as Database;
+  for (const c of COLLECTIONS) (db as unknown as Record<string, unknown>)[c] = [];
+  for (const row of data ?? []) (db as unknown as Record<string, unknown>)[row.collection as string] = row.data;
+
+  const save = async () => {
+    // Persist company profile fields + each collection that exists on db.
+    await updateMyCompany(db.company);
+    const rows = COLLECTIONS.map((c) => ({
+      company_id: mine.id,
+      collection: c,
+      data: (db as unknown as Record<string, unknown>)[c] ?? [],
+      updated_at: new Date().toISOString(),
+    }));
+    await supabase.from("company_data").upsert(rows, { onConflict: "company_id,collection" });
+  };
+
+  return { db, companyId: mine.id, save };
+}
+
 // Assemble the full app-shaped DB document for the logged-in user (or null if not authed).
 export async function getFullDb(): Promise<Record<string, unknown> | null> {
   const mine = await getMyCompany();

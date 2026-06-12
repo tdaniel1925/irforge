@@ -50,6 +50,20 @@ export function newId(prefix: string): string {
   return `${prefix}_${Date.now().toString(36)}${counter.toString(36)}`;
 }
 
+// Unified accessor: returns the logged-in user's Supabase-backed DB when available,
+// otherwise the local JSON store. Routes call this, mutate db, then call ctx.save().
+// This is the single seam that makes every route multi-tenant without rewriting its logic.
+export async function getStore(): Promise<{ db: Database; save: () => Promise<void>; authed: boolean }> {
+  // Lazy import to avoid loading Supabase server deps in non-route contexts.
+  const { loadCompanyDb } = await import("./supabase/store");
+  const remote = await loadCompanyDb();
+  if (remote) {
+    return { db: remote.db, save: remote.save, authed: true };
+  }
+  const db = getDb();
+  return { db, save: async () => saveDb(db), authed: false };
+}
+
 // Audit log is append-only by construction: this is the only writer.
 export function logAudit(db: Database, actor: string, action: string, detail: string): void {
   const event: AuditEvent = {

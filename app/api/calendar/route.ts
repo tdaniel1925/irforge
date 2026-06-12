@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDb, logAudit, newId, saveDb } from "@/lib/db";
+import { getStore, logAudit, newId } from "@/lib/db";
 import type { CalendarEvent } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +12,7 @@ export async function POST(req: Request) {
   const type = ["earnings", "filing_deadline", "conference", "lockup", "custom"].includes(b.type) ? b.type : "custom";
   if (!date || !title) return NextResponse.json({ error: "Date and title required." }, { status: 422 });
 
-  const db = getDb();
+  const { db, save } = await getStore();
   const event: CalendarEvent = { id: newId("cal"), date, title, type, note: b.note ? String(b.note).slice(0, 200) : undefined };
   db.calendar.push(event);
 
@@ -24,15 +24,15 @@ export async function POST(req: Request) {
 
   db.calendar.sort((a, b) => a.date.localeCompare(b.date));
   logAudit(db, `${db.company.approverName} (${db.company.approverTitle})`, "CALENDAR_ADDED", `${title} on ${date}`);
-  saveDb(db);
+  await save();
   return NextResponse.json({ ok: true, calendar: db.calendar });
 }
 
 // DELETE — remove an event.
 export async function DELETE(req: Request) {
   const id = new URL(req.url).searchParams.get("id");
-  const db = getDb();
+  const { db, save } = await getStore();
   db.calendar = db.calendar.filter((e) => e.id !== id);
-  saveDb(db);
+  await save();
   return NextResponse.json({ ok: true, calendar: db.calendar });
 }

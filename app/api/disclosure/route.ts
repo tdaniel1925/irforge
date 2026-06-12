@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDb, logAudit, newId, saveDb } from "@/lib/db";
+import { getStore, logAudit, newId } from "@/lib/db";
 import { checkDisclosure } from "@/lib/ai";
 import type { DisclosureCheck } from "@/lib/types";
 
@@ -12,7 +12,7 @@ export async function POST(req: Request) {
   const event = String(body.event ?? "").trim().slice(0, 400);
   if (event.length < 8) return NextResponse.json({ error: "Describe the event in a sentence or two." }, { status: 422 });
 
-  const db = getDb();
+  const { db, save } = await getStore();
   const { likelyMaterial, form, reasoning, draftLanguage } = await checkDisclosure(event, db.company);
 
   const check: DisclosureCheck = {
@@ -26,6 +26,6 @@ export async function POST(req: Request) {
   };
   db.disclosureChecks.unshift(check);
   logAudit(db, "system", "DISCLOSURE_CHECKED", `Checked event: "${event.slice(0, 50)}" → ${form}`);
-  saveDb(db);
+  await save();
   return NextResponse.json(check);
 }

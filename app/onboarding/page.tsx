@@ -10,7 +10,7 @@ const TIERS = [
 ];
 
 const DEFAULT_DISCLOSURE =
-  "Disclosure: This account is operated on behalf of the company via IRForge, a compensated service provider. Not investment advice. See SEC filings at sec.gov for complete information.";
+  "Disclosure: This account is operated on behalf of the company via PubcoZone, a compensated service provider. Not investment advice. See SEC filings at sec.gov for complete information.";
 const DEFAULT_FLS =
   "This post contains forward-looking statements subject to risks and uncertainties described in our SEC filings. Actual results may differ materially.";
 
@@ -124,7 +124,7 @@ export default function Onboarding() {
 
       {/* STEP 2 — approver */}
       {step === 2 && (
-        <Panel title="Who approves what goes out?" sub="Nothing publishes without this person's tap. This is the compliance gate at the heart of IRForge.">
+        <Panel title="Who approves what goes out?" sub="Nothing publishes without this person's tap. This is the compliance gate at the heart of PubcoZone.">
           <div className="grid grid-cols-2 gap-3">
             <Field label="Approver name" value={form.approverName} onChange={(v) => set("approverName", v)} />
             <Field label="Title" value={form.approverTitle} onChange={(v) => set("approverTitle", v)} placeholder="CFO" />

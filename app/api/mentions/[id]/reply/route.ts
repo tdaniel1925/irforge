@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDb, logAudit, newId, saveDb } from "@/lib/db";
+import { getStore, logAudit, newId } from "@/lib/db";
 import { generateReplyDraft } from "@/lib/ai";
 import { checkContent } from "@/lib/compliance";
 import type { Draft } from "@/lib/types";
@@ -7,7 +7,7 @@ import type { Draft } from "@/lib/types";
 export const dynamic = "force-dynamic";
 
 export async function POST(_req: Request, { params }: { params: { id: string } }) {
-  const db = getDb();
+  const { db, save } = await getStore();
   const mention = db.mentions.find((m) => m.id === params.id);
   if (!mention) return NextResponse.json({ error: "Mention not found" }, { status: 404 });
   if (mention.replyDraftId) return NextResponse.json({ error: "Reply draft already exists" }, { status: 409 });
@@ -42,6 +42,6 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
       ? `${mention.id} requires non-public info — safe deflection drafted instead`
       : `Reply drafted for ${mention.author} from public record via ${engine}`
   );
-  saveDb(db);
+  await save();
   return NextResponse.json(draft);
 }

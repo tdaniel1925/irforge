@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDb, logAudit, newId, saveDb } from "@/lib/db";
+import { getStore, logAudit, newId } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +14,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Write a question of at least 10 characters." }, { status: 422 });
   }
 
-  const db = getDb();
+  const { db, save } = await getStore();
   const q = {
     id: newId("puq"),
     ticker,
@@ -32,7 +32,7 @@ export async function POST(req: Request) {
     "QUESTION_ASKED",
     `$${ticker} question from ${author}${isClaimed ? " — routed to Do queue" : " — page unclaimed, held for the company"}`
   );
-  saveDb(db);
+  await save();
 
   return NextResponse.json({ ok: true, claimed: isClaimed });
 }
