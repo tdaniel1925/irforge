@@ -1,16 +1,20 @@
 import { NextResponse } from "next/server";
-import { addBoardPost, getBoardPage, reactToPost, type ReactionKind } from "@/lib/publicStats";
+import { addBoardPost, getBoardPage, reactToPost, rateAllow, type ReactionKind } from "@/lib/publicStats";
 import { moderateBoardPost } from "@/lib/ai";
 
 export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 15;
 
+function clientIp(req: Request): string {
+  return (req.headers.get("x-forwarded-for")?.split(",")[0] ?? req.headers.get("x-real-ip") ?? "anon").trim();
+}
+
 export async function GET(req: Request) {
   const u = new URL(req.url);
   const ticker = u.searchParams.get("ticker") ?? "";
   const offset = Math.max(0, Number(u.searchParams.get("offset")) || 0);
-  const { posts, totalRoots } = getBoardPage(ticker, offset, PAGE_SIZE);
+  const { posts, totalRoots } = await getBoardPage(ticker, offset, PAGE_SIZE);
   return NextResponse.json({ posts, totalRoots, offset, pageSize: PAGE_SIZE, hasMore: offset + PAGE_SIZE < totalRoots });
 }
 
@@ -18,14 +22,21 @@ export async function GET(req: Request) {
 // else — a compliance-branded platform cannot host "going to $10" pump posts.
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
+  const ip = clientIp(req);
 
-  // Reaction path
+  // Reaction path (looser limit — reactions are cheap).
   if (body.react && body.postId) {
+    if (!(await rateAllow(`react:${ip}`, 60))) return NextResponse.json({ error: "Slow down a moment." }, { status: 429 });
     const valid: ReactionKind[] = ["agree", "source", "question", "report"];
     if (!valid.includes(body.react)) return NextResponse.json({ error: "bad reaction" }, { status: 422 });
-    const post = reactToPost(String(body.postId), body.react);
+    const post = await reactToPost(String(body.postId), body.react);
     if (!post) return NextResponse.json({ error: "post not found" }, { status: 404 });
     return NextResponse.json({ ok: true, post });
+  }
+
+  // Posting limit: max 5 posts/minute per IP.
+  if (!(await rateAllow(`board:${ip}`, 5))) {
+    return NextResponse.json({ error: "You're posting too fast — try again in a minute." }, { status: 429 });
   }
 
   const ticker = String(body.ticker ?? "").toUpperCase().slice(0, 8);
@@ -47,7 +58,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const post = addBoardPost({
+  const post = await addBoardPost({
     ticker,
     author,
     body: text,

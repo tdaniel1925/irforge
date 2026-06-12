@@ -44,7 +44,7 @@ export async function scanThreats(db: Database, audit?: TickerAudit | null): Pro
   }
 
   // 1 — FUD on the company's own board (the iHub-basher problem, caught on home turf).
-  const board = getBoardPosts(ticker, 100);
+  const board = await getBoardPosts(ticker, 100);
   const fud = board.filter((p) => p.flag === "fud" && !p.verified);
   for (const p of fud.slice(0, 5)) {
     threats.push({

@@ -55,7 +55,7 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
   }
 
   const explainer = await generateTickerExplainer(audit);
-  const viewCount = bumpViews(ticker);
+  const viewCount = await bumpViews(ticker);
   const db = getDb();
   const claimed = db.company.ticker.toUpperCase() === ticker;
   const tickerQuestions = db.publicQuestions.filter((q) => q.ticker === ticker).slice(0, 10);
