@@ -442,10 +442,7 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
         title="Questions & answers"
         badge={claimed ? "✓ company answers are verified, officer-approved, and disclosed on X simultaneously" : "company has not claimed this page yet"}
       >
-        {/* Ask box pinned to the top so it stays visible while scrolling the Q&A. */}
-        <div className="sticky top-4 z-10 mb-3">
-          <AskCompany ticker={ticker} claimed={claimed} />
-        </div>
+        {/* The ask box is a fixed bottom bar (rendered once near the page root). */}
         <div className="space-y-3">
           {tickerQuestions.map((q) => (
             <div key={q.id} className="rounded-lg border border-slate-800 bg-slate-950/60 p-3">
@@ -490,13 +487,17 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
         before making any decision. PubcoZone is a compensated service provider to companies that claim their pages; claimed
         pages are labeled.
       </p>
+
+      {/* Always-visible fixed Ask bar (position:fixed — pins to the viewport bottom). */}
+      <AskCompany ticker={audit.ticker} claimed={claimed} />
     </PageShell>
   );
 }
 
 function PageShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mx-auto max-w-4xl">
+    // pb-28 leaves room so the fixed Ask bar never covers the disclosure/claim content.
+    <div className="mx-auto max-w-4xl pb-28">
       <div className="mb-6 flex items-center justify-between">
         <Link href="/t" className="text-sm text-slate-400 hover:text-slate-200">
           ← All ticker reports
