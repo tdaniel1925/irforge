@@ -42,7 +42,7 @@ export default function AskCompany({ ticker, claimed }: { ticker: string; claime
   }
 
   return (
-    <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-4">
+    <div className="rounded-lg border border-slate-700 bg-slate-900 p-4 shadow-lg shadow-black/20">
       <p className="mb-2 text-sm font-medium text-white">Ask {claimed ? "the company" : `$${ticker}`} a question</p>
       <div className="flex flex-col gap-2 sm:flex-row">
         <input

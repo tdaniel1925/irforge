@@ -442,6 +442,10 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
         title="Questions & answers"
         badge={claimed ? "✓ company answers are verified, officer-approved, and disclosed on X simultaneously" : "company has not claimed this page yet"}
       >
+        {/* Ask box pinned to the top so it stays visible while scrolling the Q&A. */}
+        <div className="sticky top-4 z-10 mb-3">
+          <AskCompany ticker={ticker} claimed={claimed} />
+        </div>
         <div className="space-y-3">
           {tickerQuestions.map((q) => (
             <div key={q.id} className="rounded-lg border border-slate-800 bg-slate-950/60 p-3">
@@ -468,7 +472,6 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
               )}
             </div>
           ))}
-          <AskCompany ticker={ticker} claimed={claimed} />
         </div>
       </Section>
 
