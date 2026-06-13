@@ -5,7 +5,7 @@ import Sidebar from "./Sidebar";
 
 // The landing page (/) and other public marketing routes render full-bleed with no
 // app sidebar. Everything else gets the dashboard shell.
-const BARE_ROUTES = ["/", "/login", "/privacy", "/terms"];
+const BARE_ROUTES = ["/", "/login", "/privacy", "/terms", "/how-its-legal"];
 
 export default function AppFrame({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();

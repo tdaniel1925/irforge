@@ -34,7 +34,7 @@ function Nav() {
         </Link>
         <nav className="hidden items-center gap-7 text-sm text-muted sm:flex">
           <a href="#how" className="hover:text-app">How it works</a>
-          <a href="#compliance" className="hover:text-app">Compliance</a>
+          <Link href="/how-its-legal" className="hover:text-app">Is it legal?</Link>
           <a href="#pricing" className="hover:text-app">Pricing</a>
         </nav>
         <div className="flex items-center gap-3">
@@ -216,6 +216,9 @@ function Compliance() {
               Promoting a public company is not like marketing a restaurant. PubcoZone is designed so the safe path is the only path —
               reviewed with securities counsel in mind, so the answer to &ldquo;is this legal?&rdquo; is always yes.
             </p>
+            <Link href="/how-its-legal" className="mt-4 inline-block text-sm font-semibold text-emerald-600 hover:underline dark:text-emerald-400">
+              Read exactly why it&apos;s legal for your company to respond →
+            </Link>
             <ul className="mt-6 space-y-3">
               {checks.map((c) => (
                 <li key={c} className="flex items-start gap-3">
@@ -375,7 +378,7 @@ function Footer() {
             </div>
             <div className="space-y-2">
               <p className="font-medium text-app">Company</p>
-              <a href="#compliance" className="block text-muted hover:text-app">Compliance</a>
+              <Link href="/how-its-legal" className="block text-muted hover:text-app">Is it legal?</Link>
               <Link href="/privacy" className="block text-muted hover:text-app">Privacy Policy</Link>
               <Link href="/terms" className="block text-muted hover:text-app">Terms &amp; Conditions</Link>
             </div>
