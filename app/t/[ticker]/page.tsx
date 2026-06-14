@@ -680,9 +680,14 @@ function PageShell({ children }: { children: React.ReactNode }) {
     // pb-28 leaves room so the fixed Ask bar never covers the disclosure/claim content.
     <div className="mx-auto max-w-4xl pb-28">
       <div className="mb-6 flex items-center justify-between">
-        <Link href="/t" className="text-sm text-slate-400 hover:text-slate-200">
-          ← All ticker reports
-        </Link>
+        <div className="flex items-center gap-4">
+          <Link href="/t" className="text-sm text-slate-400 hover:text-slate-200">
+            ← Look up a ticker
+          </Link>
+          <Link href="/discover" className="text-sm text-emerald-400 hover:underline">
+            🔥 Discover
+          </Link>
+        </div>
         <span className="text-xs text-slate-600">PubcoZone · live public-data intelligence</span>
       </div>
       {children}

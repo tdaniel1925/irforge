@@ -36,6 +36,7 @@ function Nav() {
           <span className="text-app">Pubco</span><span className="text-emerald-600 dark:text-emerald-400">Zone</span><span className="text-emerald-600 dark:text-emerald-400">.</span>
         </Link>
         <nav className="hidden items-center gap-7 text-sm text-muted sm:flex">
+          <Link href="/discover" className="hover:text-app">Discover</Link>
           <a href="#how" className="hover:text-app">How it works</a>
           <Link href="/how-its-legal" className="hover:text-app">Is it legal?</Link>
           <a href="#pricing" className="hover:text-app">Pricing</a>

@@ -19,6 +19,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE}/privacy`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
     { url: `${BASE}/terms`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
     { url: `${BASE}/t`, lastModified: now, changeFrequency: "daily", priority: 0.7 },
+    { url: `${BASE}/discover`, lastModified: now, changeFrequency: "hourly", priority: 0.8 },
   ];
   const tickerPages: MetadataRoute.Sitemap = SEED_TICKERS.map((t) => ({
     url: `${BASE}/t/${t}`,

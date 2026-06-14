@@ -212,3 +212,95 @@ export async function rateAllow(key: string, maxPerMinute: number): Promise<bool
   return localBuckets[bucket] <= maxPerMinute;
 }
 const localBuckets: Record<string, number> = {};
+
+// ---------- discovery / leaderboards ----------
+// Powers the public "Discover" hub (our answer to iHub's Breakout/Most Read/etc).
+export interface DiscoveryRow {
+  ticker: string;
+  views: number;
+  posts: number; // total board posts
+  posts24h: number;
+  posts7d: number;
+  lastActivity: string | null; // ISO of most recent post
+}
+
+export interface Discovery {
+  mostRead: DiscoveryRow[]; // by views
+  mostActive: DiscoveryRow[]; // by posts in last 24h
+  trending: DiscoveryRow[]; // 24h posting velocity vs the prior 7d average
+  mostPosted: DiscoveryRow[]; // by total posts
+  recent: DiscoveryRow[]; // most recently active boards
+  totalTickers: number;
+}
+
+function rankSlice(rows: DiscoveryRow[], by: (r: DiscoveryRow) => number, limit: number): DiscoveryRow[] {
+  return rows.filter((r) => by(r) > 0).sort((a, b) => by(b) - by(a)).slice(0, limit);
+}
+
+// Trending score: how much the last 24h of posting beats the trailing daily
+// average. New, suddenly-busy boards rise even if their absolute count is small.
+function trendScore(r: DiscoveryRow): number {
+  const priorDaily = Math.max(0.2, (r.posts7d - r.posts24h) / 7);
+  return r.posts24h / priorDaily;
+}
+
+export async function getDiscovery(limit = 15): Promise<Discovery> {
+  const now = Date.now();
+  const DAY = 86400e3;
+  const byTicker = new Map<string, DiscoveryRow>();
+  const get = (t: string): DiscoveryRow => {
+    const T = t.toUpperCase();
+    let r = byTicker.get(T);
+    if (!r) {
+      r = { ticker: T, views: 0, posts: 0, posts24h: 0, posts7d: 0, lastActivity: null };
+      byTicker.set(T, r);
+    }
+    return r;
+  };
+
+  if (supabaseEnabled()) {
+    const svc = createServiceClient();
+    // Views per ticker.
+    const { data: views } = await svc.from("ticker_views").select("ticker, views");
+    for (const v of views ?? []) get(String(v.ticker)).views = Number(v.views ?? 0);
+    // Board posts (cap pull for aggregation).
+    const { data: posts } = await svc
+      .from("public_board")
+      .select("ticker, created_at")
+      .order("created_at", { ascending: false })
+      .limit(20000);
+    for (const p of posts ?? []) {
+      const r = get(String(p.ticker));
+      const ts = String(p.created_at ?? "");
+      const age = now - new Date(ts).getTime();
+      r.posts += 1;
+      if (age <= DAY) r.posts24h += 1;
+      if (age <= 7 * DAY) r.posts7d += 1;
+      if (!r.lastActivity || ts > r.lastActivity) r.lastActivity = ts;
+    }
+  } else {
+    const s = readLocal();
+    for (const [t, n] of Object.entries(s.views)) get(t).views = n;
+    for (const p of s.board) {
+      const r = get(p.ticker);
+      const age = now - new Date(p.ts).getTime();
+      r.posts += 1;
+      if (age <= DAY) r.posts24h += 1;
+      if (age <= 7 * DAY) r.posts7d += 1;
+      if (!r.lastActivity || p.ts > r.lastActivity) r.lastActivity = p.ts;
+    }
+  }
+
+  const rows = Array.from(byTicker.values());
+  return {
+    mostRead: rankSlice(rows, (r) => r.views, limit),
+    mostActive: rankSlice(rows, (r) => r.posts24h, limit),
+    trending: rows.filter((r) => r.posts24h > 0).sort((a, b) => trendScore(b) - trendScore(a)).slice(0, limit),
+    mostPosted: rankSlice(rows, (r) => r.posts, limit),
+    recent: rows
+      .filter((r) => r.lastActivity)
+      .sort((a, b) => (b.lastActivity! > a.lastActivity! ? 1 : -1))
+      .slice(0, limit),
+    totalTickers: rows.length,
+  };
+}

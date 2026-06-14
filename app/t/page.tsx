@@ -49,11 +49,18 @@ export default function TickerIndexPage() {
         />
         <button
           onClick={go}
-          className="rounded-xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400"
+          className="rounded-xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-400"
         >
           ✦ Generate report
         </button>
       </div>
+
+      <p className="mt-5 text-sm text-slate-400">
+        Or browse what&apos;s hot:{" "}
+        <a href="/discover" className="font-medium text-emerald-400 hover:underline">
+          🔥 Discover trending tickers →
+        </a>
+      </p>
 
       <div className="mt-6 flex justify-center gap-3 text-sm">
         <span className="text-slate-600">Try:</span>
