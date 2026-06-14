@@ -29,17 +29,19 @@ export async function GET(_req: Request, { params }: { params: { ticker: string 
 
   const color = GRADE_HEX[grade] ?? "#64748b";
   const scoreText = score !== null ? `${score}/100` : "live";
-  const W = 230, H = 56;
+  const W = 248, H = 60;
+  const cx = W - 36;
 
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="PubcoZone Visibility Grade ${grade}">
-  <rect width="${W}" height="${H}" rx="10" fill="#04060c"/>
-  <rect x="1" y="1" width="${W - 2}" height="${H - 2}" rx="9" fill="none" stroke="${color}" stroke-opacity="0.5"/>
+  // Grade in the ring; score sits OUTSIDE the ring (to its left) in light text so
+  // it's always legible on the dark badge.
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="PubcoZone Visibility Grade ${grade}, ${scoreText}">
+  <rect width="${W}" height="${H}" rx="11" fill="#04060c"/>
+  <rect x="1" y="1" width="${W - 2}" height="${H - 2}" rx="10" fill="none" stroke="${color}" stroke-opacity="0.55"/>
   <g font-family="Segoe UI, Helvetica, Arial, sans-serif">
-    <text x="16" y="23" fill="#ecfdf5" font-size="14" font-weight="700">Pubco<tspan fill="#34d399">Zone</tspan></text>
-    <text x="16" y="42" fill="#94a3b8" font-size="11">$${ticker} · Visibility Score</text>
-    <circle cx="${W - 34}" cy="${H / 2}" r="21" fill="none" stroke="${color}" stroke-width="3"/>
-    <text x="${W - 34}" y="${H / 2 + 1}" fill="${color}" font-size="22" font-weight="800" text-anchor="middle" dominant-baseline="middle">${grade}</text>
-    <text x="${W - 34}" y="${H - 6}" fill="#64748b" font-size="8" text-anchor="middle">${scoreText}</text>
+    <text x="18" y="24" fill="#ecfdf5" font-size="15" font-weight="700">Pubco<tspan fill="#34d399">Zone</tspan></text>
+    <text x="18" y="42" fill="#cbd5e1" font-size="11">$${ticker} · Score ${scoreText}</text>
+    <circle cx="${cx}" cy="${H / 2}" r="20" fill="${color}" fill-opacity="0.12" stroke="${color}" stroke-width="3"/>
+    <text x="${cx}" y="${H / 2}" fill="${color}" font-size="23" font-weight="800" text-anchor="middle" dominant-baseline="central">${grade}</text>
   </g>
 </svg>`;
 

@@ -16,7 +16,7 @@ export default function BadgeEmbed({ ticker, grade, score }: { ticker: string; g
   const [copied, setCopied] = useState(false);
   const src = `https://pubcozone.com/api/badge/${ticker}.svg`;
   const href = `https://pubcozone.com/t/${ticker}`;
-  const snippet = `<a href="${href}" target="_blank" rel="noopener"><img src="${src}" alt="PubcoZone Visibility Grade for $${ticker}" width="230" height="56"></a>`;
+  const snippet = `<a href="${href}" target="_blank" rel="noopener"><img src="${src}" alt="PubcoZone Visibility Grade for $${ticker}" width="248" height="60"></a>`;
 
   async function copy() {
     try {
@@ -36,17 +36,16 @@ export default function BadgeEmbed({ ticker, grade, score }: { ticker: string; g
       </div>
       <div className="flex flex-wrap items-center gap-5">
         {/* Live-ish preview built from the same data the SVG uses */}
-        <div className="flex shrink-0 items-center gap-3 rounded-[10px] border border-slate-700 bg-[#04060c] px-4 py-2.5">
+        <div className="flex shrink-0 items-center gap-4 rounded-[11px] border border-slate-700 bg-[#04060c] px-4 py-3">
           <div className="leading-tight">
             <p className="text-sm font-bold">
               <span className="text-emerald-50">Pubco</span>
               <span className="text-emerald-400">Zone</span>
             </p>
-            <p className="text-[11px] text-slate-400">${ticker} · Visibility Score</p>
+            <p className="text-[11px] text-slate-300">${ticker} · Score {score}/100</p>
           </div>
-          <div className={`flex h-11 w-11 flex-col items-center justify-center rounded-full border-2 ${GRADE_RING[grade] ?? "border-slate-500 text-slate-400"}`}>
-            <span className="text-lg font-extrabold leading-none">{grade}</span>
-            <span className="text-[7px] text-slate-500">{score}/100</span>
+          <div className={`flex h-11 w-11 items-center justify-center rounded-full border-[3px] ${GRADE_RING[grade] ?? "border-slate-500 text-slate-400"}`}>
+            <span className="text-xl font-extrabold leading-none">{grade}</span>
           </div>
         </div>
 
