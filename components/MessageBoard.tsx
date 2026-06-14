@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { BoardPost, ReactionKind } from "@/lib/publicStats";
 
 function ago(ts: string): string {
@@ -32,8 +32,93 @@ const FILTERS = [
   { key: "signal", label: "Signal only" },
   { key: "factual", label: "Factual" },
   { key: "opinion", label: "Opinion" },
+  { key: "questions", label: "❓ Questions" },
+  { key: "answered", label: "✓ Company answered" },
+  { key: "nofud", label: "🚫 Hide FUD" },
 ];
 type Sort = "top" | "new" | "factual";
+
+// ---- Voice dictation (Web Speech API) ----
+// Lets users speak a post instead of typing. Browser-native, no backend; the
+// transcript still goes through the same AI moderation as a typed post.
+type SpeechRec = {
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+  onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> & { [i: number]: { isFinal: boolean } } }) => void) | null;
+  onerror: (() => void) | null;
+  onend: (() => void) | null;
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+};
+function getSpeech(): SpeechRec | null {
+  if (typeof window === "undefined") return null;
+  const Ctor = (window as unknown as { SpeechRecognition?: new () => SpeechRec; webkitSpeechRecognition?: new () => SpeechRec })
+    .SpeechRecognition ?? (window as unknown as { webkitSpeechRecognition?: new () => SpeechRec }).webkitSpeechRecognition;
+  if (!Ctor) return null;
+  const r = new Ctor();
+  r.continuous = false;
+  r.interimResults = true;
+  r.lang = "en-US";
+  return r;
+}
+
+function MicButton({ onText }: { onText: (append: string) => void }) {
+  const [listening, setListening] = useState(false);
+  const [supported, setSupported] = useState(true);
+  const recRef = useRef<SpeechRec | null>(null);
+
+  useEffect(() => {
+    setSupported(getSpeech() !== null);
+    return () => recRef.current?.abort();
+  }, []);
+
+  const toggle = () => {
+    if (listening) {
+      recRef.current?.stop();
+      return;
+    }
+    const rec = getSpeech();
+    if (!rec) {
+      setSupported(false);
+      return;
+    }
+    recRef.current = rec;
+    let finalText = "";
+    rec.onresult = (e) => {
+      let interim = "";
+      for (let i = 0; i < e.results.length; i++) {
+        const seg = e.results[i] as ArrayLike<{ transcript: string }> & { isFinal: boolean };
+        const t = seg[0]?.transcript ?? "";
+        if (seg.isFinal) finalText += t + " ";
+        else interim += t;
+      }
+      onText((finalText + interim).trim());
+    };
+    rec.onerror = () => setListening(false);
+    rec.onend = () => setListening(false);
+    setListening(true);
+    rec.start();
+  };
+
+  if (!supported) return null;
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      title={listening ? "Stop dictation" : "Speak your post"}
+      aria-label={listening ? "Stop dictation" : "Speak your post"}
+      className={`flex shrink-0 items-center justify-center rounded-lg border px-3 py-2.5 text-sm transition ${
+        listening
+          ? "animate-pulse border-red-500/50 bg-red-500/15 text-red-500"
+          : "border-app text-muted hover:bg-app-hover hover:text-app"
+      }`}
+    >
+      {listening ? "● Rec" : "🎤"}
+    </button>
+  );
+}
 
 export default function MessageBoard({ ticker }: { ticker: string }) {
   const [posts, setPosts] = useState<BoardPost[]>([]);
@@ -43,6 +128,8 @@ export default function MessageBoard({ ticker }: { ticker: string }) {
   const [error, setError] = useState("");
   const [filter, setFilter] = useState("all");
   const [sort, setSort] = useState<Sort>("top");
+  const [search, setSearch] = useState("");
+  const [authorFilter, setAuthorFilter] = useState<string | null>(null);
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -119,12 +206,25 @@ export default function MessageBoard({ ticker }: { ticker: string }) {
   }, [posts]);
 
   const companyPinned = roots.filter((p) => p.verified).slice(0, 2);
+  const hasVerifiedReply = (id: string) => (repliesByParent[id] ?? []).some((r) => r.verified);
+  const q = search.trim().toLowerCase();
   let community = roots.filter((p) => !p.verified);
   community = community.filter((p) => {
     const f = flagOf(p);
-    if (filter === "all") return true;
-    if (filter === "signal") return f === "factual" || f === "opinion";
-    return f === filter;
+    // category / signal filter
+    const passCat =
+      filter === "all" ? true
+      : filter === "signal" ? f === "factual" || f === "opinion"
+      : filter === "questions" ? p.body.includes("?") || (p.reactions?.question ?? 0) > 0
+      : filter === "answered" ? hasVerifiedReply(p.id)
+      : filter === "nofud" ? f !== "fud" && f !== "hype"
+      : f === filter;
+    if (!passCat) return false;
+    // author filter (click a name)
+    if (authorFilter && p.author.toLowerCase() !== authorFilter.toLowerCase()) return false;
+    // keyword search across body + author
+    if (q && !(p.body.toLowerCase().includes(q) || p.author.toLowerCase().includes(q))) return false;
+    return true;
   });
   community.sort((a, b) =>
     sort === "new" ? b.ts.localeCompare(a.ts)
@@ -140,14 +240,15 @@ export default function MessageBoard({ ticker }: { ticker: string }) {
           <input value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="Name or handle"
             className="rounded-lg border border-app bg-surface-2 px-3 py-2.5 text-sm text-app focus:border-emerald-500 focus:outline-none sm:w-44" />
           <input value={body} onChange={(e) => setBody(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submitTop()}
-            placeholder={`Share something about $${ticker}…`}
+            placeholder={`Share something about $${ticker}…  (or tap 🎤 to speak)`}
             className="flex-1 rounded-lg border border-app bg-surface-2 px-3 py-2.5 text-sm text-app focus:border-emerald-500 focus:outline-none" />
+          <MicButton onText={(t) => setBody(t)} />
           <button onClick={submitTop} disabled={busy} className="rounded-lg bg-emerald-500 px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-400 disabled:opacity-50">
             {busy ? "…" : "Post"}
           </button>
         </div>
         {error && <p className="mt-2 text-xs text-amber-500">{error}</p>}
-        <p className="mt-2 text-[11px] text-faint">🛡 Every post is AI-labeled by signal quality — you filter what you see. Only threats and coordinated manipulation are removed.</p>
+        <p className="mt-2 text-[11px] text-faint">🛡 Every post is AI-labeled by signal quality — you filter what you see. 🎤 voice posts are transcribed in your browser and moderated the same way. Only threats and coordinated manipulation are removed.</p>
       </div>
 
       {/* Zone 1 — pinned company voice */}
@@ -158,13 +259,35 @@ export default function MessageBoard({ ticker }: { ticker: string }) {
           </p>
           <div className="space-y-3">
             {companyPinned.map((p) => (
-              <PostCard key={p.id} post={p} flagOf={flagOf} replies={repliesByParent[p.id] ?? []} onReact={react} onReply={post} repliesByParent={repliesByParent} />
+              <PostCard key={p.id} post={p} flagOf={flagOf} replies={repliesByParent[p.id] ?? []} onReact={react} onReply={post} repliesByParent={repliesByParent} onAuthorClick={setAuthorFilter} />
             ))}
           </div>
         </div>
       )}
 
       {/* Zone 2 — community feed */}
+      {/* search + active author chip */}
+      <div className="mb-2.5 flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 sm:max-w-xs">
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="🔍 Search this board…"
+            className="w-full rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:border-emerald-500 focus:outline-none"
+          />
+          {search && (
+            <button onClick={() => setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-faint hover:text-app" aria-label="Clear search">✕</button>
+          )}
+        </div>
+        {authorFilter && (
+          <button
+            onClick={() => setAuthorFilter(null)}
+            className="flex items-center gap-1.5 rounded-full border border-emerald-500/50 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-600 dark:text-emerald-300"
+          >
+            Showing @{authorFilter} <span className="text-faint">✕</span>
+          </button>
+        )}
+      </div>
       <div className="mb-3 flex flex-wrap items-center gap-2">
         {FILTERS.map((f) => (
           <button key={f.key} onClick={() => setFilter(f.key)}
@@ -185,7 +308,7 @@ export default function MessageBoard({ ticker }: { ticker: string }) {
       ) : (
         <div className="space-y-3">
           {community.map((p) => (
-            <PostCard key={p.id} post={p} flagOf={flagOf} replies={repliesByParent[p.id] ?? []} onReact={react} onReply={post} repliesByParent={repliesByParent} />
+            <PostCard key={p.id} post={p} flagOf={flagOf} replies={repliesByParent[p.id] ?? []} onReact={react} onReply={post} repliesByParent={repliesByParent} onAuthorClick={setAuthorFilter} />
           ))}
         </div>
       )}
@@ -202,7 +325,7 @@ export default function MessageBoard({ ticker }: { ticker: string }) {
 }
 
 function PostCard({
-  post, flagOf, replies, onReact, onReply, repliesByParent, depth = 0,
+  post, flagOf, replies, onReact, onReply, repliesByParent, onAuthorClick, depth = 0,
 }: {
   post: BoardPost;
   flagOf: (p: BoardPost) => string;
@@ -210,6 +333,7 @@ function PostCard({
   onReact: (id: string, k: ReactionKind) => void;
   onReply: (text: string, parentId?: string, who?: string) => Promise<void>;
   repliesByParent: Record<string, BoardPost[]>;
+  onAuthorClick?: (author: string) => void;
   depth?: number;
 }) {
   const f = flagOf(post);
@@ -235,7 +359,13 @@ function PostCard({
         <div className={`w-1.5 shrink-0 ${s.rail}`} />
         <div className="min-w-0 flex-1 p-3.5">
           <div className="mb-1.5 flex flex-wrap items-center gap-2 text-xs">
-            <span className="font-semibold text-app">{post.author}</span>
+            {onAuthorClick && !post.verified ? (
+              <button onClick={() => onAuthorClick(post.author)} className="font-semibold text-app hover:text-emerald-500 hover:underline" title={`See only @${post.author}'s posts`}>
+                {post.author}
+              </button>
+            ) : (
+              <span className="font-semibold text-app">{post.author}</span>
+            )}
             <span className={`rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${s.badge}`}>{s.label}</span>
             <span className="text-faint">{ago(post.ts)} ago</span>
           </div>
@@ -288,7 +418,7 @@ function PostCard({
           {replies.length > 0 && (
             <div className="mt-3 space-y-2 border-l-2 border-app pl-3">
               {replies.map((r) => (
-                <PostCard key={r.id} post={r} flagOf={flagOf} replies={repliesByParent[r.id] ?? []} onReact={onReact} onReply={onReply} repliesByParent={repliesByParent} depth={depth + 1} />
+                <PostCard key={r.id} post={r} flagOf={flagOf} replies={repliesByParent[r.id] ?? []} onReact={onReact} onReply={onReply} repliesByParent={repliesByParent} onAuthorClick={onAuthorClick} depth={depth + 1} />
               ))}
             </div>
           )}

@@ -19,6 +19,22 @@ create policy leads_admin_read on public.leads for select using (
   exists (select 1 from public.companies where owner_id = auth.uid() and is_admin = true)
 );
 
+-- Watch / alert subscriptions: "email me about $TICKER".
+create table if not exists public.watches (
+  id          uuid primary key default gen_random_uuid(),
+  ticker      text not null,
+  email       text not null,
+  created_at  timestamptz default now(),
+  unique (ticker, email)
+);
+alter table public.watches enable row level security;
+drop policy if exists watches_insert on public.watches;
+create policy watches_insert on public.watches for insert with check (true);
+drop policy if exists watches_admin_read on public.watches;
+create policy watches_admin_read on public.watches for select using (
+  exists (select 1 from public.companies where owner_id = auth.uid() and is_admin = true)
+);
+
 -- Per-ticker public page view counts.
 create table if not exists public.ticker_views (
   ticker      text primary key,

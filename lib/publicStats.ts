@@ -19,6 +19,12 @@ export interface ClaimLead {
 
 export type ReactionKind = "agree" | "source" | "question" | "report";
 
+export interface WatchSub {
+  ticker: string;
+  email: string;
+  ts: string;
+}
+
 export interface BoardPost {
   id: string;
   ticker: string;
@@ -35,13 +41,13 @@ export interface BoardPost {
 export const EMPTY_REACTIONS: Record<ReactionKind, number> = { agree: 0, source: 0, question: 0, report: 0 };
 
 // ---------- local JSON fallback ----------
-interface Stats { views: Record<string, number>; leads: ClaimLead[]; board: BoardPost[] }
+interface Stats { views: Record<string, number>; leads: ClaimLead[]; board: BoardPost[]; watches: WatchSub[] }
 function readLocal(): Stats {
   try {
     const s = JSON.parse(fs.readFileSync(FILE, "utf-8"));
-    return { views: s.views ?? {}, leads: s.leads ?? [], board: s.board ?? [] };
+    return { views: s.views ?? {}, leads: s.leads ?? [], board: s.board ?? [], watches: s.watches ?? [] };
   } catch {
-    return { views: {}, leads: [], board: [] };
+    return { views: {}, leads: [], board: [], watches: [] };
   }
 }
 function writeLocal(s: Stats): void {
@@ -91,6 +97,28 @@ export async function addLead(lead: ClaimLead): Promise<void> {
   const s = readLocal();
   s.leads.push(lead);
   writeLocal(s);
+}
+
+// ---------- watch / alerts ----------
+// Stores a "notify me about $TICKER" subscription. Email dispatch is wired
+// separately (a cron/worker reads these); here we just durably capture intent.
+export async function addWatch(sub: WatchSub): Promise<{ ok: boolean; already: boolean }> {
+  const ticker = sub.ticker.toUpperCase();
+  const email = sub.email.trim().toLowerCase();
+  if (supabaseEnabled()) {
+    const svc = createServiceClient();
+    const { data: existing } = await svc.from("watches").select("id").eq("ticker", ticker).eq("email", email).maybeSingle();
+    if (existing) return { ok: true, already: true };
+    await svc.from("watches").insert({ ticker, email });
+    return { ok: true, already: false };
+  }
+  const s = readLocal();
+  const already = s.watches.some((w) => w.ticker === ticker && w.email === email);
+  if (!already) {
+    s.watches.push({ ticker, email, ts: sub.ts });
+    writeLocal(s);
+  }
+  return { ok: true, already };
 }
 
 // ---------- board ----------

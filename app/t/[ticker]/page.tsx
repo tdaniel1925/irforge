@@ -9,6 +9,7 @@ import ClaimCard from "@/components/ClaimCard";
 import AskCompany from "@/components/AskCompany";
 import BadgeEmbed from "@/components/BadgeEmbed";
 import StockChart from "@/components/StockChart";
+import WatchButton from "@/components/WatchButton";
 import MessageBoard from "@/components/MessageBoard";
 import TickerTabs from "@/components/TickerTabs";
 import { generateAnalystContent } from "@/lib/ai";
@@ -175,6 +176,7 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
               <a href="#claim" className="rounded-full border border-amber-500/50 bg-amber-500/10 px-2.5 py-1 text-[11px] font-bold tracking-wide text-amber-400 hover:bg-amber-500/20">
                 UNCLAIMED
               </a>
+              <WatchButton ticker={audit.ticker} />
             </div>
             <p className="mt-1 text-sm text-slate-400">
               Investor Visibility Report · generated {new Date(audit.generatedAt).toLocaleString()} from live public sources ·{" "}
