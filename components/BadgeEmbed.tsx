@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 
-const GRADE_RING: Record<string, string> = {
-  A: "border-emerald-400 text-emerald-400",
-  B: "border-sky-400 text-sky-400",
-  C: "border-amber-400 text-amber-400",
-  D: "border-orange-400 text-orange-400",
-  F: "border-red-400 text-red-400",
+const GRADE_HEX: Record<string, string> = {
+  A: "#34d399",
+  B: "#38bdf8",
+  C: "#fbbf24",
+  D: "#fb923c",
+  F: "#f87171",
 };
 
 // The on-page preview + copyable embed snippet. The actual badge image is served
@@ -36,16 +36,21 @@ export default function BadgeEmbed({ ticker, grade, score }: { ticker: string; g
       </div>
       <div className="flex flex-wrap items-center gap-5">
         {/* Live-ish preview built from the same data the SVG uses */}
-        <div className="flex shrink-0 items-center gap-4 rounded-[11px] border border-slate-700 bg-[#04060c] px-4 py-3">
+        {/* Inline colors throughout — the light-mode theme bridge in globals.css
+            darkens emerald/white utility classes, which would turn this dark-on-dark. */}
+        <div className="flex shrink-0 items-center gap-4 rounded-[11px] border border-slate-700 px-4 py-3" style={{ background: "#04060c" }}>
           <div className="leading-tight">
             <p className="text-sm font-bold">
-              <span className="text-emerald-50">Pubco</span>
-              <span className="text-emerald-400">Zone</span>
+              <span style={{ color: "#ecfdf5" }}>Pubco</span>
+              <span style={{ color: "#34d399" }}>Zone</span>
             </p>
-            <p className="text-[11px] text-slate-300">${ticker} · Score {score}/100</p>
+            <p className="text-[11px]" style={{ color: "#cbd5e1" }}>${ticker} · Score {score}/100</p>
           </div>
-          <div className={`flex h-11 w-11 items-center justify-center rounded-full border-[3px] ${GRADE_RING[grade] ?? "border-slate-500 text-slate-400"}`}>
-            <span className="text-xl font-extrabold leading-none">{grade}</span>
+          <div
+            className="flex h-11 w-11 items-center justify-center rounded-full border-[3px]"
+            style={{ borderColor: GRADE_HEX[grade] ?? "#64748b", backgroundColor: `${GRADE_HEX[grade] ?? "#64748b"}1f` }}
+          >
+            <span className="text-xl font-extrabold leading-none" style={{ color: GRADE_HEX[grade] ?? "#94a3b8" }}>{grade}</span>
           </div>
         </div>
 
