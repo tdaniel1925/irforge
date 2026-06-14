@@ -4,8 +4,10 @@ import { getPublicTickerAudit } from "@/lib/tickerCache";
 import { generateTickerExplainer } from "@/lib/ai";
 import { bumpViews } from "@/lib/publicStats";
 import { getDb } from "@/lib/db";
+import { buildPlainFlags } from "@/lib/flags";
 import ClaimCard from "@/components/ClaimCard";
 import AskCompany from "@/components/AskCompany";
+import BadgeEmbed from "@/components/BadgeEmbed";
 import MessageBoard from "@/components/MessageBoard";
 import TickerTabs from "@/components/TickerTabs";
 import { generateAnalystContent } from "@/lib/ai";
@@ -23,6 +25,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const title = `$${t} Stock — Investor Report, SEC Filings, Q&A | PubcoZone`;
   const description = `Everything investors ask about $${t} in one place: live stock price, SEC filings, cash & runway, insider activity, short interest, news, an AI bull/bear analysis, and questions answered from the public record.`;
   const url = `https://pubcozone.com/t/${t}`;
+  const ogImage = `https://pubcozone.com/api/og/${t}.svg`;
   return {
     title,
     description,
@@ -33,8 +36,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       url,
       type: "website",
       siteName: "PubcoZone",
+      images: [{ url: ogImage, width: 1200, height: 630, alt: `$${t} Investor Visibility Report — PubcoZone` }],
     },
-    twitter: { card: "summary_large_image", title, description },
+    twitter: { card: "summary_large_image", title, description, images: [ogImage] },
     keywords: [`${t} stock`, `${t} investor relations`, `${t} SEC filings`, `$${t}`, `is ${t} a good investment`],
   };
 }
@@ -46,6 +50,23 @@ const GRADE_COLOR: Record<string, string> = {
   D: "text-orange-400 border-orange-500/40",
   F: "text-red-400 border-red-500/40",
 };
+
+const FLAG_STYLE: Record<string, string> = {
+  good: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200",
+  warn: "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-200",
+  bad: "border-red-500/40 bg-red-500/10 text-red-700 dark:text-red-200",
+  info: "border-slate-700 bg-slate-950/40 text-slate-700 dark:text-slate-300",
+};
+const FLAG_ICON: Record<string, string> = { good: "✅", warn: "⚠️", bad: "🚨", info: "ℹ️" };
+
+const LOCKED_FEATURES = [
+  { icon: "💬", title: "Answer investor questions", desc: "Reply on the record — compliance-checked and published here + on X at once." },
+  { icon: "🐦", title: "Post updates to X", desc: "One approved update, auto-posted to X as fair, simultaneous disclosure." },
+  { icon: "👁️", title: "See who's viewing", desc: "Page views, top questions, and the demand signals investors are sending." },
+  { icon: "📊", title: "Add your own disclosures", desc: "Surface OTC/SEDAR filings and IR materials right on your page." },
+  { icon: "🛡️", title: "Set the record straight", desc: "Flag misinformation and pin the verified company answer above the noise." },
+  { icon: "✅", title: "Verified badge", desc: "A claimed, officer-verified page investors can actually trust." },
+];
 
 export default async function PublicTickerPage({ params, searchParams }: Props) {
   const ticker = params.ticker.toUpperCase().slice(0, 8);
@@ -71,20 +92,36 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
     );
   }
 
-  const [explainer, analyst] = await Promise.all([
+  // Each of these can fail in production (AI rate limits, Supabase/file access on a
+  // read-only host) — none should take the whole page down. Degrade per-call.
+  const [explainerR, analystR, viewCountR] = await Promise.allSettled([
     generateTickerExplainer(audit),
     generateAnalystContent(audit),
+    bumpViews(ticker),
   ]);
-  const viewCount = await bumpViews(ticker);
-  const db = getDb();
-  const claimed = db.company.ticker.toUpperCase() === ticker;
-  const tickerQuestions = db.publicQuestions.filter((q) => q.ticker === ticker).slice(0, 10);
+  const explainer = explainerR.status === "fulfilled"
+    ? explainerR.value
+    : { text: `${audit.companyName ?? `$${audit.ticker}`} — live public-data report.`, engine: "template" as const };
+  const analyst = analystR.status === "fulfilled"
+    ? analystR.value
+    : { bull: "", bear: "", faq: [] as { q: string; a: string }[] };
+  const viewCount = viewCountR.status === "fulfilled" ? viewCountR.value : 0;
+
+  let db: ReturnType<typeof getDb> | null = null;
+  try {
+    db = getDb();
+  } catch (e) {
+    console.error(`[ticker ${ticker}] getDb failed:`, e);
+  }
+  const claimed = db ? db.company.ticker.toUpperCase() === ticker : false;
+  const tickerQuestions = db ? db.publicQuestions.filter((q) => q.ticker === ticker).slice(0, 10) : [];
   // Company-provided disclosures (OTC/SEDAR) only show on the claimed company's own page.
-  const companyFilings = claimed ? db.filings.filter((f) => f.source === "company").slice(0, 6) : [];
+  const companyFilings = claimed && db ? db.filings.filter((f) => f.source === "company").slice(0, 6) : [];
   const rated = audit.social.bullish + audit.social.bearish;
   const bullPct = rated > 0 ? Math.round((audit.social.bullish / rated) * 100) : null;
   const anySourceOk = audit.sources.some((s) => s.ok);
   const questionCount = audit.social.recentMessages.filter((m) => m.body.includes("?")).length;
+  const plainFlags = buildPlainFlags(audit);
 
   // JSON-LD structured data: helps Google understand the page is about a company and
   // contains Q&A — eligible for rich results and stronger topical ranking.
@@ -150,8 +187,36 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
               ))}
             </div>
           </div>
+          {/* Hero sparkline — instant visual of the 3-month trend next to the grade */}
+          {audit.market.priceSeries && audit.market.priceSeries.length > 2 && (
+            <div className="hidden shrink-0 flex-col items-end sm:flex">
+              <Sparkline series={audit.market.priceSeries} up={(audit.market.changePct3mo ?? 0) >= 0} />
+              <span className="mt-1 flex items-center gap-1.5 text-[11px] text-slate-500">
+                <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+                live · 3-month trend
+              </span>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Plain-English signals — the buried stuff, said simply, up top where it lands */}
+      {plainFlags.length > 0 && (
+        <div className="mt-6 rounded-xl border border-slate-800 bg-slate-900/60 p-5">
+          <div className="mb-3 flex items-baseline gap-3">
+            <h2 className="font-semibold text-white">The quick read</h2>
+            <span className="text-[11px] text-slate-500">auto-generated from the data · plain English · not advice</span>
+          </div>
+          <div className="grid gap-2.5 sm:grid-cols-2">
+            {plainFlags.map((fl, i) => (
+              <div key={i} className={`flex items-start gap-2.5 rounded-lg border px-3 py-2.5 text-sm ${FLAG_STYLE[fl.tone]}`}>
+                <span className="shrink-0 text-base leading-tight">{FLAG_ICON[fl.tone]}</span>
+                <span>{fl.text}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="mt-6" />
       <TickerTabs
@@ -202,6 +267,7 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
       </Section>
 
       {/* AI Analyst — labeled, balanced bull/bear from public data */}
+      {(analyst.bull || analyst.bear) && (
       <Section title={`AI analyst: $${audit.ticker}`} badge="🤖 AI-generated from public data · not investment advice">
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="rounded-lg border border-emerald-500/25 bg-emerald-500/5 p-4">
@@ -231,6 +297,7 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
           view of the company and is not investment advice. If this is your company, claim this page to add your verified voice.
         </p>
       </Section>
+      )}
 
       {/* Company profile */}
       {(audit.profile || audit.fundamentals) && (
@@ -556,6 +623,34 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
         </div>
       </Section>
 
+      {/* What the company is missing — loss-aversion lock screen (unclaimed only) */}
+      {!claimed && (
+        <Section title={`What $${audit.ticker} could be doing on this page`} badge="🔒 unlocks when the company claims it">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {LOCKED_FEATURES.map((lf) => (
+              <div key={lf.title} className="relative overflow-hidden rounded-lg border border-slate-800 bg-slate-950/60 p-4">
+                <div className="pointer-events-none select-none blur-[1.5px]" aria-hidden>
+                  <p className="text-2xl">{lf.icon}</p>
+                  <p className="mt-2 text-sm font-semibold text-slate-300">{lf.title}</p>
+                  <p className="mt-1 text-xs text-slate-500">{lf.desc}</p>
+                </div>
+                <div className="absolute inset-0 flex items-center justify-center bg-slate-950/40">
+                  <span className="rounded-full border border-amber-500/40 bg-slate-900/80 px-3 py-1 text-xs font-semibold text-amber-300">🔒 Locked</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3">
+            <p className="text-sm font-medium text-amber-700 dark:text-amber-200">
+              Right now, {questionCount > 0 ? `${questionCount} investor question${questionCount === 1 ? "" : "s"} ${questionCount === 1 ? "sits" : "sit"} unanswered` : "investors are talking and the company is silent"}. Claiming flips that.
+            </p>
+            <a href="#claim" className="shrink-0 rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-400">
+              Claim ${audit.ticker} →
+            </a>
+          </div>
+        </Section>
+      )}
+
       {/* Claim — the business hook */}
       <div id="claim">
         <ClaimCard ticker={audit.ticker} />
@@ -563,6 +658,9 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
         </>
         }
       />
+
+      {/* Embeddable badge — free distribution: companies paste this on their IR site */}
+      <BadgeEmbed ticker={audit.ticker} grade={audit.grade} score={audit.score} />
 
       {/* Disclosure */}
       <p className="mt-8 text-xs leading-relaxed text-slate-600">
@@ -628,6 +726,24 @@ function PriceChart({ series, up }: { series: number[]; up: boolean }) {
     <svg viewBox={`0 0 ${W} ${H}`} className="mt-4 w-full">
       <path d={area} fill={color} opacity={0.1} />
       <path d={line} fill="none" stroke={color} strokeWidth={2} />
+    </svg>
+  );
+}
+
+function Sparkline({ series, up }: { series: number[]; up: boolean }) {
+  const W = 150, H = 48, pad = 3;
+  const min = Math.min(...series), max = Math.max(...series), range = max - min || 1;
+  const pts = series.map((v, i) => ({
+    x: pad + (i / (series.length - 1)) * (W - pad * 2),
+    y: H - pad - ((v - min) / range) * (H - pad * 2),
+  }));
+  const line = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+  const color = up ? "#34d399" : "#f87171";
+  const last = pts[pts.length - 1];
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} className="overflow-visible">
+      <path d={line} fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={last.x} cy={last.y} r={3} fill={color} />
     </svg>
   );
 }
