@@ -8,6 +8,7 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [accountType, setAccountType] = useState<"investor" | "company">("investor");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
 
@@ -19,13 +20,21 @@ export default function Login() {
     try {
       const supabase = createClient();
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({ email, password });
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          // account_type drives the signup trigger (only 'company' mints a company
+          // row) and post-signup routing. Absence defaults to 'company' server-side.
+          options: { data: { account_type: accountType === "investor" ? "member" : "company" } },
+        });
         if (error) setMsg({ text: error.message, ok: false });
-        else window.location.href = "/onboarding";
+        else window.location.href = accountType === "investor" ? "/member" : "/onboarding";
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) setMsg({ text: error.message, ok: false });
-        else window.location.href = "/app";
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) { setMsg({ text: error.message, ok: false }); return; }
+        // Route by the account type stamped at signup.
+        const type = data.user?.user_metadata?.account_type;
+        window.location.href = type === "member" ? "/member" : "/app";
       }
     } catch (e) {
       setMsg({ text: e instanceof Error ? e.message : "Something went wrong.", ok: false });
@@ -48,10 +57,37 @@ export default function Login() {
         ) : (
           <div className="rounded-2xl border border-app bg-surface p-7">
             <h1 className="text-lg font-semibold text-app">{mode === "signin" ? "Sign in" : "Create your account"}</h1>
-            <p className="mt-1 text-sm text-muted">{mode === "signin" ? "Welcome back." : "Set up your company's IR command center."}</p>
+            <p className="mt-1 text-sm text-muted">
+              {mode === "signin"
+                ? "Welcome back."
+                : accountType === "investor"
+                ? "Track companies, join the conversation, get alerts."
+                : "Set up your company's IR command center."}
+            </p>
+
+            {mode === "signup" && (
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setAccountType("investor")}
+                  className={`rounded-lg border px-3 py-2.5 text-left text-sm transition ${accountType === "investor" ? "border-emerald-500 bg-emerald-500/10" : "border-app hover:bg-app-hover"}`}
+                >
+                  <span className="block font-semibold text-app">👤 I&apos;m an investor</span>
+                  <span className="block text-[11px] text-faint">Follow, post, get alerts</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAccountType("company")}
+                  className={`rounded-lg border px-3 py-2.5 text-left text-sm transition ${accountType === "company" ? "border-emerald-500 bg-emerald-500/10" : "border-app hover:bg-app-hover"}`}
+                >
+                  <span className="block font-semibold text-app">🏢 I&apos;m a company</span>
+                  <span className="block text-[11px] text-faint">Claim & run your IR</span>
+                </button>
+              </div>
+            )}
 
             <div className="mt-5 space-y-3">
-              <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="Work email"
+              <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder={accountType === "investor" && mode === "signup" ? "Email" : "Work email"}
                 className="w-full rounded-lg border border-app bg-surface-2 px-3 py-2.5 text-sm text-app focus:border-emerald-500 focus:outline-none" />
               <input value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()} type="password" placeholder="Password"
                 className="w-full rounded-lg border border-app bg-surface-2 px-3 py-2.5 text-sm text-app focus:border-emerald-500 focus:outline-none" />

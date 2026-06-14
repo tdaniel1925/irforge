@@ -36,6 +36,8 @@ export interface BoardPost {
   flagReason: string;
   parentId?: string;
   reactions: Record<ReactionKind, number>;
+  memberId?: string;       // null for legacy/anonymous posts
+  authorAvatar?: string;   // member avatar url, if any
 }
 
 export const EMPTY_REACTIONS: Record<ReactionKind, number> = { agree: 0, source: 0, question: 0, report: 0 };
@@ -70,6 +72,8 @@ function rowToPost(r: Record<string, unknown>): BoardPost {
     flagReason: String(r.flag_reason ?? ""),
     parentId: r.parent_id ? String(r.parent_id) : undefined,
     reactions: { ...EMPTY_REACTIONS, ...((r.reactions as Record<ReactionKind, number>) ?? {}) },
+    memberId: r.member_id ? String(r.member_id) : undefined,
+    authorAvatar: (r.author_avatar as string) ?? undefined,
   };
 }
 
@@ -102,14 +106,18 @@ export async function addLead(lead: ClaimLead): Promise<void> {
 // ---------- watch / alerts ----------
 // Stores a "notify me about $TICKER" subscription. Email dispatch is wired
 // separately (a cron/worker reads these); here we just durably capture intent.
-export async function addWatch(sub: WatchSub): Promise<{ ok: boolean; already: boolean }> {
+export async function addWatch(sub: WatchSub & { memberId?: string }): Promise<{ ok: boolean; already: boolean }> {
   const ticker = sub.ticker.toUpperCase();
   const email = sub.email.trim().toLowerCase();
   if (supabaseEnabled()) {
     const svc = createServiceClient();
     const { data: existing } = await svc.from("watches").select("id").eq("ticker", ticker).eq("email", email).maybeSingle();
-    if (existing) return { ok: true, already: true };
-    await svc.from("watches").insert({ ticker, email });
+    if (existing) {
+      // Backfill member_id if a logged-in member re-watches an email-only sub.
+      if (sub.memberId) await svc.from("watches").update({ member_id: sub.memberId }).eq("id", existing.id);
+      return { ok: true, already: true };
+    }
+    await svc.from("watches").insert({ ticker, email, member_id: sub.memberId ?? null });
     return { ok: true, already: false };
   }
   const s = readLocal();
@@ -119,6 +127,15 @@ export async function addWatch(sub: WatchSub): Promise<{ ok: boolean; already: b
     writeLocal(s);
   }
   return { ok: true, already };
+}
+
+// Remove a member's watch (used by the watchlist UI).
+export async function removeWatchByMember(memberId: string, ticker: string): Promise<void> {
+  const T = ticker.toUpperCase();
+  if (supabaseEnabled()) {
+    const svc = createServiceClient();
+    await svc.from("watches").delete().eq("member_id", memberId).eq("ticker", T);
+  }
 }
 
 // All distinct tickers that have at least one watcher (for the alert worker).
@@ -187,6 +204,7 @@ export async function addBoardPost(p: Omit<BoardPost, "id" | "reactions">): Prom
       ticker: p.ticker, author: p.author, body: p.body, verified: p.verified,
       flag: p.flag, flag_reason: p.flagReason, parent_id: p.parentId ?? null,
       reactions: EMPTY_REACTIONS,
+      member_id: p.memberId ?? null, author_avatar: p.authorAvatar ?? "",
     }).select("*").single();
     return data ? rowToPost(data) : { ...p, id: "err", reactions: { ...EMPTY_REACTIONS } };
   }

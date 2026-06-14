@@ -122,7 +122,6 @@ function MicButton({ onText }: { onText: (append: string) => void }) {
 
 export default function MessageBoard({ ticker }: { ticker: string }) {
   const [posts, setPosts] = useState<BoardPost[]>([]);
-  const [author, setAuthor] = useState("");
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -133,6 +132,8 @@ export default function MessageBoard({ ticker }: { ticker: string }) {
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  // null = unknown (checking), false = guest, true = signed-in member
+  const [authed, setAuthed] = useState<boolean | null>(null);
 
   // Reload from the start (page 0) — used on mount and after posting/reacting.
   const load = async () => {
@@ -170,11 +171,23 @@ export default function MessageBoard({ ticker }: { ticker: string }) {
     load(); // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ticker]);
 
-  const post = async (text: string, parentId?: string, who?: string) => {
+  // Detect whether the visitor is signed in (members post with identity).
+  useEffect(() => {
+    let cancelled = false;
+    import("@/lib/supabase/client").then(({ createClient, supabaseConfigured }) => {
+      if (!supabaseConfigured()) { if (!cancelled) setAuthed(false); return; }
+      createClient().auth.getUser().then(({ data }) => {
+        if (!cancelled) setAuthed(Boolean(data.user));
+      }).catch(() => { if (!cancelled) setAuthed(false); });
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  const post = async (text: string, parentId?: string) => {
     const res = await fetch("/api/board", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ticker, author: who ?? author, body: text, parentId }),
+      body: JSON.stringify({ ticker, body: text, parentId }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error ?? "Couldn't post.");
@@ -234,22 +247,33 @@ export default function MessageBoard({ ticker }: { ticker: string }) {
 
   return (
     <div>
-      {/* Composer */}
-      <div className="mb-5 rounded-xl border border-app bg-surface p-4">
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <input value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="Name or handle"
-            className="rounded-lg border border-app bg-surface-2 px-3 py-2.5 text-sm text-app focus:border-emerald-500 focus:outline-none sm:w-44" />
-          <input value={body} onChange={(e) => setBody(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submitTop()}
-            placeholder={`Share something about $${ticker}…  (or tap 🎤 to speak)`}
-            className="flex-1 rounded-lg border border-app bg-surface-2 px-3 py-2.5 text-sm text-app focus:border-emerald-500 focus:outline-none" />
-          <MicButton onText={(t) => setBody(t)} />
-          <button onClick={submitTop} disabled={busy} className="rounded-lg bg-emerald-500 px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-400 disabled:opacity-50">
-            {busy ? "…" : "Post"}
-          </button>
+      {/* Composer — members only. Guests see a sign-in CTA. */}
+      {authed ? (
+        <div className="mb-5 rounded-xl border border-app bg-surface p-4">
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <input value={body} onChange={(e) => setBody(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submitTop()}
+              placeholder={`Share something about $${ticker}…  (or tap 🎤 to speak)`}
+              className="flex-1 rounded-lg border border-app bg-surface-2 px-3 py-2.5 text-sm text-app focus:border-emerald-500 focus:outline-none" />
+            <MicButton onText={(t) => setBody(t)} />
+            <button onClick={submitTop} disabled={busy} className="rounded-lg bg-emerald-500 px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-400 disabled:opacity-50">
+              {busy ? "…" : "Post"}
+            </button>
+          </div>
+          {error && <p className="mt-2 text-xs text-amber-500">{error}</p>}
+          <p className="mt-2 text-[11px] text-faint">🛡 Posts are AI-labeled by signal quality — you filter what you see. 🎤 voice posts are transcribed in your browser and moderated the same way. You post under your investor profile. Only threats and coordinated manipulation are removed.</p>
         </div>
-        {error && <p className="mt-2 text-xs text-amber-500">{error}</p>}
-        <p className="mt-2 text-[11px] text-faint">🛡 Every post is AI-labeled by signal quality — you filter what you see. 🎤 voice posts are transcribed in your browser and moderated the same way. Only threats and coordinated manipulation are removed.</p>
-      </div>
+      ) : (
+        <div className="mb-5 rounded-xl border border-app bg-surface p-6 text-center">
+          <p className="text-sm font-semibold text-app">Join the conversation on ${ticker}</p>
+          <p className="mx-auto mt-1 max-w-sm text-xs text-muted">
+            Posting on PubcoZone takes a free investor account — that&apos;s how we keep it real names over anonymous pump-and-dump.
+          </p>
+          <div className="mt-3 flex justify-center gap-2">
+            <a href="/login" className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500">Sign in to post</a>
+            <a href="/login" className="rounded-lg border border-app px-4 py-2 text-sm font-medium text-app transition hover:bg-app-hover">Create free account</a>
+          </div>
+        </div>
+      )}
 
       {/* Zone 1 — pinned company voice */}
       {companyPinned.length > 0 && (
@@ -331,7 +355,7 @@ function PostCard({
   flagOf: (p: BoardPost) => string;
   replies: BoardPost[];
   onReact: (id: string, k: ReactionKind) => void;
-  onReply: (text: string, parentId?: string, who?: string) => Promise<void>;
+  onReply: (text: string, parentId?: string) => Promise<void>;
   repliesByParent: Record<string, BoardPost[]>;
   onAuthorClick?: (author: string) => void;
   depth?: number;
@@ -341,13 +365,12 @@ function PostCard({
   const [showWhy, setShowWhy] = useState(false);
   const [replying, setReplying] = useState(false);
   const [replyText, setReplyText] = useState("");
-  const [replyWho, setReplyWho] = useState("");
   const [replyErr, setReplyErr] = useState("");
   const [busy, setBusy] = useState(false);
 
   const sendReply = async () => {
     setBusy(true); setReplyErr("");
-    try { await onReply(replyText, post.id, replyWho); setReplyText(""); setReplying(false); }
+    try { await onReply(replyText, post.id); setReplyText(""); setReplying(false); }
     catch (e) { setReplyErr(e instanceof Error ? e.message : "Failed."); }
     finally { setBusy(false); }
   };
@@ -359,12 +382,20 @@ function PostCard({
         <div className={`w-1.5 shrink-0 ${s.rail}`} />
         <div className="min-w-0 flex-1 p-3.5">
           <div className="mb-1.5 flex flex-wrap items-center gap-2 text-xs">
+            {post.authorAvatar ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={post.authorAvatar} alt="" className="h-5 w-5 rounded-full object-cover" />
+            ) : post.memberId ? (
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/15 text-[9px] font-bold text-emerald-600 dark:text-emerald-300">
+                {(post.author || "?").charAt(0).toUpperCase()}
+              </span>
+            ) : null}
             {onAuthorClick && !post.verified ? (
-              <button onClick={() => onAuthorClick(post.author)} className="font-semibold text-app hover:text-emerald-500 hover:underline" title={`See only @${post.author}'s posts`}>
-                {post.author}
+              <button onClick={() => onAuthorClick(post.author)} className="font-semibold text-app hover:text-emerald-500 hover:underline" title={`See only ${post.author}'s posts`}>
+                {post.memberId ? `@${post.author}` : post.author}
               </button>
             ) : (
-              <span className="font-semibold text-app">{post.author}</span>
+              <span className="font-semibold text-app">{post.memberId ? `@${post.author}` : post.author}</span>
             )}
             <span className={`rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${s.badge}`}>{s.label}</span>
             <span className="text-faint">{ago(post.ts)} ago</span>
@@ -405,9 +436,7 @@ function PostCard({
 
           {replying && (
             <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-              <input value={replyWho} onChange={(e) => setReplyWho(e.target.value)} placeholder="You"
-                className="rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:border-emerald-500 focus:outline-none sm:w-32" />
-              <input value={replyText} onChange={(e) => setReplyText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && sendReply()} placeholder="Write a reply…"
+              <input value={replyText} onChange={(e) => setReplyText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && sendReply()} placeholder="Write a reply…" autoFocus
                 className="flex-1 rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:border-emerald-500 focus:outline-none" />
               <button onClick={sendReply} disabled={busy} className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-400 disabled:opacity-50">Reply</button>
             </div>

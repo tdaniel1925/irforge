@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import Sidebar from "./Sidebar";
+import MemberShell from "./MemberShell";
 import FreeTierBanner from "./FreeTierBanner";
 import FeatureGate from "./FeatureGate";
 import type { Feature } from "@/lib/billing";
@@ -35,6 +36,10 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
   const bare = BARE_EXACT.includes(pathname) || BARE_PREFIXES.some((p) => pathname.startsWith(p));
 
   if (bare) return <>{children}</>;
+
+  // Member (individual investor) back office gets its own shell, not the company
+  // dashboard sidebar / tier gating.
+  if (pathname.startsWith("/member")) return <MemberShell>{children}</MemberShell>;
 
   const feature = ROUTE_FEATURE[pathname];
 

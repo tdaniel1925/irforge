@@ -16,6 +16,23 @@ export function stripeMode(): "test" | "live" | "off" {
 
 export type Tier = "free" | "starter" | "growth" | "pro";
 
+// ── Consumer (individual investor) plans — separate from company TIERS. ──
+export type MemberPlan = "free" | "member_plus";
+
+export const MEMBER_PLANS: Record<MemberPlan, { name: string; price: number; priceId?: string; perks: string[] }> = {
+  free: {
+    name: "Free",
+    price: 0,
+    perks: ["Post on company boards", "Watch up to 10 tickers", "Alerts on filings & halts", "Your investor profile"],
+  },
+  member_plus: {
+    name: "Investor+",
+    price: 9,
+    priceId: process.env.STRIPE_PRICE_MEMBER_PLUS,
+    perks: ["Unlimited watchlist", "Instant (real-time) alerts", "Portfolio-wide alert digest", "Priority board placement", "Ad-free"],
+  },
+};
+
 // publishX (posting responses to X) is included on EVERY PAID tier — it's the core
 // value, not a premium gate. Free is a verified public PAGE only: no dashboard tools.
 export const TIERS: Record<Tier, { name: string; price: number; priceId?: string; features: Feature[] }> = {

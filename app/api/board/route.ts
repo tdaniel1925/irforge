@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { addBoardPost, getBoardPage, reactToPost, rateAllow, type ReactionKind } from "@/lib/publicStats";
 import { moderateBoardPost } from "@/lib/ai";
+import { getMyMember } from "@/lib/members";
 
 export const dynamic = "force-dynamic";
 
@@ -34,13 +35,20 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, post });
   }
 
-  // Posting limit: max 5 posts/minute per IP.
-  if (!(await rateAllow(`board:${ip}`, 5))) {
+  // Posting now requires a signed-in investor (member) account. Identity comes
+  // from the member profile — the client can no longer spoof an author name.
+  const me = await getMyMember();
+  if (!me) {
+    return NextResponse.json({ error: "Sign in as an investor to post.", needsAuth: true }, { status: 401 });
+  }
+
+  // Rate limit per member.
+  if (!(await rateAllow(`board:${me.id}`, 5))) {
     return NextResponse.json({ error: "You're posting too fast — try again in a minute." }, { status: 429 });
   }
 
   const ticker = String(body.ticker ?? "").toUpperCase().slice(0, 8);
-  const author = String(body.author ?? "").trim().slice(0, 40) || "Anonymous";
+  const author = me.member.handle;
   const text = String(body.body ?? "").trim().slice(0, 600);
   const parentId = body.parentId ? String(body.parentId) : undefined;
 
@@ -67,6 +75,8 @@ export async function POST(req: Request) {
     flag: verdict.flag,
     flagReason: verdict.reason,
     parentId,
+    memberId: me.id,
+    authorAvatar: me.member.avatarUrl,
   });
   return NextResponse.json({ ok: true, post, moderation: verdict.engine });
 }

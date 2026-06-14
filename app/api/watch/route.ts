@@ -1,6 +1,7 @@
-import { addWatch } from "@/lib/publicStats";
-import { rateAllow } from "@/lib/publicStats";
+import { addWatch, rateAllow, removeWatchByMember } from "@/lib/publicStats";
 import { sendWatchConfirmation } from "@/lib/email";
+import { getMyMember } from "@/lib/members";
+import { createServerSupabase } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,17 +17,26 @@ export async function POST(req: Request) {
   }
 
   const ticker = (payload.ticker ?? "").toUpperCase().trim().slice(0, 8);
-  const email = (payload.email ?? "").trim().toLowerCase();
   if (!ticker) return Response.json({ error: "Missing ticker." }, { status: 400 });
+
+  // If a member is logged in, tie the watch to their account + account email.
+  const me = await getMyMember();
+  let email = (payload.email ?? "").trim().toLowerCase();
+  let memberId: string | undefined;
+  if (me) {
+    memberId = me.id;
+    const supabase = await createServerSupabase();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user?.email) email = user.email.toLowerCase();
+  }
+
   if (!EMAIL_RE.test(email)) return Response.json({ error: "Enter a valid email." }, { status: 400 });
 
-  // Light abuse guard.
   const allowed = await rateAllow(`watch:${email}`, 10);
   if (!allowed) return Response.json({ error: "Too many requests — try again in a minute." }, { status: 429 });
 
-  const { already } = await addWatch({ ticker, email, ts: new Date().toISOString() });
+  const { already } = await addWatch({ ticker, email, ts: new Date().toISOString(), memberId });
 
-  // Confirmation email is best-effort: a send failure must not fail the subscribe.
   if (!already) {
     try {
       await sendWatchConfirmation(email, ticker);
@@ -36,4 +46,20 @@ export async function POST(req: Request) {
   }
 
   return Response.json({ ok: true, already });
+}
+
+// Remove a watch (members only — from their watchlist).
+export async function DELETE(req: Request) {
+  const me = await getMyMember();
+  if (!me) return Response.json({ error: "Not signed in." }, { status: 401 });
+  let payload: { ticker?: string };
+  try {
+    payload = await req.json();
+  } catch {
+    return Response.json({ error: "Bad request." }, { status: 400 });
+  }
+  const ticker = (payload.ticker ?? "").toUpperCase().trim().slice(0, 8);
+  if (!ticker) return Response.json({ error: "Missing ticker." }, { status: 400 });
+  await removeWatchByMember(me.id, ticker);
+  return Response.json({ ok: true });
 }

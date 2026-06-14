@@ -59,6 +59,11 @@ export async function getMyCompany(): Promise<{ id: string; company: Company } |
   const { data } = await supabase.from("companies").select("*").eq("owner_id", user.id).maybeSingle();
   if (data) return { id: data.id as string, company: rowToCompany(data) };
 
+  // Member accounts must NOT get a phantom company minted when they touch a
+  // company-scoped path. Only self-heal for company accounts (default when the
+  // metadata is absent, preserving the existing flow).
+  if (user.user_metadata?.account_type === "member") return null;
+
   // No row — create one for this user (RLS allows insert where owner_id = auth.uid()).
   const { data: created } = await supabase
     .from("companies")
