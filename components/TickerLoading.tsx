@@ -89,15 +89,15 @@ export default function TickerLoading() {
           <div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-300 transition-all duration-300" style={{ width: `${Math.min(100, (feed.length / SOURCES.length) * 100)}%` }} />
         </div>
 
-        {/* Big bright quote — cross-fades, never rests dim */}
-        <div className="mt-14 flex h-20 max-w-2xl items-center">
+        {/* Big bright quote — cross-fades, never rests dim. Tall reserved area so 3-line wraps never collide. */}
+        <div className="mt-12 flex min-h-[8rem] max-w-2xl items-center">
           <p className="text-center text-xl font-semibold leading-relaxed sm:text-2xl" style={{ color: "#ffffff", transition: "opacity 400ms ease", opacity: fade ? 0 : 1, textShadow: "0 1px 20px rgba(16,185,129,0.25)" }}>
             &ldquo;{QUOTES[quote]}&rdquo;
           </p>
         </div>
-      </div>
 
-      <p className="absolute bottom-8 text-sm text-emerald-200/50">Live public data · no signup · usually under 15 seconds</p>
+        <p className="mt-6 text-sm text-emerald-200/50">Live public data · no signup · usually under 15 seconds</p>
+      </div>
     </div>
   );
 }
