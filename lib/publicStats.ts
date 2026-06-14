@@ -41,13 +41,13 @@ export interface BoardPost {
 export const EMPTY_REACTIONS: Record<ReactionKind, number> = { agree: 0, source: 0, question: 0, report: 0 };
 
 // ---------- local JSON fallback ----------
-interface Stats { views: Record<string, number>; leads: ClaimLead[]; board: BoardPost[]; watches: WatchSub[] }
+interface Stats { views: Record<string, number>; leads: ClaimLead[]; board: BoardPost[]; watches: WatchSub[]; snapshots?: Record<string, WatchSnapshot> }
 function readLocal(): Stats {
   try {
     const s = JSON.parse(fs.readFileSync(FILE, "utf-8"));
-    return { views: s.views ?? {}, leads: s.leads ?? [], board: s.board ?? [], watches: s.watches ?? [] };
+    return { views: s.views ?? {}, leads: s.leads ?? [], board: s.board ?? [], watches: s.watches ?? [], snapshots: s.snapshots ?? {} };
   } catch {
-    return { views: {}, leads: [], board: [], watches: [] };
+    return { views: {}, leads: [], board: [], watches: [], snapshots: {} };
   }
 }
 function writeLocal(s: Stats): void {
@@ -119,6 +119,63 @@ export async function addWatch(sub: WatchSub): Promise<{ ok: boolean; already: b
     writeLocal(s);
   }
   return { ok: true, already };
+}
+
+// All distinct tickers that have at least one watcher (for the alert worker).
+export async function getWatchedTickers(): Promise<string[]> {
+  if (supabaseEnabled()) {
+    const svc = createServiceClient();
+    const { data } = await svc.from("watches").select("ticker").limit(5000);
+    return Array.from(new Set((data ?? []).map((r) => String(r.ticker).toUpperCase())));
+  }
+  const s = readLocal();
+  return Array.from(new Set(s.watches.map((w) => w.ticker.toUpperCase())));
+}
+
+// Email addresses watching a given ticker.
+export async function getWatchersFor(ticker: string): Promise<string[]> {
+  const T = ticker.toUpperCase();
+  if (supabaseEnabled()) {
+    const svc = createServiceClient();
+    const { data } = await svc.from("watches").select("email").eq("ticker", T).limit(5000);
+    return Array.from(new Set((data ?? []).map((r) => String(r.email))));
+  }
+  const s = readLocal();
+  return Array.from(new Set(s.watches.filter((w) => w.ticker.toUpperCase() === T).map((w) => w.email)));
+}
+
+// ---------- watch snapshots (change detection for the alert worker) ----------
+export interface WatchSnapshot {
+  lastFilingDate?: string;
+  lastForm?: string;
+  insiderBuys?: number;
+  insiderSells?: number;
+  haltCount?: number;
+  grade?: string;
+}
+
+export async function getWatchSnapshot(ticker: string): Promise<WatchSnapshot | null> {
+  const T = ticker.toUpperCase();
+  if (supabaseEnabled()) {
+    const svc = createServiceClient();
+    const { data } = await svc.from("watch_snapshots").select("snapshot").eq("ticker", T).maybeSingle();
+    return (data?.snapshot as WatchSnapshot) ?? null;
+  }
+  const s = readLocal();
+  return s.snapshots?.[T] ?? null;
+}
+
+export async function setWatchSnapshot(ticker: string, snap: WatchSnapshot): Promise<void> {
+  const T = ticker.toUpperCase();
+  if (supabaseEnabled()) {
+    const svc = createServiceClient();
+    await svc.from("watch_snapshots").upsert({ ticker: T, snapshot: snap, updated_at: new Date().toISOString() });
+    return;
+  }
+  const s = readLocal();
+  s.snapshots = s.snapshots ?? {};
+  s.snapshots[T] = snap;
+  writeLocal(s);
 }
 
 // ---------- board ----------

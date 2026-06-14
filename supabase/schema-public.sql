@@ -35,6 +35,16 @@ create policy watches_admin_read on public.watches for select using (
   exists (select 1 from public.companies where owner_id = auth.uid() and is_admin = true)
 );
 
+-- Per-ticker last-seen snapshot, used by the alert worker to detect what changed
+-- (so each filing/insider trade/halt/grade change is emailed exactly once).
+create table if not exists public.watch_snapshots (
+  ticker      text primary key,
+  snapshot    jsonb not null default '{}'::jsonb,
+  updated_at  timestamptz default now()
+);
+alter table public.watch_snapshots enable row level security;
+-- Service-role only (the cron worker); no client policies.
+
 -- Per-ticker public page view counts.
 create table if not exists public.ticker_views (
   ticker      text primary key,
