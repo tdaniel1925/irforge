@@ -43,7 +43,7 @@ export default function AskCompany({ ticker, claimed }: { ticker: string; claime
                 {claimed ? "Answers are officer-approved and published here and on X at the same time." : "It's recorded publicly and waiting for the company to claim this page."}
               </span>
             </p>
-            <button onClick={() => setState("idle")} className="shrink-0 rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-emerald-400">
+            <button onClick={() => setState("idle")} className="shrink-0 rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-400">
               Ask another
             </button>
           </div>
@@ -69,7 +69,7 @@ export default function AskCompany({ ticker, claimed }: { ticker: string; claime
               <button
                 onClick={submit}
                 disabled={state === "busy" || !question.trim()}
-                className="shrink-0 rounded-lg bg-emerald-500 px-5 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:opacity-40"
+                className="shrink-0 rounded-lg bg-emerald-500 px-5 py-2 text-sm font-semibold text-white transition hover:bg-emerald-400 disabled:opacity-40"
               >
                 {state === "busy" ? "Posting…" : "Ask"}
               </button>

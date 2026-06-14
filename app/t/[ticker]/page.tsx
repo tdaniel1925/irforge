@@ -378,7 +378,7 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
               </div>
             ))}
           </div>
-          <p className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-sm text-amber-200">
+          <p className="mt-4 rounded-lg border border-amber-500/40 bg-amber-500/15 px-3 py-2.5 text-sm font-medium text-amber-300 dark:text-amber-200">
             {questionCount > 0
               ? `${questionCount} of these messages ${questionCount === 1 ? "is a question" : "are questions"}. Replies from the company: 0.`
               : "Replies from the company in this conversation: 0."}{" "}
