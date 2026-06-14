@@ -78,15 +78,25 @@ body {
    paired with a solid colored background (buttons/badges), keep it white. We can't read
    sibling classes in CSS, so we whitelist the colored-fill backgrounds to win. */
 html:not(.dark) .text-white { color: var(--c-text) !important; }
-html:not(.dark) .bg-emerald-500.text-white,
+/* Any solid colored fill keeps its white text in light mode (buttons, badges,
+   pills). Covers the full emerald 500/600/700 range plus other accent fills so
+   no green button ever renders dark-on-dark. */
 html:not(.dark) .bg-emerald-400.text-white,
+html:not(.dark) .bg-emerald-500.text-white,
+html:not(.dark) .bg-emerald-600.text-white,
+html:not(.dark) .bg-emerald-700.text-white,
 html:not(.dark) .bg-amber-400.text-white,
 html:not(.dark) .bg-amber-500.text-white,
+html:not(.dark) .bg-amber-600.text-white,
 html:not(.dark) .bg-red-500.text-white,
-html:not(.dark) .bg-sky-500.text-white { color: #ffffff !important; }
+html:not(.dark) .bg-red-600.text-white,
+html:not(.dark) .bg-sky-500.text-white,
+html:not(.dark) .bg-sky-600.text-white,
+html:not(.dark) .bg-orange-500.text-white,
+html:not(.dark) .bg-violet-500.text-white { color: #ffffff !important; }
 
-/* White text on emerald-500 is only 2.5:1 — darken the button fill in light mode so
-   white text clears 3:1 for UI elements. Keeps the brand green, just deeper. */
+/* White text on emerald-500 is only 2.5:1 — darken that specific fill in light
+   mode so white text clears 3:1. emerald-600/700 are already dark enough. */
 html:not(.dark) .bg-emerald-500.text-white { background-color: #059669 !important; } /* emerald-600 */
 html:not(.dark) .bg-emerald-500.text-white:hover,
 html:not(.dark) .hover\:bg-emerald-400.text-white:hover { background-color: #047857 !important; } /* emerald-700 */
