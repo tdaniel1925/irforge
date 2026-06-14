@@ -55,7 +55,10 @@ export default async function DiscoverPage() {
 
   return (
     <div className="mx-auto max-w-5xl pb-16">
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-3 pt-2">
+      <div className="pt-2">
+        <Link href="/" className="text-sm text-slate-400 transition hover:text-slate-200">← Home</Link>
+      </div>
+      <div className="mb-6 mt-3 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-3xl font-bold text-white">Discover</h1>
           <p className="mt-1 text-sm text-slate-400">
