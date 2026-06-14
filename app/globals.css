@@ -122,6 +122,12 @@ html:not(.dark) .text-red-400 { color: #b91c1c !important; } /* red-700 */
 .shell-bg { background: var(--c-bg); }
 .shell-border { border-color: var(--c-border); }
 
+/* Ticker loading screen animations */
+@keyframes tl-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes tl-spin-rev { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
+@keyframes tl-fade { 0% { opacity: 0; transform: translateY(6px); } 12% { opacity: 1; transform: translateY(0); } 88% { opacity: 1; } 100% { opacity: 0; } }
+.tl-fade { animation: tl-fade 3.2s ease-in-out; }
+
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb { background: var(--c-border-strong); border-radius: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
