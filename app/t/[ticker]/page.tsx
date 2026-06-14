@@ -54,7 +54,10 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
   let audit;
   try {
     audit = await getPublicTickerAudit(ticker, peers);
-  } catch {
+  } catch (err) {
+    // Surface the real reason in server logs — getPublicTickerAudit degrades
+    // per-source, so a thrown error here is a genuine bug, not a flaky API.
+    console.error(`[ticker ${ticker}] audit failed:`, err);
     audit = null;
   }
 
