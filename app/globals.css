@@ -122,11 +122,21 @@ html:not(.dark) .text-red-400 { color: #b91c1c !important; } /* red-700 */
 .shell-bg { background: var(--c-bg); }
 .shell-border { border-color: var(--c-border); }
 
-/* Ticker loading screen animations */
-@keyframes tl-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-@keyframes tl-spin-rev { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
-@keyframes tl-fade { 0% { opacity: 0; transform: translateY(6px); } 12% { opacity: 1; transform: translateY(0); } 88% { opacity: 1; } 100% { opacity: 0; } }
-.tl-fade { animation: tl-fade 3.2s ease-in-out; }
+/* Ticker loading screen — radar / command-center aesthetic */
+@keyframes pz-sweep { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.pz-sweep { animation: pz-sweep 2.4s linear infinite; transform-origin: center; }
+
+@keyframes pz-ping { 0% { transform: scale(0.6); opacity: 0.7; } 100% { transform: scale(1.15); opacity: 0; } }
+.pz-ping { animation: pz-ping 2.2s ease-out infinite; }
+
+@keyframes pz-glow { 0%, 100% { box-shadow: 0 0 8px 2px rgba(52,211,153,0.5); } 50% { box-shadow: 0 0 16px 5px rgba(52,211,153,0.9); } }
+.pz-glow { animation: pz-glow 1.6s ease-in-out infinite; }
+
+@keyframes pz-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.pz-rise { animation: pz-rise 0.4s ease-out; }
+
+@keyframes pz-quote { 0% { opacity: 0; transform: translateY(8px); } 10% { opacity: 1; transform: translateY(0); } 90% { opacity: 1; } 100% { opacity: 0; } }
+.pz-quote { animation: pz-quote 3.4s ease-in-out; }
 
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb { background: var(--c-border-strong); border-radius: 6px; }
