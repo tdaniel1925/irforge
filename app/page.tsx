@@ -12,11 +12,13 @@ export default function Landing() {
       <Nav />
       <Hero />
       <LevelField />
+      <ForInvestors />
       <LogoStrip />
       <Pillars />
       <HowItWorks />
       <Compliance />
       <Comparison />
+      <WhyClaim />
       <Stats />
       <Pricing />
       <FinalCta />
@@ -174,6 +176,39 @@ function Contrast({ bad, good }: { bad: string; good: string }) {
   );
 }
 
+/* --------------------------- For investors ------------------------------- */
+function ForInvestors() {
+  const points = [
+    { title: "No pump-and-dump land", body: "Hype and coordinated ramping get AI-flagged before they spread. You see what's labeled \"factual\" vs. \"hype\" vs. \"unverified\" — so you're not the exit liquidity for someone else's scheme." },
+    { title: "Answers from the actual company", body: "Ask a question and get a verified, filing-cited answer from the company itself — not a guess from an anonymous account. The truth, on the record, where you can check it." },
+    { title: "Everything in one place", body: "Price, SEC filings, cash & runway, insider buying, short interest, news, and a balanced AI bull/bear take — the research that takes an hour across six tabs, on one page." },
+    { title: "Manipulation has nowhere to hide", body: "Bashers can't run unchecked and pumpers can't astroturf. Every post is labeled, the company can respond, and bad-faith claims get called out in public." },
+  ];
+  return (
+    <section className="mx-auto max-w-6xl px-6 py-20">
+      <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-app bg-surface px-3 py-1 text-xs font-medium text-muted">
+        <span className="h-1.5 w-1.5 rounded-full bg-sky-500" /> For investors
+      </div>
+      <h2 className="text-3xl font-bold tracking-tight text-app">A straight place to research a stock — finally.</h2>
+      <p className="mt-3 max-w-2xl text-muted">
+        PubcoZone isn&apos;t another message board where anonymous accounts pump, dump, and bash. It&apos;s built so the
+        signal beats the noise, the company is on the record, and you can actually trust what you&apos;re reading.
+      </p>
+      <div className="mt-10 grid gap-6 sm:grid-cols-2">
+        {points.map((p) => (
+          <div key={p.title} className="rounded-2xl border border-app bg-surface p-6">
+            <h3 className="text-lg font-semibold text-app">{p.title}</h3>
+            <p className="mt-2 text-sm leading-relaxed text-muted">{p.body}</p>
+          </div>
+        ))}
+      </div>
+      <p className="mt-8 text-sm text-faint">
+        Researching a company is always free — no signup. <span className="text-muted">Look up any ticker above to see its page.</span>
+      </p>
+    </section>
+  );
+}
+
 /* ------------------------------- Logo strip ------------------------------ */
 function LogoStrip() {
   return (
@@ -318,6 +353,41 @@ function Comparison() {
             </tbody>
           </table>
         </div>
+      </div>
+    </section>
+  );
+}
+
+/* ----------------------- Why claim your company page --------------------- */
+function WhyClaim() {
+  const reasons = [
+    { n: "1", title: "There's already a page about you", body: "PubcoZone generates a public page for your ticker whether you claim it or not — with your data, an AI bull/bear analysis, and investor questions. The only choice is whether you control it." },
+    { n: "2", title: "Claiming gives you the verified voice", body: "A claimed page lets you post verified, officer-approved answers and updates — the one thing no anonymous account can do. Your word, on the record, above the noise." },
+    { n: "3", title: "It already ranks", body: "These pages are built to show up when investors search your ticker. Claim now and you inherit a page Google already trusts, with content compounding — instead of starting from zero later." },
+    { n: "4", title: "Silence is the real risk", body: "Unclaimed, your story is written by pumpers, bashers, and AI. A claimed page with a steady, compliant presence is how a small company stays visible, liquid, and fundable." },
+  ];
+  return (
+    <section className="mx-auto max-w-6xl px-6 py-20">
+      <h2 className="text-center text-3xl font-bold tracking-tight text-app">Why your company should claim its page</h2>
+      <p className="mx-auto mt-3 max-w-2xl text-center text-muted">
+        The page exists either way. Claiming it is how you turn a page <em>about</em> you into a page that works <em>for</em> you.
+      </p>
+      <div className="mt-12 grid gap-6 md:grid-cols-2">
+        {reasons.map((r) => (
+          <div key={r.n} className="flex gap-4 rounded-2xl border border-app bg-surface p-6">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-sm font-bold text-white">{r.n}</div>
+            <div>
+              <h3 className="text-lg font-semibold text-app">{r.title}</h3>
+              <p className="mt-1.5 text-sm leading-relaxed text-muted">{r.body}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="mt-10 text-center">
+        <Link href="/login" className="inline-block rounded-lg bg-emerald-600 px-6 py-3 text-sm font-semibold text-white hover:bg-emerald-500">
+          Claim your company&apos;s page →
+        </Link>
+        <p className="mt-2 text-xs text-faint">Free to claim. Verification required.</p>
       </div>
     </section>
   );

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getStore, logAudit } from "@/lib/db";
 import { buildPublishedThread, checkContent, hasBlockingFlags, publishGate } from "@/lib/compliance";
 import { postThreadToX } from "@/lib/ayrshare";
+import { tierHasFeature, type Tier } from "@/lib/billing";
 
 export const dynamic = "force-dynamic";
 
@@ -52,6 +53,10 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       break;
     }
     case "publish": {
+      // Server-side tier enforcement: posting to X is a paid feature. Free tier can't publish.
+      if (!tierHasFeature((db.company.tier ?? "free") as Tier, "publishX")) {
+        return NextResponse.json({ error: "Posting to X requires a paid plan. Upgrade to publish." }, { status: 402 });
+      }
       const gate = publishGate({ status: draft.status, flags: draft.complianceFlags, quietMode: db.company.quietMode });
       if (!gate.ok) {
         logAudit(db, "compliance-engine", "PUBLISH_REFUSED", `${draft.id}: ${gate.reason}`);
