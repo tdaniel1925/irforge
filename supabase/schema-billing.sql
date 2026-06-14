@@ -5,6 +5,10 @@ alter table public.companies add column if not exists stripe_subscription_id tex
 alter table public.companies add column if not exists subscription_status text default 'none'; -- none | trialing | active | past_due | canceled
 alter table public.companies add column if not exists is_admin boolean default false;
 
+-- New signups start on the FREE tier (a verified public page, no dashboard tools).
+-- They upgrade to a paid plan to unlock the IR tools and post responses to X.
+alter table public.companies alter column tier set default 'free';
+
 -- A claim-request queue for the public "claim this page" leads (admin verifies).
 create table if not exists public.claim_requests (
   id          uuid primary key default gen_random_uuid(),

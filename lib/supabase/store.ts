@@ -16,7 +16,7 @@ function rowToCompany(r: Record<string, unknown>): Company {
     approverTitle: (r.approver_title as string) ?? "",
     xHandle: (r.x_handle as string) ?? "",
     peers: (r.peers as string[]) ?? [],
-    tier: ((r.tier as string) ?? "growth") as Company["tier"],
+    tier: ((r.tier as string) ?? "free") as Company["tier"],
     quietMode: Boolean(r.quiet_mode),
     disclosureText: (r.disclosure_text as string) ?? "",
     flsText: (r.fls_text as string) ?? "",

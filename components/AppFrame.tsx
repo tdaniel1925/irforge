@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import Sidebar from "./Sidebar";
+import FreeTierBanner from "./FreeTierBanner";
 
 // The landing page (/) and other public routes render full-bleed with no app sidebar —
 // these are what a logged-out visitor (e.g. someone running a free ticker report) sees.
@@ -18,7 +19,10 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen">
       <Sidebar />
-      <main className="min-w-0 flex-1 p-8">{children}</main>
+      <main className="min-w-0 flex-1 p-8">
+        <FreeTierBanner />
+        {children}
+      </main>
     </div>
   );
 }

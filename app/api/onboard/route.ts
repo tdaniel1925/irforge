@@ -30,7 +30,7 @@ export async function POST(req: Request) {
     approverName: String(b.approverName ?? db.company.approverName).slice(0, 80),
     approverTitle: String(b.approverTitle ?? db.company.approverTitle).slice(0, 60),
     xHandle: String(b.xHandle ?? db.company.xHandle).slice(0, 40),
-    tier: ["starter", "growth", "pro"].includes(b.tier) ? b.tier : db.company.tier,
+    tier: ["free", "starter", "growth", "pro"].includes(b.tier) ? b.tier : db.company.tier,
     peers: Array.isArray(b.peers) ? b.peers.map((p: string) => String(p).toUpperCase().trim()).filter(Boolean).slice(0, 6) : db.company.peers,
     onboarding_complete: true,
   };

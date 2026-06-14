@@ -14,26 +14,36 @@ export function stripeMode(): "test" | "live" | "off" {
   return "off";
 }
 
-export type Tier = "starter" | "growth" | "pro";
+export type Tier = "free" | "starter" | "growth" | "pro";
 
+// publishX (posting responses to X) is included on EVERY PAID tier — it's the core
+// value, not a premium gate. Free is a verified public PAGE only: no dashboard tools.
 export const TIERS: Record<Tier, { name: string; price: number; priceId?: string; features: Feature[] }> = {
-  starter: { name: "Starter", price: 1500, priceId: process.env.STRIPE_PRICE_STARTER, features: ["approvals", "board", "audit", "proof", "vault"] },
-  growth: { name: "Growth", price: 3500, priceId: process.env.STRIPE_PRICE_GROWTH, features: ["approvals", "board", "audit", "proof", "vault", "threats", "qa", "crm", "studio", "calendar", "captable"] },
-  pro: { name: "Command", price: 6000, priceId: process.env.STRIPE_PRICE_PRO, features: ["approvals", "board", "audit", "proof", "vault", "threats", "qa", "crm", "studio", "calendar", "captable", "analyzer", "shortdefense"] },
+  free: { name: "Free", price: 0, features: ["page"] },
+  starter: { name: "Starter", price: 1500, priceId: process.env.STRIPE_PRICE_STARTER, features: ["page", "publishX", "approvals", "board", "audit", "proof", "vault"] },
+  growth: { name: "Growth", price: 3500, priceId: process.env.STRIPE_PRICE_GROWTH, features: ["page", "publishX", "approvals", "board", "audit", "proof", "vault", "threats", "qa", "crm", "studio", "calendar", "captable"] },
+  pro: { name: "Command", price: 6000, priceId: process.env.STRIPE_PRICE_PRO, features: ["page", "publishX", "approvals", "board", "audit", "proof", "vault", "threats", "qa", "crm", "studio", "calendar", "captable", "analyzer", "shortdefense"] },
 };
 
 export type Feature =
+  | "page" | "publishX"
   | "approvals" | "board" | "audit" | "proof" | "vault"
   | "threats" | "qa" | "crm" | "studio" | "calendar" | "captable"
   | "analyzer" | "shortdefense";
 
 // Which tier first unlocks each feature (for the "upgrade to unlock" messaging).
 export const FEATURE_MIN_TIER: Record<Feature, Tier> = {
-  approvals: "starter", board: "starter", audit: "starter", proof: "starter", vault: "starter",
+  page: "free",
+  publishX: "starter", approvals: "starter", board: "starter", audit: "starter", proof: "starter", vault: "starter",
   threats: "growth", qa: "growth", crm: "growth", studio: "growth", calendar: "growth", captable: "growth",
   analyzer: "pro", shortdefense: "pro",
 };
 
 export function tierHasFeature(tier: Tier, feature: Feature): boolean {
-  return TIERS[tier].features.includes(feature);
+  return TIERS[tier]?.features.includes(feature) ?? false;
+}
+
+// The free tier is just a claimed public page — no app/dashboard tools.
+export function isPaid(tier: Tier): boolean {
+  return tier !== "free" && tier !== undefined;
 }

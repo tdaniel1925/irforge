@@ -347,21 +347,22 @@ function Stats() {
 /* -------------------------------- Pricing -------------------------------- */
 function Pricing() {
   const tiers = [
-    { name: "Starter", price: "$1,500", popular: false, features: ["Verified company page", "Filing-to-post drafting", "The investor board", "Monthly proof report"] },
-    { name: "Growth", price: "$3,500", popular: true, features: ["Everything in Starter", "Threat Radar + AI rebuttals", "AI shareholder Q&A", "13F investor targeting", "Publishing to X"] },
-    { name: "Command", price: "$6,000", popular: false, features: ["Everything in Growth", "Short-attack defense", "Earnings-call support", "Dedicated onboarding"] },
+    { name: "Free", price: "$0", popular: false, features: ["A verified public page on PubcoZone", "Your profile, filings & live data", "Investors can find & follow you", "No dashboard tools"] },
+    { name: "Starter", price: "$1,500", popular: false, features: ["Post responses to X", "Filing-to-post drafting", "The investor board", "Document vault + monthly proof"] },
+    { name: "Growth", price: "$3,500", popular: true, features: ["Everything in Starter", "Post responses to X", "Threat Radar + AI rebuttals", "AI shareholder Q&A", "13F investor targeting"] },
+    { name: "Command", price: "$6,000", popular: false, features: ["Everything in Growth", "Post responses to X", "AI document analyzer", "Short-attack defense", "Dedicated onboarding"] },
   ];
   return (
     <section id="pricing" className="border-y border-app bg-surface-2/40">
       <div className="mx-auto max-w-6xl px-6 py-20">
         <h2 className="text-center text-3xl font-bold tracking-tight text-app">Simple pricing. Less than one junior hire.</h2>
         <p className="mt-3 text-center text-muted">A local IR agency charges $10,000+ a month to do less. Billed quarterly.</p>
-        <div className="mt-12 grid gap-6 lg:grid-cols-3">
+        <div className="mt-12 grid gap-5 lg:grid-cols-4">
           {tiers.map((t) => (
             <div key={t.name} className={`relative rounded-2xl border p-6 ${t.popular ? "border-emerald-500 bg-surface shadow-lg" : "border-app bg-surface"}`}>
               {t.popular && <span className="absolute -top-3 left-6 rounded-full bg-emerald-600 px-3 py-1 text-xs font-bold text-white">MOST POPULAR</span>}
               <h3 className="text-lg font-semibold text-app">{t.name}</h3>
-              <p className="mt-2 text-3xl font-bold text-app">{t.price}<span className="text-base font-normal text-faint">/mo</span></p>
+              <p className="mt-2 text-3xl font-bold text-app">{t.price}{t.price !== "$0" && <span className="text-base font-normal text-faint">/mo</span>}</p>
               <ul className="mt-5 space-y-2.5">
                 {t.features.map((f) => (
                   <li key={f} className="flex items-start gap-2 text-sm text-muted">
@@ -369,8 +370,8 @@ function Pricing() {
                   </li>
                 ))}
               </ul>
-              <Link href="/app" className={`mt-6 block rounded-lg px-4 py-2.5 text-center text-sm font-semibold ${t.popular ? "bg-emerald-600 text-white hover:bg-emerald-500" : "border border-app text-app hover:bg-app-hover"}`}>
-                Get started
+              <Link href={t.name === "Free" ? "/login" : "/app"} className={`mt-6 block rounded-lg px-4 py-2.5 text-center text-sm font-semibold ${t.popular ? "bg-emerald-600 text-white hover:bg-emerald-500" : "border border-app text-app hover:bg-app-hover"}`}>
+                {t.name === "Free" ? "Claim free page" : "Get started"}
               </Link>
             </div>
           ))}

@@ -148,7 +148,7 @@ export interface Company {
   peers: string[]; // peer tickers used for 13F targeting
   xHandle: string;
   onboarded: boolean;
-  tier: "starter" | "growth" | "pro";
+  tier: "free" | "starter" | "growth" | "pro";
   onboarding_complete: boolean;
 }
 

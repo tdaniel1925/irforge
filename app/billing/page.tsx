@@ -6,7 +6,8 @@ import { Banner, Button, Card, ErrorBanner, LoadingState, PageHeader } from "@/c
 import type { Notice } from "@/components/ui";
 
 const PLANS = [
-  { tier: "starter", name: "Starter", price: "$1,500", blurb: "Verified page, filing-to-post drafting, the board, document vault, monthly proof." },
+  { tier: "free", name: "Free", price: "$0", blurb: "A verified public page on PubcoZone — your profile, filings, and data. No dashboard tools." },
+  { tier: "starter", name: "Starter", price: "$1,500", blurb: "Everything to run IR: post responses to X, filing-to-post drafting, the board, vault, monthly proof." },
   { tier: "growth", name: "Growth", price: "$3,500", popular: true, blurb: "+ Threat Radar, AI Q&A, Investor CRM, Writing Studio, IR calendar, cap table." },
   { tier: "pro", name: "Command", price: "$6,000", blurb: "+ AI Document Analyzer, short-attack defense, dedicated onboarding." },
 ];
@@ -64,15 +65,17 @@ export default function Billing() {
         </div>
       </Card>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-5 lg:grid-cols-4">
         {PLANS.map((p) => (
           <Card key={p.tier} className={p.popular ? "border-emerald-500" : ""}>
             {p.popular && <span className="mb-2 inline-block rounded-full bg-emerald-600 px-2.5 py-0.5 text-[10px] font-bold text-white">MOST POPULAR</span>}
             <h3 className="font-semibold text-app">{p.name}</h3>
-            <p className="mt-1 text-2xl font-bold text-app">{p.price}<span className="text-sm font-normal text-faint">/mo</span></p>
+            <p className="mt-1 text-2xl font-bold text-app">{p.price}{p.tier !== "free" && <span className="text-sm font-normal text-faint">/mo</span>}</p>
             <p className="mt-2 text-sm text-muted">{p.blurb}</p>
-            {currentTier === p.tier && status === "active" ? (
+            {currentTier === p.tier ? (
               <p className="mt-4 text-center text-sm font-medium text-emerald-600 dark:text-emerald-400">Your current plan</p>
+            ) : p.tier === "free" ? (
+              <p className="mt-4 text-center text-xs text-faint">Free is your starting page — upgrade to unlock the tools.</p>
             ) : (
               <Button onClick={() => subscribe(p.tier)} disabled={busy === p.tier} variant={p.popular ? "primary" : "secondary"}>
                 {busy === p.tier ? "…" : status === "active" ? "Switch to this plan" : "Subscribe"}
