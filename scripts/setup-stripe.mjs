@@ -4,6 +4,8 @@
 // Run: node scripts/setup-stripe.mjs   (needs STRIPE_SECRET_KEY)
 
 import Stripe from "stripe";
+import fs from "fs";
+import path from "path";
 
 const key = process.env.STRIPE_SECRET_KEY;
 if (!key) { console.error("STRIPE_SECRET_KEY not set"); process.exit(1); }
@@ -50,8 +52,40 @@ const setupPrice = await stripe.prices.create({ product: setupProduct.id, curren
 out.setup = setupPrice.id;
 console.log(`+ setup fee: $2,500 one-time → ${setupPrice.id}\n`);
 
-console.log("=== Add these to .env.local (and Vercel): ===");
-console.log(`STRIPE_PRICE_STARTER=${out.starter}`);
-console.log(`STRIPE_PRICE_GROWTH=${out.growth}`);
-console.log(`STRIPE_PRICE_PRO=${out.pro}`);
-console.log(`STRIPE_PRICE_SETUP=${out.setup}`);
+// Member (individual investor) consumer plan — Investor+ at $9/month.
+const memberProduct = (await stripe.products.search({ query: "name:'PubcoZone Investor+'" }).catch(() => ({ data: [] }))).data?.[0]
+  ?? await stripe.products.create({ name: "PubcoZone Investor+", description: "Individual investor membership — unlimited watchlist, real-time alerts, ad-free" });
+const memberPrice = await stripe.prices.create({
+  product: memberProduct.id,
+  currency: "usd",
+  unit_amount: 900, // $9/month
+  recurring: { interval: "month" },
+  nickname: "Investor+ monthly",
+});
+out.member_plus = memberPrice.id;
+console.log(`+ Investor+ : $9/month → ${memberPrice.id}\n`);
+
+// Map to env var names.
+const envVars = {
+  STRIPE_PRICE_STARTER: out.starter,
+  STRIPE_PRICE_GROWTH: out.growth,
+  STRIPE_PRICE_PRO: out.pro,
+  STRIPE_PRICE_SETUP: out.setup,
+  STRIPE_PRICE_MEMBER_PLUS: out.member_plus,
+};
+
+console.log("=== Price IDs ===");
+for (const [k, v] of Object.entries(envVars)) console.log(`${k}=${v}`);
+
+// Write/update them in .env.local automatically (creates the file if missing).
+const envPath = path.join(process.cwd(), ".env.local");
+let env = "";
+try { env = fs.readFileSync(envPath, "utf8"); } catch { /* will create */ }
+for (const [k, v] of Object.entries(envVars)) {
+  const line = `${k}=${v}`;
+  const re = new RegExp(`^${k}=.*$`, "m");
+  env = re.test(env) ? env.replace(re, line) : (env.trimEnd() + "\n" + line + "\n");
+}
+fs.writeFileSync(envPath, env, "utf8");
+console.log(`\n✓ Wrote ${Object.keys(envVars).length} price IDs into .env.local`);
+console.log("Next: copy these same KEY=VALUE lines into Vercel → Settings → Environment Variables.");
