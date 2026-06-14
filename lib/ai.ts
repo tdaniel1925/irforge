@@ -344,6 +344,64 @@ export async function analyzeDocument(
   };
 }
 
+// Labeled AI analyst content for public ticker pages — a balanced bull/bear take and
+// a few FAQ answers drawn ONLY from observed public data. ALWAYS shown as AI (badged),
+// never as a human persona. This is SEO-valuable substance, not fabricated chatter.
+import type { TickerAudit as TA } from "./audit";
+
+export interface AnalystContent {
+  bull: string;
+  bear: string;
+  faq: { q: string; a: string }[];
+  engine: "claude" | "template";
+}
+
+export async function generateAnalystContent(audit: TA): Promise<AnalystContent> {
+  const facts = [
+    audit.companyName ? `${audit.companyName} ($${audit.ticker})` : `$${audit.ticker}`,
+    typeof audit.market.price === "number" ? `Price ~$${audit.market.price}${typeof audit.market.changePct3mo === "number" ? `, ${audit.market.changePct3mo.toFixed(1)}% over 3mo` : ""}` : "",
+    audit.filings.last12mo ? `${audit.filings.last12mo} SEC filings in 12mo; latest ${audit.filings.lastForm} ${audit.filings.lastFilingDate}` : "",
+    typeof audit.fundamentals?.cash === "number" ? `Cash $${(audit.fundamentals.cash / 1e6).toFixed(1)}M` : "",
+    typeof audit.fundamentals?.runwayQuarters === "number" ? `~${audit.fundamentals.runwayQuarters.toFixed(1)} quarters runway` : "",
+    typeof audit.fundamentals?.sharesChangePct1y === "number" ? `share count ${audit.fundamentals.sharesChangePct1y >= 0 ? "+" : ""}${audit.fundamentals.sharesChangePct1y.toFixed(0)}% in 1yr` : "",
+    audit.shortData ? `${audit.shortData.shortPct.toFixed(0)}% of daily volume short` : "",
+    audit.insiders ? `${audit.insiders.buys} insider buys / ${audit.insiders.sells} sells (180d)` : "",
+    audit.news.articles30d ? `${audit.news.articles30d} news articles in 30d` : "",
+  ].filter(Boolean).join(". ");
+
+  const ai = await claude(
+    `You are a neutral AI equity analyst. Using ONLY the data provided, write a balanced view of a stock for a public ticker page. ` +
+      `No price predictions, no "buy/sell", no "undervalued", no hype. Be specific and factual. ` +
+      `Also answer 3 FAQ questions investors commonly ask, each from the data (if the data doesn't answer one, say what's publicly knowable and point to EDGAR). ` +
+      `Return ONLY JSON: {"bull":"2-3 sentence bull case from the facts","bear":"2-3 sentence bear/risk case from the facts","faq":[{"q":"...","a":"..."},{"q":"...","a":"..."},{"q":"...","a":"..."}]}`,
+    `Company data: ${facts}`
+  );
+  if (ai) {
+    try {
+      const m = ai.match(/\{[\s\S]*\}/);
+      if (m) {
+        const v = JSON.parse(m[0]);
+        if (v.bull && v.bear) {
+          return {
+            bull: String(v.bull).slice(0, 600),
+            bear: String(v.bear).slice(0, 600),
+            faq: Array.isArray(v.faq) ? v.faq.slice(0, 4).map((f: { q?: string; a?: string }) => ({ q: String(f.q ?? "").slice(0, 160), a: String(f.a ?? "").slice(0, 500) })) : [],
+            engine: "claude",
+          };
+        }
+      }
+    } catch {
+      /* fall through */
+    }
+  }
+  return {
+    engine: "template",
+    bull: `${audit.companyName ?? `$${audit.ticker}`} files regularly with the SEC and has public data available for analysis. Review the latest filings on EDGAR for the current picture.`,
+    bear: `As with any small-cap, key risks include cash runway, dilution, and execution. Confirm the latest figures in the company's most recent filing.`,
+    faq: [],
+  };
+}
+
 export async function generateReplyDraft(
   mention: Mention,
   company: Company,

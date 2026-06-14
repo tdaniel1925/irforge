@@ -8,6 +8,7 @@ import ClaimCard from "@/components/ClaimCard";
 import AskCompany from "@/components/AskCompany";
 import MessageBoard from "@/components/MessageBoard";
 import TickerTabs from "@/components/TickerTabs";
+import { generateAnalystContent } from "@/lib/ai";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -19,9 +20,22 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const t = params.ticker.toUpperCase();
+  const title = `$${t} Stock — Investor Report, SEC Filings, Q&A | PubcoZone`;
+  const description = `Everything investors ask about $${t} in one place: live stock price, SEC filings, cash & runway, insider activity, short interest, news, an AI bull/bear analysis, and questions answered from the public record.`;
+  const url = `https://pubcozone.com/t/${t}`;
   return {
-    title: `$${t} — Investor Visibility Report | PubcoZone`,
-    description: `Live investor-visibility intelligence on $${t}: SEC filings, social sentiment, news coverage, and trading pulse — aggregated from public sources in real time.`,
+    title,
+    description,
+    alternates: { canonical: url },
+    openGraph: {
+      title,
+      description,
+      url,
+      type: "website",
+      siteName: "PubcoZone",
+    },
+    twitter: { card: "summary_large_image", title, description },
+    keywords: [`${t} stock`, `${t} investor relations`, `${t} SEC filings`, `$${t}`, `is ${t} a good investment`],
   };
 }
 
@@ -54,7 +68,10 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
     );
   }
 
-  const explainer = await generateTickerExplainer(audit);
+  const [explainer, analyst] = await Promise.all([
+    generateTickerExplainer(audit),
+    generateAnalystContent(audit),
+  ]);
   const viewCount = await bumpViews(ticker);
   const db = getDb();
   const claimed = db.company.ticker.toUpperCase() === ticker;
@@ -66,8 +83,41 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
   const anySourceOk = audit.sources.some((s) => s.ok);
   const questionCount = audit.social.recentMessages.filter((m) => m.body.includes("?")).length;
 
+  // JSON-LD structured data: helps Google understand the page is about a company and
+  // contains Q&A — eligible for rich results and stronger topical ranking.
+  const answeredQ = tickerQuestions.filter((q) => q.status === "answered" && q.answerText);
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Corporation",
+        name: audit.companyName ?? `$${audit.ticker}`,
+        tickerSymbol: audit.ticker,
+        ...(audit.profile?.website ? { url: audit.profile.website } : {}),
+      },
+      ...(analyst.faq.length > 0 || answeredQ.length > 0
+        ? [{
+            "@type": "QAPage",
+            mainEntity: [
+              ...analyst.faq.map((f) => ({
+                "@type": "Question",
+                name: f.q,
+                acceptedAnswer: { "@type": "Answer", text: f.a },
+              })),
+              ...answeredQ.map((q) => ({
+                "@type": "Question",
+                name: q.question,
+                acceptedAnswer: { "@type": "Answer", text: q.answerText },
+              })),
+            ],
+          }]
+        : []),
+    ],
+  };
+
   return (
     <PageShell>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       {/* Hero */}
       <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-6">
         <div className="flex flex-wrap items-center gap-6">
@@ -146,6 +196,37 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
       {/* AI overview */}
       <Section title="Overview" badge={explainer.engine === "claude" ? "AI-written from observed facts" : "generated from observed facts"}>
         <p className="text-sm leading-relaxed text-slate-300">{explainer.text}</p>
+      </Section>
+
+      {/* AI Analyst — labeled, balanced bull/bear from public data */}
+      <Section title={`AI analyst: $${audit.ticker}`} badge="🤖 AI-generated from public data · not investment advice">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="rounded-lg border border-emerald-500/25 bg-emerald-500/5 p-4">
+            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-emerald-400">The bull case</p>
+            <p className="text-sm leading-relaxed text-slate-300">{analyst.bull}</p>
+          </div>
+          <div className="rounded-lg border border-orange-500/25 bg-orange-500/5 p-4">
+            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-orange-400">The bear case</p>
+            <p className="text-sm leading-relaxed text-slate-300">{analyst.bear}</p>
+          </div>
+        </div>
+        {analyst.faq.length > 0 && (
+          <div className="mt-4">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Common questions</p>
+            <div className="space-y-3">
+              {analyst.faq.map((f, i) => (
+                <div key={i} className="rounded-lg border border-slate-800 bg-slate-950/60 p-3">
+                  <p className="text-sm font-medium text-slate-200">{f.q}</p>
+                  <p className="mt-1 text-sm text-slate-400">{f.a}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        <p className="mt-3 text-[11px] text-slate-600">
+          This analysis is generated by AI from public data (SEC filings, market data) and is clearly labeled as such. It is not the
+          view of the company and is not investment advice. If this is your company, claim this page to add your verified voice.
+        </p>
       </Section>
 
       {/* Company profile */}

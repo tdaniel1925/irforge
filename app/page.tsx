@@ -11,6 +11,7 @@ export default function Landing() {
     <div className="bg-app text-app">
       <Nav />
       <Hero />
+      <LevelField />
       <LogoStrip />
       <Pillars />
       <HowItWorks />
@@ -63,8 +64,10 @@ function Hero() {
             <span className="text-emerald-600 dark:text-emerald-400">Now you can talk back — legally.</span>
           </h1>
           <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted">
-            PubcoZone turns your SEC filings into compliant investor updates, answers shareholder questions
-            from your public record, and defends your name when bashers attack — all approved by you with one tap.
+            For years, message boards like InvestorsHub and StockTwits let anonymous pumpers and short-side bashers
+            write your story — and you were legally gagged from answering. PubcoZone <span className="font-semibold text-app">levels the playing field</span>:
+            it turns your SEC filings into compliant updates, answers shareholders from your public record, and
+            lets you set the record straight — all approved by you with one tap.
           </p>
           <TickerLookup />
           <p className="mt-3 text-xs text-faint">Free report · no signup · uses only public data</p>
@@ -124,6 +127,48 @@ function HeroMock() {
           <button className="rounded-lg border border-app px-3 py-2 text-sm text-app">✕ Skip</button>
         </div>
         <p className="mt-3 text-center text-[11px] text-faint">Disclosures attach automatically on post. Nothing goes out until you tap.</p>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------------- Level-the-playing-field band --------------------- */
+function LevelField() {
+  return (
+    <section className="border-b border-app bg-surface-2/40">
+      <div className="mx-auto max-w-5xl px-6 py-16">
+        <h2 className="text-center text-3xl font-bold tracking-tight text-app">
+          The boards were rigged against you. We&apos;re evening the score.
+        </h2>
+        <p className="mx-auto mt-3 max-w-2xl text-center text-muted">
+          On InvestorsHub and StockTwits, anonymous accounts pump, dash, and bash with zero accountability —
+          and the one party who actually knows the truth, the company, isn&apos;t allowed to respond. That asymmetry
+          is how good companies get buried and retail investors get burned. PubcoZone flips it.
+        </p>
+        <div className="mt-10 grid gap-5 md:grid-cols-3">
+          <Contrast bad="Anonymous pumpers ramp the stock, then dump on retail." good="Hype gets AI-flagged in public, and the company can post the facts." />
+          <Contrast bad="Short-side bashers spread FUD; the company is gagged." good="A verified, filing-cited response goes out — to everyone at once, legally." />
+          <Contrast bad="Investors can&apos;t tell signal from noise." good="Every post is labeled by signal quality, so the truth has the advantage." />
+        </div>
+        <p className="mx-auto mt-8 max-w-2xl text-center text-sm text-faint">
+          We&apos;ll say it plainly: this protects honest companies <em>and</em> the investors those manipulators prey on.
+          A fair conversation is better for everyone except the people gaming it.
+        </p>
+      </div>
+    </section>
+  );
+}
+
+function Contrast({ bad, good }: { bad: string; good: string }) {
+  return (
+    <div className="rounded-2xl border border-app bg-surface p-5">
+      <div className="flex gap-2 text-sm">
+        <span className="text-red-500">✕</span>
+        <p className="text-muted line-through decoration-red-500/40">{bad}</p>
+      </div>
+      <div className="mt-3 flex gap-2 text-sm">
+        <span className="text-emerald-500">✓</span>
+        <p className="font-medium text-app">{good}</p>
       </div>
     </div>
   );
