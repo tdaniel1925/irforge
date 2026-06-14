@@ -15,10 +15,14 @@ export interface Row {
   currency: string;
 }
 
-type TabKey = "market" | "trending" | "mostRead" | "mostActive" | "mostPosted" | "recent";
+type EngagementTab = "trending" | "mostRead" | "mostActive" | "mostPosted" | "recent";
+type TabKey = "market" | "movers" | "buzz" | "risk" | EngagementTab;
 
 const TABS: { key: TabKey; label: string; blurb: string }[] = [
   { key: "market", label: "🌐 Market Trending", blurb: "What's hot across the whole market — blended from StockTwits, Reddit, SEC filings, volume, and more. Sourced, not pump-inflated." },
+  { key: "movers", label: "📈 Big Movers", blurb: "Today's biggest gainers, losers, and most-active names. Live from Yahoo Finance." },
+  { key: "buzz", label: "☁️ Buzz Cloud", blurb: "The tickers people are talking about most across Reddit and StockTwits right now. Bigger = louder." },
+  { key: "risk", label: "🚨 Halt & Risk Watch", blurb: "Recently halted names and stocks with unusually high short volume. The risk radar." },
   { key: "trending", label: "🔥 On PubcoZone", blurb: "Boards with the biggest jump in posting activity here right now." },
   { key: "mostRead", label: "👁️ Most Read", blurb: "The most-viewed company pages." },
   { key: "mostActive", label: "💬 Most Active", blurb: "Most board posts in the last 24 hours." },
@@ -44,6 +48,12 @@ interface MarketRow {
   currency: string;
 }
 
+interface Mover { ticker: string; price: number | null; changePct: number | null; volume: number | null; currency: string; kind: string }
+interface MoversData { gainers?: Mover[]; losers?: Mover[]; actives?: Mover[] }
+interface BuzzWord { ticker: string; weight: number }
+interface RiskRow { ticker: string; kind: string; detail: string; value?: number }
+interface RiskData { halts?: RiskRow[]; shorts?: RiskRow[] }
+
 function ago(iso: string | null): string {
   if (!iso) return "—";
   const ms = Date.now() - new Date(iso).getTime();
@@ -63,7 +73,7 @@ function vol(n: number | null): string {
   return String(n);
 }
 
-export default function DiscoverTabs(props: Omit<Record<TabKey, Row[]>, "market"> & { totalTickers: number }) {
+export default function DiscoverTabs(props: Record<EngagementTab, Row[]> & { totalTickers: number }) {
   const [tab, setTab] = useState<TabKey>("market");
   const active = TABS.find((t) => t.key === tab)!;
 
@@ -84,7 +94,29 @@ export default function DiscoverTabs(props: Omit<Record<TabKey, Row[]>, "market"
       .finally(() => setMarketLoading(false));
   }, [tab, market]);
 
-  const rows = tab === "market" ? [] : (props[tab as Exclude<TabKey, "market">] ?? []);
+  // Big Movers / Buzz Cloud / Risk Watch — each lazy-fetched once on first open.
+  const [movers, setMovers] = useState<MoversData | null>(null);
+  const [buzz, setBuzz] = useState<BuzzWord[] | null>(null);
+  const [risk, setRisk] = useState<RiskData | null>(null);
+  const [extraLoading, setExtraLoading] = useState(false);
+  useEffect(() => {
+    const map: Record<string, { has: boolean; url: string; set: (j: unknown) => void }> = {
+      movers: { has: movers !== null, url: "/api/movers", set: (j) => setMovers(j as MoversData) },
+      buzz: { has: buzz !== null, url: "/api/buzz", set: (j) => setBuzz((j as { words: BuzzWord[] }).words ?? []) },
+      risk: { has: risk !== null, url: "/api/risk", set: (j) => setRisk(j as RiskData) },
+    };
+    const cfg = map[tab];
+    if (!cfg || cfg.has) return;
+    setExtraLoading(true);
+    fetch(cfg.url)
+      .then((r) => r.json())
+      .then((j) => cfg.set(j))
+      .catch(() => cfg.set({}))
+      .finally(() => setExtraLoading(false));
+  }, [tab, movers, buzz, risk]);
+
+  const engagementTabs: EngagementTab[] = ["trending", "mostRead", "mostActive", "mostPosted", "recent"];
+  const rows = engagementTabs.includes(tab as EngagementTab) ? (props[tab as EngagementTab] ?? []) : [];
 
   return (
     <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-2 sm:p-4">
@@ -110,6 +142,12 @@ export default function DiscoverTabs(props: Omit<Record<TabKey, Row[]>, "market"
 
       {tab === "market" ? (
         <MarketTable rows={market} loading={marketLoading} sources={marketSources} />
+      ) : tab === "movers" ? (
+        <MoversView data={movers} loading={extraLoading} />
+      ) : tab === "buzz" ? (
+        <BuzzView words={buzz} loading={extraLoading} />
+      ) : tab === "risk" ? (
+        <RiskView data={risk} loading={extraLoading} />
       ) : rows.length === 0 ? (
         <p className="px-1 py-8 text-center text-sm text-slate-500">Nothing here yet — check back soon.</p>
       ) : (
@@ -227,6 +265,123 @@ function MarketTable({ rows, loading, sources }: { rows: MarketRow[] | null; loa
             })}
           </tbody>
         </table>
+      </div>
+    </div>
+  );
+}
+
+function Spinner({ label }: { label: string }) {
+  return (
+    <div className="flex items-center justify-center py-12 text-sm text-slate-500">
+      <span className="mr-2 inline-block h-3 w-3 animate-spin rounded-full border-2 border-slate-600 border-t-emerald-400" />
+      {label}
+    </div>
+  );
+}
+
+function MoverList({ title, rows, color }: { title: string; rows: Mover[]; color: string }) {
+  return (
+    <div>
+      <p className={`mb-2 text-xs font-bold uppercase tracking-wide ${color}`}>{title}</p>
+      {rows.length === 0 ? (
+        <p className="text-xs text-slate-600">—</p>
+      ) : (
+        <div className="space-y-1">
+          {rows.map((m) => {
+            const up = (m.changePct ?? 0) >= 0;
+            return (
+              <Link key={m.ticker} href={`/t/${m.ticker}`} className="flex items-baseline justify-between rounded-md px-2 py-1.5 text-sm transition hover:bg-slate-800/40">
+                <span className="font-semibold text-emerald-400">${m.ticker}</span>
+                <span className="flex items-baseline gap-3">
+                  <span className="text-slate-300">{m.price != null ? `$${m.price.toFixed(m.price < 1 ? 4 : 2)}` : "—"}</span>
+                  <span className={`w-16 text-right font-medium ${m.changePct == null ? "text-slate-500" : up ? "text-emerald-400" : "text-red-400"}`}>
+                    {m.changePct != null ? `${up ? "+" : ""}${m.changePct.toFixed(1)}%` : "—"}
+                  </span>
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MoversView({ data, loading }: { data: MoversData | null; loading: boolean }) {
+  if (loading || data === null) return <Spinner label="Loading movers…" />;
+  const empty = !(data.gainers?.length || data.losers?.length || data.actives?.length);
+  if (empty) return <p className="px-1 py-8 text-center text-sm text-slate-500">Market data is taking a breather — check back shortly.</p>;
+  return (
+    <div className="grid gap-6 sm:grid-cols-3">
+      <MoverList title="▲ Top gainers" rows={data.gainers ?? []} color="text-emerald-500 dark:text-emerald-400" />
+      <MoverList title="▼ Top losers" rows={data.losers ?? []} color="text-red-500 dark:text-red-400" />
+      <MoverList title="◆ Most active" rows={data.actives ?? []} color="text-sky-500 dark:text-sky-400" />
+    </div>
+  );
+}
+
+function BuzzView({ words, loading }: { words: BuzzWord[] | null; loading: boolean }) {
+  if (loading || words === null) return <Spinner label="Listening to the crowd…" />;
+  if (words.length === 0) return <p className="px-1 py-8 text-center text-sm text-slate-500">It&apos;s quiet out there right now — check back shortly.</p>;
+  const max = Math.max(...words.map((w) => w.weight), 1);
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 px-2 py-6">
+      {words.map((w) => {
+        // Scale font 13px → 40px by relative weight.
+        const size = 13 + Math.round((w.weight / max) * 27);
+        const opacity = 0.55 + (w.weight / max) * 0.45;
+        return (
+          <Link
+            key={w.ticker}
+            href={`/t/${w.ticker}`}
+            title={`${w.weight} mentions`}
+            className="font-bold leading-none text-emerald-400 transition hover:text-emerald-300 hover:underline"
+            style={{ fontSize: `${size}px`, opacity }}
+          >
+            ${w.ticker}
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
+function RiskView({ data, loading }: { data: RiskData | null; loading: boolean }) {
+  if (loading || data === null) return <Spinner label="Scanning for risk signals…" />;
+  const empty = !(data.halts?.length || data.shorts?.length);
+  if (empty) return <p className="px-1 py-8 text-center text-sm text-slate-500">No halts or extreme short readings right now. Quiet is good.</p>;
+  return (
+    <div className="grid gap-6 sm:grid-cols-2">
+      <div>
+        <p className="mb-2 text-xs font-bold uppercase tracking-wide text-red-500 dark:text-red-400">🛑 Recently halted</p>
+        {data.halts?.length ? (
+          <div className="space-y-1">
+            {data.halts.map((r) => (
+              <Link key={r.ticker} href={`/t/${r.ticker}`} className="flex items-baseline justify-between rounded-md border border-red-500/20 bg-red-500/[0.04] px-2.5 py-1.5 text-sm transition hover:bg-red-500/10">
+                <span className="font-semibold text-emerald-400">${r.ticker}</span>
+                <span className="text-xs text-slate-400">{r.detail}</span>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-slate-600">No recent halts.</p>
+        )}
+      </div>
+      <div>
+        <p className="mb-2 text-xs font-bold uppercase tracking-wide text-orange-500 dark:text-orange-400">📉 High short volume</p>
+        {data.shorts?.length ? (
+          <div className="space-y-1">
+            {data.shorts.map((r) => (
+              <Link key={r.ticker} href={`/t/${r.ticker}`} className="flex items-baseline justify-between rounded-md border border-orange-500/20 bg-orange-500/[0.04] px-2.5 py-1.5 text-sm transition hover:bg-orange-500/10">
+                <span className="font-semibold text-emerald-400">${r.ticker}</span>
+                <span className="text-xs text-slate-400">{r.detail}</span>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-slate-600">Short-volume file unavailable right now.</p>
+        )}
+        <p className="mt-2 text-[10px] text-slate-600">Short volume includes market-making, not just bets against the stock. Source: FINRA RegSHO daily.</p>
       </div>
     </div>
   );

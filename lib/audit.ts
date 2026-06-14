@@ -389,7 +389,7 @@ async function gdeltNews(ticker: string, companyName?: string): Promise<NewsStat
 
 let finraCache: { fileDate: string; rows: Map<string, { short: number; total: number }> } | null = null;
 
-async function finraShortFile(): Promise<{ fileDate: string; rows: Map<string, { short: number; total: number }> }> {
+export async function finraShortFile(): Promise<{ fileDate: string; rows: Map<string, { short: number; total: number }> }> {
   // Walk back from today to the most recent trading day with a published file.
   for (let back = 0; back <= 7; back++) {
     const d = new Date(Date.now() - back * 86400000);
