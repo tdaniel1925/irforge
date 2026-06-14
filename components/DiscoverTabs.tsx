@@ -149,7 +149,14 @@ export default function DiscoverTabs(props: Record<EngagementTab, Row[]> & { tot
       ) : tab === "risk" ? (
         <RiskView data={risk} loading={extraLoading} />
       ) : rows.length === 0 ? (
-        <p className="px-1 py-8 text-center text-sm text-slate-500">Nothing here yet — check back soon.</p>
+        <div className="px-1 py-10 text-center">
+          <p className="text-sm font-medium text-slate-300">These rankings are just getting started.</p>
+          <p className="mx-auto mt-1 max-w-sm text-xs text-slate-500">
+            This tab fills in as investors view pages and post to boards. Meanwhile, check{" "}
+            <button onClick={() => setTab("market")} className="text-emerald-400 hover:underline">Market Trending</button>{" "}
+            or <Link href="/t" className="text-emerald-400 hover:underline">look up any ticker</Link>.
+          </p>
+        </div>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">

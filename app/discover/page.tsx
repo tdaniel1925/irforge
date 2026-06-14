@@ -51,8 +51,6 @@ export default async function DiscoverPage() {
     quotes = {};
   }
 
-  const empty = !discovery || discovery.totalTickers === 0;
-
   return (
     <div className="mx-auto max-w-5xl pb-16">
       <div className="pt-2">
@@ -74,27 +72,17 @@ export default async function DiscoverPage() {
         </Link>
       </div>
 
-      {empty ? (
-        <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-10 text-center">
-          <p className="text-lg font-semibold text-white">The boards are warming up.</p>
-          <p className="mx-auto mt-2 max-w-md text-sm text-slate-400">
-            Rankings appear as investors view pages and post to boards. Be the first —{" "}
-            <Link href="/t" className="text-emerald-400 hover:underline">
-              pull a report on any ticker
-            </Link>{" "}
-            to put it on the map.
-          </p>
-        </div>
-      ) : (
-        <DiscoverTabs
-          mostRead={serialize(discovery!.mostRead, quotes)}
-          mostActive={serialize(discovery!.mostActive, quotes)}
-          trending={serialize(discovery!.trending, quotes)}
-          mostPosted={serialize(discovery!.mostPosted, quotes)}
-          recent={serialize(discovery!.recent, quotes)}
-          totalTickers={discovery!.totalTickers}
-        />
-      )}
+      {/* Always render the tabs — the market-data tabs (Trending / Movers / Buzz /
+          Risk) work regardless of PubcoZone engagement. The engagement tabs show
+          their own "warming up" message individually when empty. */}
+      <DiscoverTabs
+        mostRead={serialize(discovery?.mostRead ?? [], quotes)}
+        mostActive={serialize(discovery?.mostActive ?? [], quotes)}
+        trending={serialize(discovery?.trending ?? [], quotes)}
+        mostPosted={serialize(discovery?.mostPosted ?? [], quotes)}
+        recent={serialize(discovery?.recent ?? [], quotes)}
+        totalTickers={discovery?.totalTickers ?? 0}
+      />
 
       <p className="mt-10 text-xs leading-relaxed text-slate-600">
         Rankings reflect engagement on PubcoZone (page views and board activity) plus live market data from public
