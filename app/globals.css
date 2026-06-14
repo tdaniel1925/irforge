@@ -135,9 +135,6 @@ html:not(.dark) .text-red-400 { color: #b91c1c !important; } /* red-700 */
 @keyframes pz-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 .pz-rise { animation: pz-rise 0.4s ease-out; }
 
-@keyframes pz-quote { 0% { opacity: 0; transform: translateY(8px); } 10% { opacity: 1; transform: translateY(0); } 90% { opacity: 1; } 100% { opacity: 0; } }
-.pz-quote { animation: pz-quote 3.4s ease-in-out; }
-
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb { background: var(--c-border-strong); border-radius: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
