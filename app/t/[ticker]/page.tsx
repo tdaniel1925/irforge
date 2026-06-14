@@ -238,8 +238,11 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
       )}
 
       {/* Stock chart + market data */}
-      {typeof audit.market.price === "number" && (
-        <Section title="Stock price" badge="live · Yahoo Finance · 3-month">
+      {/* The chart self-fetches from /api/chart (working v8 endpoint), so it must
+          render even when the audit's summary price (a separate fetch that can
+          fail) is missing — otherwise the whole chart disappears. */}
+      <Section title="Stock price" badge="live · Yahoo Finance · multi-timeframe">
+        {typeof audit.market.price === "number" && (
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
               <p className="text-3xl font-bold text-white">
@@ -258,9 +261,9 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
               {typeof audit.market.lastVolume === "number" && <div><p className="text-xs text-slate-500">Volume</p><p className="font-medium text-slate-200">{(audit.market.lastVolume / 1e6).toFixed(2)}M</p></div>}
             </div>
           </div>
-          <StockChart ticker={audit.ticker} currency={audit.market.currency} />
-        </Section>
-      )}
+        )}
+        <StockChart ticker={audit.ticker} currency={audit.market.currency} />
+      </Section>
 
       {/* AI overview */}
       <Section title="Overview" badge={explainer.engine === "claude" ? "AI-written from observed facts" : "generated from observed facts"}>

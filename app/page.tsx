@@ -18,6 +18,7 @@ export default function Landing() {
       <HowItWorks />
       <Compliance />
       <Comparison />
+      <PlatformComparison />
       <WhyClaim />
       <Stats />
       <Pricing />
@@ -357,6 +358,122 @@ function Comparison() {
       </div>
     </section>
   );
+}
+
+/* -------------------- Platform comparison (vs the boards) ---------------- */
+function PlatformComparison() {
+  // value type: "yes" | "no" | "partial" | text
+  const rows: { label: string; pz: string; st: string; ih: string }[] = [
+    { label: "AI-moderated posts (hype & FUD labeled)", pz: "yes", st: "no", ih: "no" },
+    { label: "The company can respond on the record", pz: "yes:Compliant, Reg FD-safe", st: "no", ih: "no" },
+    { label: "Real SEC filings, financials, insider & short data on every page", pz: "yes", st: "partial", ih: "no" },
+    { label: "Verified company identity", pz: "yes", st: "no", ih: "no" },
+    { label: "Anonymous pump-and-dump culture", pz: "no:That's the point", st: "rampant", ih: "rampant" },
+    { label: "Built for compliant IR — not just chatter", pz: "yes", st: "no", ih: "no" },
+    { label: "Free company page + investor tools", pz: "yes", st: "partial", ih: "partial" },
+    { label: "Paywalls & ad-clutter", pz: "minimal:Minimal", st: "ads:Ads", ih: "heavy:Heavy ads + paywall" },
+  ];
+
+  return (
+    <section className="mx-auto max-w-5xl px-6 py-20">
+      <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-app bg-surface px-3 py-1 text-xs font-medium text-muted">
+        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> PubcoZone vs the message boards
+      </div>
+      <h2 className="text-3xl font-bold tracking-tight text-app sm:text-4xl">Not another message board.</h2>
+      <p className="mt-3 max-w-2xl text-muted">
+        StockTwits and InvestorsHub let anonymous strangers write your story. PubcoZone is built on the public record —
+        and the company gets a voice. Better for honest companies, and better for the investors those boards put at risk.
+      </p>
+
+      <div className="mt-10 overflow-x-auto rounded-2xl border border-app">
+        <table className="w-full min-w-[640px] text-sm">
+          <thead>
+            <tr className="bg-surface text-left">
+              <th className="px-4 py-4 font-medium text-muted"></th>
+              <th className="px-4 py-4 text-center align-bottom">
+                <span className="block text-base font-bold tracking-tight">
+                  <span className="text-app">Pubco</span>
+                  <span className="text-emerald-600 dark:text-emerald-400">Zone</span>
+                </span>
+                <span className="mt-1 block text-xs font-normal text-faint">Compliant IR</span>
+              </th>
+              <th className="px-4 py-4 text-center align-bottom">
+                <span className="block text-base font-semibold text-muted">StockTwits</span>
+                <span className="mt-1 block text-xs font-normal text-faint">Message board</span>
+              </th>
+              <th className="px-4 py-4 text-center align-bottom">
+                <span className="block text-base font-semibold text-muted">InvestorsHub</span>
+                <span className="mt-1 block text-xs font-normal text-faint">Message board</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={i} className="border-t border-app bg-surface">
+                <td className="px-4 py-3.5 font-medium text-app">{r.label}</td>
+                <td className="bg-emerald-500/[0.06] px-4 py-3.5 text-center align-middle">
+                  <PlatformCell value={r.pz} highlighted />
+                </td>
+                <td className="px-4 py-3.5 text-center align-middle">
+                  <PlatformCell value={r.st} />
+                </td>
+                <td className="px-4 py-3.5 text-center align-middle">
+                  <PlatformCell value={r.ih} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <p className="mt-6 text-sm text-faint">
+        Comparison reflects each platform&apos;s positioning and widely-reported reputation. PubcoZone is the
+        compliance-first alternative — for investors who want signal over noise, and companies that want a voice.
+      </p>
+    </section>
+  );
+}
+
+function PlatformCell({ value, highlighted = false }: { value: string; highlighted?: boolean }) {
+  const [kind, label] = value.includes(":") ? value.split(":") : [value, ""];
+
+  if (kind === "yes") {
+    return (
+      <span className="inline-flex flex-col items-center gap-1">
+        <span className={`flex h-6 w-6 items-center justify-center rounded-full text-xs text-white ${highlighted ? "bg-emerald-600" : "bg-emerald-500/80"}`}>✓</span>
+        {label && <span className="text-xs text-muted">{label}</span>}
+      </span>
+    );
+  }
+  if (kind === "no") {
+    // A red "no" — but for PubcoZone's "anonymous pump-and-dump" row, no is GOOD.
+    return (
+      <span className="inline-flex flex-col items-center gap-1">
+        <span className={`flex h-6 w-6 items-center justify-center rounded-full text-xs ${highlighted ? "bg-emerald-600 text-white" : "bg-surface-2 text-red-500"}`}>
+          {highlighted ? "✓" : "✕"}
+        </span>
+        {label && <span className="text-xs text-muted">{label}</span>}
+      </span>
+    );
+  }
+  if (kind === "partial") {
+    return (
+      <span className="inline-flex flex-col items-center gap-1">
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-surface-2 text-xs text-amber-500">~</span>
+        <span className="text-xs text-faint">Partial</span>
+      </span>
+    );
+  }
+  if (kind === "rampant") {
+    return (
+      <span className="inline-flex flex-col items-center gap-1">
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-red-500/10 text-xs text-red-500">✕</span>
+        <span className="text-xs text-red-500">Rampant</span>
+      </span>
+    );
+  }
+  // Plain text values (Minimal / Ads / Heavy ads + paywall)
+  return <span className={`text-xs ${highlighted ? "font-semibold text-app" : "text-muted"}`}>{label || kind}</span>;
 }
 
 /* ----------------------- Why claim your company page --------------------- */
