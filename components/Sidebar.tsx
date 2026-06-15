@@ -49,6 +49,7 @@ const NAV: NavGroup[] = [
     section: "Your public presence",
     items: [
       { href: "/t", label: "Public Page", icon: "🌐", hint: "What investors see when they look you up" },
+      { href: "/marketing-kit", label: "Marketing Kit", icon: "📣", hint: "Spread the word — posts, graphics, links" },
       { href: "/embeds", label: "Embeds & Badges", icon: "🔗", hint: "Live widgets for your own website" },
       { href: "/ticker-audit", label: "Look Up a Ticker", icon: "🔎", hint: "Live report on any company" },
     ],

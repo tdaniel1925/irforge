@@ -410,6 +410,36 @@ export async function triageInbound(message: string, company: Company): Promise<
   return { category: "other", topics: [], summary: message.slice(0, 120), suggestedReply: "Thanks for reaching out — we'll route this to the right person on our team and follow up. For the latest, our filings are on SEC EDGAR.", engine: "template" };
 }
 
+// Generate a small pack of "we're on PubcoZone" announcement posts for a company
+// to spread the word. Returns several distinct angles they can approve & publish.
+export async function announcementPosts(company: Company, welcomeUrl: string): Promise<{ posts: string[]; engine: "claude" | "template" }> {
+  const ai = await claude(
+    `You write short social posts AS ${company.name} ($${company.ticker}), a public company, announcing that they now engage investors openly on PubcoZone — where info is real, fair, AI-balanced, and the company answers on the record (vs. the anonymous pump-and-dump of StockTwits/InvestorsHub). ` +
+      `Compliance: no stock-price talk, no guidance, no hype, no promises. Confident and plain. Each post under 270 chars and must include the link ${welcomeUrl}. ` +
+      `Return ONLY JSON: {"posts":["...","...","...","..."]} with 4 distinct angles (the announcement, why we left the noise, an invite to ask us anything, and a transparency/trust angle).`,
+    `Company: ${company.name} ($${company.ticker}), ${company.sector || "public company"}.`
+  );
+  if (ai) {
+    try {
+      const m = ai.match(/\{[\s\S]*\}/);
+      if (m) {
+        const v = JSON.parse(m[0]);
+        if (Array.isArray(v.posts) && v.posts.length) return { posts: v.posts.slice(0, 5).map((p: unknown) => String(p).slice(0, 280)), engine: "claude" };
+      }
+    } catch { /* fall through */ }
+  }
+  const t = company.ticker;
+  return {
+    engine: "template",
+    posts: [
+      `📣 We now answer investor questions on the record at PubcoZone — real, fair, AI-balanced info on $${t}. No anonymous noise. ${welcomeUrl}`,
+      `Tired of slushing through pump-and-dump posts about $${t}? So were we. We engage investors honestly on PubcoZone. ${welcomeUrl}`,
+      `Got a question about $${t}? Ask us directly — we answer in public, on the record. ${welcomeUrl}`,
+      `Transparency matters. Real filings, real data, real answers about $${t} — all in one fair place. ${welcomeUrl}`,
+    ],
+  };
+}
+
 // Generate a short Friday-style IR summary for executives from the week's metrics.
 export async function weeklySummary(metricsText: string, company: Company): Promise<{ markdown: string; engine: "claude" | "template" }> {
   const ai = await claude(
