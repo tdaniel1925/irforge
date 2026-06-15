@@ -416,3 +416,32 @@ export async function setInteractionStatus(id: string, status: string): Promise<
   const supabase = await createServerSupabase();
   await supabase.from("iros_interactions").update({ status }).eq("id", id);
 }
+
+// ── Intelligence: roll up the company's IR-OS activity ──
+export interface IrosMetrics {
+  postsByStatus: Record<string, number>;
+  classByLevel: Record<string, number>;
+  publishedLast7: number;
+  inboundOpen: number;
+  inboundLast7: number;
+  stakeholders: number;
+  quietActive: boolean;
+}
+
+export async function getMetrics(): Promise<IrosMetrics> {
+  const [posts, interactions, stakeholders, quietActive] = await Promise.all([
+    listPosts(), listInteractions(), listStakeholders(), isQuietPeriodActive(),
+  ]);
+  const weekAgo = Date.now() - 7 * 86400e3;
+  const postsByStatus: Record<string, number> = {};
+  const classByLevel: Record<string, number> = { green: 0, yellow: 0, red: 0 };
+  let publishedLast7 = 0;
+  for (const p of posts) {
+    postsByStatus[p.status] = (postsByStatus[p.status] ?? 0) + 1;
+    if (p.classification && classByLevel[p.classification] !== undefined) classByLevel[p.classification]++;
+    if (p.status === "published" && new Date(p.createdAt).getTime() >= weekAgo) publishedLast7++;
+  }
+  const inboundOpen = interactions.filter((i) => i.direction === "inbound" && i.status === "open").length;
+  const inboundLast7 = interactions.filter((i) => new Date(i.occurredAt).getTime() >= weekAgo).length;
+  return { postsByStatus, classByLevel, publishedLast7, inboundOpen, inboundLast7, stakeholders: stakeholders.length, quietActive };
+}

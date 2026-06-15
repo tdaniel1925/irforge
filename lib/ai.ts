@@ -410,6 +410,18 @@ export async function triageInbound(message: string, company: Company): Promise<
   return { category: "other", topics: [], summary: message.slice(0, 120), suggestedReply: "Thanks for reaching out — we'll route this to the right person on our team and follow up. For the latest, our filings are on SEC EDGAR.", engine: "template" };
 }
 
+// Generate a short Friday-style IR summary for executives from the week's metrics.
+export async function weeklySummary(metricsText: string, company: Company): Promise<{ markdown: string; engine: "claude" | "template" }> {
+  const ai = await claude(
+    `You write a crisp weekly investor-relations summary for the executives of ${company.name} ($${company.ticker}). ` +
+      `Max 5 bullet points. Format: what shipped, what's in the pipeline, what needs attention. Plain English, no fluff, no hype, no predictions. ` +
+      `Return ONLY the summary as markdown bullets.`,
+    `This week's IR-OS metrics:\n${metricsText}`
+  );
+  if (ai) return { markdown: ai.trim(), engine: "claude" };
+  return { markdown: `**This week for ${company.name}**\n\n${metricsText.split("\n").map((l) => `- ${l}`).join("\n")}`, engine: "template" };
+}
+
 // Document analyzer — summarize, extract terms, flag risks, and assess disclosure impact.
 export async function analyzeDocument(
   docName: string,
