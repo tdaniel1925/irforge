@@ -1,0 +1,178 @@
+"use client";
+
+import { useState } from "react";
+
+interface Post {
+  id: string; title: string; body: string; status: string;
+  classification: string | null; classConfidence: number | null; classFlags: string[]; classReason: string;
+  channels: string[]; scheduledAt: string | null; createdAt: string;
+}
+interface VoiceLite { id: string; name: string; roleTitle: string }
+
+const COLUMNS = [
+  { key: "draft", label: "Drafts" },
+  { key: "reviewed", label: "In review" },
+  { key: "approved", label: "Approved" },
+  { key: "scheduled", label: "Scheduled" },
+  { key: "published", label: "Published" },
+];
+
+const CLASS_STYLE: Record<string, string> = {
+  green: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300",
+  yellow: "bg-amber-500/15 text-amber-600 dark:text-amber-300",
+  red: "bg-red-500/15 text-red-600 dark:text-red-300",
+};
+
+export default function EditorialBoard({ initialPosts, voices }: { initialPosts: Post[]; voices: VoiceLite[] }) {
+  const [posts, setPosts] = useState<Post[]>(initialPosts);
+  const [composing, setComposing] = useState(false);
+  const [topic, setTopic] = useState("");
+  const [body, setBody] = useState("");
+  const [title, setTitle] = useState("");
+  const [voiceId, setVoiceId] = useState("");
+  const [busy, setBusy] = useState<string>("");
+  const [error, setError] = useState("");
+
+  const patchPost = (p: Post) => setPosts((ps) => ps.map((x) => (x.id === p.id ? p : x)));
+
+  const aiDraft = async () => {
+    if (!topic.trim()) return;
+    setBusy("draft"); setError("");
+    try {
+      const res = await fetch("/api/iros/draft", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ topic, voiceProfileId: voiceId || undefined }) });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error ?? "Failed.");
+      setBody(d.text);
+    } catch (e) { setError(e instanceof Error ? e.message : "Failed."); } finally { setBusy(""); }
+  };
+
+  const create = async () => {
+    if (!body.trim()) return;
+    setBusy("create"); setError("");
+    try {
+      const res = await fetch("/api/iros/posts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title, body, voiceProfileId: voiceId || undefined }) });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error ?? "Failed.");
+      setPosts((ps) => [d.post, ...ps]);
+      setComposing(false); setTopic(""); setBody(""); setTitle(""); setVoiceId("");
+    } catch (e) { setError(e instanceof Error ? e.message : "Failed."); } finally { setBusy(""); }
+  };
+
+  const classify = async (id: string) => {
+    setBusy("c" + id);
+    try {
+      const res = await fetch("/api/iros/classify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ postId: id }) });
+      const d = await res.json();
+      if (res.ok) patchPost({ ...posts.find((p) => p.id === id)!, classification: d.classification, classConfidence: d.confidence, classFlags: d.flags, classReason: d.reasoning });
+    } finally { setBusy(""); }
+  };
+
+  const transition = async (id: string, to: string) => {
+    setBusy("t" + id); setError("");
+    try {
+      const res = await fetch("/api/iros/posts", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, action: "transition", to }) });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error ?? "Failed.");
+      patchPost(d.post);
+    } catch (e) { setError(e instanceof Error ? e.message : "Failed."); } finally { setBusy(""); }
+  };
+
+  const approve = async (id: string) => {
+    setBusy("a" + id); setError("");
+    try {
+      const res = await fetch("/api/iros/approve", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ postId: id, stage: "approver", decision: "approved" }) });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error ?? "Failed.");
+      // reflect the new status (reviewed→approved or draft→reviewed)
+      const p = posts.find((x) => x.id === id)!;
+      patchPost({ ...p, status: p.status === "draft" ? "reviewed" : "approved" });
+    } catch (e) { setError(e instanceof Error ? e.message : "Failed."); } finally { setBusy(""); }
+  };
+
+  return (
+    <div>
+      <button onClick={() => setComposing((v) => !v)} className="mb-4 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">
+        {composing ? "Close" : "+ New post"}
+      </button>
+
+      {composing && (
+        <div className="mb-6 space-y-3 rounded-2xl border border-app bg-surface p-5">
+          {/* AI draft helper */}
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="What's it about? (AI will draft it)"
+              className="flex-1 rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:border-emerald-500 focus:outline-none" />
+            {voices.length > 0 && (
+              <select value={voiceId} onChange={(e) => setVoiceId(e.target.value)} className="rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:border-emerald-500 focus:outline-none">
+                <option value="">Company voice</option>
+                {voices.map((v) => <option key={v.id} value={v.id}>{v.name}{v.roleTitle ? ` (${v.roleTitle})` : ""}</option>)}
+              </select>
+            )}
+            <button onClick={aiDraft} disabled={busy === "draft" || !topic.trim()} className="rounded-lg border border-app px-4 py-2 text-sm font-medium text-app hover:bg-app-hover disabled:opacity-50">
+              {busy === "draft" ? "Drafting…" : "✨ AI draft"}
+            </button>
+          </div>
+          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title (optional)"
+            className="w-full rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:border-emerald-500 focus:outline-none" />
+          <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={5} placeholder="Post text…"
+            className="w-full resize-none rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:border-emerald-500 focus:outline-none" />
+          {error && <p className="text-sm text-red-500">{error}</p>}
+          <button onClick={create} disabled={busy === "create" || !body.trim()} className="rounded-lg bg-emerald-600 px-5 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50">
+            {busy === "create" ? "Saving…" : "Save as draft"}
+          </button>
+        </div>
+      )}
+
+      {error && !composing && <p className="mb-3 text-sm text-red-500">{error}</p>}
+
+      <div className="grid gap-4 lg:grid-cols-5">
+        {COLUMNS.map((col) => {
+          const items = posts.filter((p) => p.status === col.key);
+          return (
+            <div key={col.key} className="rounded-xl border border-app bg-surface-2/40 p-2">
+              <p className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-faint">{col.label} · {items.length}</p>
+              <div className="space-y-2">
+                {items.map((p) => (
+                  <div key={p.id} className="rounded-lg border border-app bg-surface p-3">
+                    {p.classification && (
+                      <span className={`mb-1.5 inline-block rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${CLASS_STYLE[p.classification]}`}>
+                        {p.classification === "red" ? "🚨 " : ""}{p.classification}
+                      </span>
+                    )}
+                    {p.title && <p className="text-sm font-semibold text-app">{p.title}</p>}
+                    <p className="line-clamp-3 text-xs text-muted">{p.body}</p>
+
+                    {/* 1-click actions by stage */}
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {!p.classification && p.status === "draft" && (
+                        <button onClick={() => classify(p.id)} disabled={busy === "c" + p.id} className="rounded border border-app px-2 py-1 text-[11px] font-medium text-app hover:bg-app-hover disabled:opacity-50">
+                          {busy === "c" + p.id ? "Checking…" : "🛡 Reg FD check"}
+                        </button>
+                      )}
+                      {p.classification === "red" && ["draft", "reviewed"].includes(p.status) && (
+                        <span className="rounded bg-red-500/10 px-2 py-1 text-[11px] text-red-600 dark:text-red-300">Needs Counsel Console →</span>
+                      )}
+                      {p.classification && p.classification !== "red" && ["draft", "reviewed"].includes(p.status) && (
+                        <button onClick={() => approve(p.id)} disabled={busy === "a" + p.id} className="rounded bg-emerald-600 px-2 py-1 text-[11px] font-semibold text-white hover:bg-emerald-500 disabled:opacity-50">
+                          {busy === "a" + p.id ? "…" : p.status === "draft" ? "✓ Mark reviewed" : "✓ Approve"}
+                        </button>
+                      )}
+                      {p.status === "approved" && (
+                        <button onClick={() => transition(p.id, "scheduled")} disabled={busy === "t" + p.id} className="rounded bg-emerald-600 px-2 py-1 text-[11px] font-semibold text-white hover:bg-emerald-500 disabled:opacity-50">
+                          {busy === "t" + p.id ? "…" : "📅 Schedule"}
+                        </button>
+                      )}
+                      {["draft", "reviewed", "approved", "scheduled"].includes(p.status) && (
+                        <button onClick={() => transition(p.id, "pulled")} disabled={busy === "t" + p.id} className="rounded border border-app px-2 py-1 text-[11px] text-muted hover:text-red-500">Pull</button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                {items.length === 0 && <p className="px-1 py-3 text-center text-[11px] text-faint">—</p>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
