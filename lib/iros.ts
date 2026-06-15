@@ -317,3 +317,102 @@ export async function deleteVoice(id: string): Promise<void> {
   const supabase = await createServerSupabase();
   await supabase.from("iros_voice_profiles").delete().eq("id", id);
 }
+
+// ── Stakeholders ──
+export interface Stakeholder {
+  id: string; fullName: string; title: string; org: string; category: string;
+  topics: string[]; email: string; linkedinUrl: string; xHandle: string; notes: string; lastTouchAt: string | null;
+}
+function rowToStakeholder(r: Record<string, unknown>): Stakeholder {
+  return {
+    id: String(r.id), fullName: (r.full_name as string) ?? "", title: (r.title as string) ?? "",
+    org: (r.org as string) ?? "", category: (r.category as string) ?? "other",
+    topics: (r.topics as string[]) ?? [], email: (r.email as string) ?? "",
+    linkedinUrl: (r.linkedin_url as string) ?? "", xHandle: (r.x_handle as string) ?? "",
+    notes: (r.notes as string) ?? "", lastTouchAt: r.last_touch_at ? String(r.last_touch_at) : null,
+  };
+}
+
+export async function listStakeholders(): Promise<Stakeholder[]> {
+  const supabase = await createServerSupabase();
+  const cid = await myCompanyId();
+  if (!cid) return [];
+  const { data } = await supabase.from("iros_stakeholders").select("*").eq("company_id", cid).order("last_touch_at", { ascending: false, nullsFirst: false }).limit(2000);
+  return (data ?? []).map(rowToStakeholder);
+}
+
+export async function upsertStakeholder(input: Partial<Stakeholder> & { id?: string }): Promise<Stakeholder | null> {
+  const supabase = await createServerSupabase();
+  const { data: { user } } = await supabase.auth.getUser();
+  const cid = await myCompanyId();
+  if (!cid) return null;
+  const row = {
+    company_id: cid,
+    full_name: (input.fullName ?? "").slice(0, 120),
+    title: (input.title ?? "").slice(0, 120),
+    org: (input.org ?? "").slice(0, 120),
+    category: input.category ?? "other",
+    topics: (input.topics ?? []).slice(0, 20),
+    email: (input.email ?? "").slice(0, 200),
+    linkedin_url: (input.linkedinUrl ?? "").slice(0, 300),
+    x_handle: (input.xHandle ?? "").slice(0, 60),
+    notes: (input.notes ?? "").slice(0, 2000),
+  };
+  let data;
+  if (input.id) ({ data } = await supabase.from("iros_stakeholders").update(row).eq("id", input.id).select("*").single());
+  else ({ data } = await supabase.from("iros_stakeholders").insert(row).select("*").single());
+  if (data) await writeAudit({ companyId: cid, actorUserId: user?.id, actorEmail: user?.email, action: input.id ? "stakeholder.updated" : "stakeholder.created", entityType: "stakeholder", entityId: String(data.id) });
+  return data ? rowToStakeholder(data) : null;
+}
+
+export async function deleteStakeholder(id: string): Promise<void> {
+  const supabase = await createServerSupabase();
+  await supabase.from("iros_stakeholders").delete().eq("id", id);
+}
+
+// ── Interactions (inbound/outbound log) ──
+export interface Interaction {
+  id: string; stakeholderId: string | null; channel: string; direction: string;
+  summary: string; body: string; status: string; suggestedOwner: string; suggestedReply: string; occurredAt: string;
+}
+function rowToInteraction(r: Record<string, unknown>): Interaction {
+  return {
+    id: String(r.id), stakeholderId: r.stakeholder_id ? String(r.stakeholder_id) : null,
+    channel: (r.channel as string) ?? "other", direction: (r.direction as string) ?? "inbound",
+    summary: (r.summary as string) ?? "", body: (r.body as string) ?? "", status: (r.status as string) ?? "open",
+    suggestedOwner: (r.suggested_owner as string) ?? "", suggestedReply: (r.suggested_reply as string) ?? "",
+    occurredAt: String(r.occurred_at ?? ""),
+  };
+}
+
+export async function listInteractions(): Promise<Interaction[]> {
+  const supabase = await createServerSupabase();
+  const cid = await myCompanyId();
+  if (!cid) return [];
+  const { data } = await supabase.from("iros_interactions").select("*").eq("company_id", cid).order("occurred_at", { ascending: false }).limit(500);
+  return (data ?? []).map(rowToInteraction);
+}
+
+export async function addInteraction(input: { stakeholderId?: string | null; channel: string; direction: string; summary: string; body?: string; suggestedOwner?: string; suggestedReply?: string }): Promise<Interaction | null> {
+  const supabase = await createServerSupabase();
+  const cid = await myCompanyId();
+  if (!cid) return null;
+  const { data } = await supabase.from("iros_interactions").insert({
+    company_id: cid,
+    stakeholder_id: input.stakeholderId ?? null,
+    channel: input.channel,
+    direction: input.direction,
+    summary: input.summary.slice(0, 300),
+    body: (input.body ?? "").slice(0, 4000),
+    suggested_owner: (input.suggestedOwner ?? "").slice(0, 120),
+    suggested_reply: (input.suggestedReply ?? "").slice(0, 2000),
+  }).select("*").single();
+  // bump stakeholder last_touch
+  if (data && input.stakeholderId) await supabase.from("iros_stakeholders").update({ last_touch_at: new Date().toISOString() }).eq("id", input.stakeholderId);
+  return data ? rowToInteraction(data) : null;
+}
+
+export async function setInteractionStatus(id: string, status: string): Promise<void> {
+  const supabase = await createServerSupabase();
+  await supabase.from("iros_interactions").update({ status }).eq("id", id);
+}

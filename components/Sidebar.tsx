@@ -11,6 +11,7 @@ const NAV: { href: string; label: string; icon: string; hint?: string; section?:
   { href: "/calendar-os", label: "Content Pipeline", icon: "🧩", hint: "Draft → Reg FD check → approve → schedule" },
   { href: "/counsel", label: "Counsel Console", icon: "⚖️", hint: "Sign off on Reg FD–flagged posts" },
   { href: "/voices", label: "Executive Voices", icon: "🎙", hint: "Teach the AI how each leader sounds" },
+  { href: "/stakeholders", label: "Stakeholders", icon: "🤝", hint: "Investors, analysts, press + AI inbound triage" },
   { href: "/calendar", label: "IR Calendar", icon: "📅", hint: "Earnings, deadlines, auto quiet periods" },
   { href: "/crm", label: "Investor CRM", icon: "👥", hint: "Funds, analysts, shareholders + 13F intel" },
   { href: "/captable", label: "Cap Table", icon: "📈", hint: "Ownership, dilution, convertible notes" },

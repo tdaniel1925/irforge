@@ -383,6 +383,33 @@ export async function voiceCheck(draft: string, voice: VoiceSpec): Promise<{ pas
   return { passed: true, notes: "No forbidden phrases found (AI voice check unavailable).", engine: "template" };
 }
 
+// Triage an inbound message from a stakeholder: classify, tag, suggest owner + reply.
+export async function triageInbound(message: string, company: Company): Promise<{ category: string; topics: string[]; summary: string; suggestedReply: string; engine: "claude" | "template" }> {
+  const ai = await claude(
+    `You triage inbound messages to a public company's IR/comms team. Classify the sender and draft a safe reply. ` +
+      `Categories: investor | analyst | journalist | partner | procurement | talent | other. ` +
+      `The reply MUST be Reg FD-safe: no material non-public info, no guidance, no stock-price talk — point to public filings/IR when needed. ` +
+      `Return ONLY JSON: {"category":"...","topics":["..."],"summary":"one line","suggestedReply":"2-4 sentence draft reply"}.`,
+    `Company: ${company.name} ($${company.ticker}). Inbound message:\n"${message.slice(0, 3000)}"`
+  );
+  if (ai) {
+    try {
+      const m = ai.match(/\{[\s\S]*\}/);
+      if (m) {
+        const v = JSON.parse(m[0]);
+        return {
+          category: ["investor", "analyst", "journalist", "partner", "procurement", "talent", "other"].includes(v.category) ? v.category : "other",
+          topics: Array.isArray(v.topics) ? v.topics.slice(0, 6).map((t: unknown) => String(t).slice(0, 60)) : [],
+          summary: String(v.summary ?? "").slice(0, 200),
+          suggestedReply: String(v.suggestedReply ?? "").slice(0, 1000),
+          engine: "claude",
+        };
+      }
+    } catch { /* fall through */ }
+  }
+  return { category: "other", topics: [], summary: message.slice(0, 120), suggestedReply: "Thanks for reaching out — we'll route this to the right person on our team and follow up. For the latest, our filings are on SEC EDGAR.", engine: "template" };
+}
+
 // Document analyzer — summarize, extract terms, flag risks, and assess disclosure impact.
 export async function analyzeDocument(
   docName: string,
