@@ -9,6 +9,15 @@ interface Post {
 }
 interface VoiceLite { id: string; name: string; roleTitle: string }
 
+const CHANNELS = [
+  { key: "twitter", label: "X" },
+  { key: "linkedin", label: "LinkedIn" },
+  { key: "facebook", label: "Facebook" },
+  { key: "instagram", label: "Instagram" },
+  { key: "youtube", label: "YouTube" },
+  { key: "tiktok", label: "TikTok" },
+];
+
 const COLUMNS = [
   { key: "draft", label: "Drafts" },
   { key: "reviewed", label: "In review" },
@@ -74,6 +83,16 @@ export default function EditorialBoard({ initialPosts, voices }: { initialPosts:
       const d = await res.json();
       if (!res.ok) throw new Error(d.error ?? "Failed.");
       patchPost(d.post);
+    } catch (e) { setError(e instanceof Error ? e.message : "Failed."); } finally { setBusy(""); }
+  };
+
+  const publish = async (id: string, channels: string[]) => {
+    setBusy("p" + id); setError("");
+    try {
+      const res = await fetch("/api/iros/publish", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ postId: id, channels }) });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error ?? "Failed.");
+      patchPost({ ...posts.find((x) => x.id === id)!, status: "published", channels });
     } catch (e) { setError(e instanceof Error ? e.message : "Failed."); } finally { setBusy(""); }
   };
 
@@ -156,10 +175,8 @@ export default function EditorialBoard({ initialPosts, voices }: { initialPosts:
                           {busy === "a" + p.id ? "…" : p.status === "draft" ? "✓ Mark reviewed" : "✓ Approve"}
                         </button>
                       )}
-                      {p.status === "approved" && (
-                        <button onClick={() => transition(p.id, "scheduled")} disabled={busy === "t" + p.id} className="rounded bg-emerald-600 px-2 py-1 text-[11px] font-semibold text-white hover:bg-emerald-500 disabled:opacity-50">
-                          {busy === "t" + p.id ? "…" : "📅 Schedule"}
-                        </button>
+                      {["approved", "scheduled"].includes(p.status) && (
+                        <PublishPicker busy={busy === "p" + p.id} onPublish={(ch) => publish(p.id, ch)} />
                       )}
                       {["draft", "reviewed", "approved", "scheduled"].includes(p.status) && (
                         <button onClick={() => transition(p.id, "pulled")} disabled={busy === "t" + p.id} className="rounded border border-app px-2 py-1 text-[11px] text-muted hover:text-red-500">Pull</button>
@@ -172,6 +189,38 @@ export default function EditorialBoard({ initialPosts, voices }: { initialPosts:
             </div>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+// Tap "Publish", tick channels, send. Two clicks.
+function PublishPicker({ busy, onPublish }: { busy: boolean; onPublish: (channels: string[]) => void }) {
+  const [open, setOpen] = useState(false);
+  const [sel, setSel] = useState<string[]>(["twitter"]);
+  if (!open) {
+    return (
+      <button onClick={() => setOpen(true)} className="rounded bg-emerald-600 px-2 py-1 text-[11px] font-semibold text-white hover:bg-emerald-500">📣 Publish</button>
+    );
+  }
+  return (
+    <div className="mt-1 w-full rounded-lg border border-app bg-surface-2 p-2">
+      <div className="mb-2 flex flex-wrap gap-1">
+        {CHANNELS.map((c) => {
+          const on = sel.includes(c.key);
+          return (
+            <button key={c.key} onClick={() => setSel((s) => on ? s.filter((x) => x !== c.key) : [...s, c.key])}
+              className={`rounded px-2 py-0.5 text-[10px] font-medium transition ${on ? "bg-emerald-500 text-white" : "border border-app text-muted hover:text-app"}`}>
+              {c.label}
+            </button>
+          );
+        })}
+      </div>
+      <div className="flex gap-1.5">
+        <button onClick={() => onPublish(sel)} disabled={busy || sel.length === 0} className="rounded bg-emerald-600 px-2 py-1 text-[11px] font-semibold text-white hover:bg-emerald-500 disabled:opacity-50">
+          {busy ? "Publishing…" : `Send to ${sel.length}`}
+        </button>
+        <button onClick={() => setOpen(false)} className="rounded border border-app px-2 py-1 text-[11px] text-muted hover:text-app">Cancel</button>
       </div>
     </div>
   );
