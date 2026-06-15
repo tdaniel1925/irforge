@@ -301,6 +301,53 @@ export async function checkDisclosure(
   };
 }
 
+// Reg FD traffic-light classifier for a draft post/update before it publishes.
+// GREEN = routine, safe to post. YELLOW = sensitive, approver should look closely.
+// RED = potentially material non-public info — needs counsel sign-off before publish.
+// This is a flag, NOT legal advice; counsel makes the call on RED.
+export type RegFdClass = "green" | "yellow" | "red";
+export async function classifyRegFD(
+  draft: string,
+  company: Company
+): Promise<{ classification: RegFdClass; confidence: number; flags: string[]; reasoning: string; engine: "claude" | "template" }> {
+  const ai = await claude(
+    `You are a Reg FD pre-publication classifier for a US public company's investor communications. You are NOT a lawyer; you triage so the right human reviews. ` +
+      `Classify a DRAFT post into exactly one: ` +
+      `"green" = routine/already-public info (recaps of filed results, public product news, general education, engagement) — safe to post; ` +
+      `"yellow" = sensitive but probably fine — forward-leaning tone, selective emphasis, anything that could be read as guidance-adjacent — an approver should look closely; ` +
+      `"red" = likely material non-public information or selective disclosure risk — unannounced deals/partnerships, financial guidance or projections, milestone results not yet filed, M&A, capital raises — MUST get counsel sign-off and simultaneous public disclosure first. ` +
+      `When unsure between yellow and red, choose red. ` +
+      `Return ONLY JSON: {"classification":"green|yellow|red","confidence":0.0-1.0,"flags":["short reasons"],"reasoning":"2 sentences plain English"}.`,
+    `Company: ${company.name} ($${company.ticker}), ${company.sector || "public company"}.\nDraft to classify:\n"${draft.slice(0, 4000)}"`
+  );
+  if (ai) {
+    try {
+      const m = ai.match(/\{[\s\S]*\}/);
+      if (m) {
+        const v = JSON.parse(m[0]);
+        const cls: RegFdClass = ["green", "yellow", "red"].includes(v.classification) ? v.classification : "yellow";
+        return {
+          classification: cls,
+          confidence: typeof v.confidence === "number" ? Math.max(0, Math.min(1, v.confidence)) : 0.5,
+          flags: Array.isArray(v.flags) ? v.flags.slice(0, 6).map((f: unknown) => String(f).slice(0, 120)) : [],
+          reasoning: String(v.reasoning ?? "").slice(0, 400),
+          engine: "claude",
+        };
+      }
+    } catch {
+      /* fall through */
+    }
+  }
+  // No AI: be conservative — flag for human review rather than greenlight blindly.
+  return {
+    classification: "yellow",
+    confidence: 0.3,
+    flags: ["Classified without AI — review manually."],
+    reasoning: "AI classification is unavailable, so this draft is flagged for a human approver to review before publishing.",
+    engine: "template",
+  };
+}
+
 // Document analyzer — summarize, extract terms, flag risks, and assess disclosure impact.
 export async function analyzeDocument(
   docName: string,
