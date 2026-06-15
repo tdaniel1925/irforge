@@ -55,6 +55,8 @@ export async function setCompanyFeature(companyId: string, feature: string, enab
 }
 
 export async function companyHasFeature(companyId: string, feature: FeatureKey): Promise<boolean> {
+  // Super admins always have every feature, regardless of per-company flags.
+  if (await isSuperAdmin()) return true;
   const features = await getCompanyFeatures(companyId);
   return Boolean(features[feature]);
 }
