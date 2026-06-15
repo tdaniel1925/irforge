@@ -11,7 +11,7 @@ import type { Feature } from "@/lib/billing";
 // these are what a logged-out visitor (e.g. someone running a free ticker report) sees.
 // Everything else gets the dashboard shell.
 const BARE_EXACT = ["/", "/login", "/privacy", "/terms", "/how-its-legal", "/t", "/discover"];
-const BARE_PREFIXES = ["/t/"]; // public ticker report pages: /t/LAC etc.
+const BARE_PREFIXES = ["/t/", "/embed/"]; // public ticker pages + embeddable widgets
 
 // Which paid feature each dashboard route requires. Routes not listed (settings,
 // billing, admin, onboarding) are always reachable when logged in.
