@@ -41,6 +41,11 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (!user && !isPublic(pathname)) {
+    // API routes get a clean JSON 401 — never redirect an API call to the HTML
+    // login page (that yields "<" instead of JSON and surfaces as a fake 500).
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "Not signed in." }, { status: 401 });
+    }
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);

@@ -13,7 +13,13 @@ export function useAppState() {
   const refresh = useCallback(async () => {
     try {
       const res = await fetch("/api/state", { cache: "no-store" });
-      if (!res.ok) throw new Error(`API ${res.status}`);
+      // Not signed in (auth enforced) → send them to login instead of showing
+      // a confusing error inside the dashboard shell.
+      if (res.status === 401) {
+        window.location.href = "/login";
+        return;
+      }
+      if (!res.ok) throw new Error(`Couldn't load your data (${res.status}). Try refreshing.`);
       setDb(await res.json());
       setError(null);
     } catch (e) {
