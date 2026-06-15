@@ -2,8 +2,9 @@ import { redirect } from "next/navigation";
 import { getMyCompany } from "@/lib/supabase/store";
 import { companyHasFeature } from "@/lib/platform";
 import { listVoices } from "@/lib/iros";
-import { PageHeader, Card } from "@/components/ui";
+import { PageHeader } from "@/components/ui";
 import VoiceManager from "@/components/VoiceManager";
+import UpgradePrompt from "@/components/UpgradePrompt";
 
 export const dynamic = "force-dynamic";
 
@@ -13,9 +14,19 @@ export default async function VoicesPage() {
 
   if (!(await companyHasFeature(mine.id, "voices"))) {
     return (
-      <div className="max-w-2xl">
+      <div>
         <PageHeader title="Executive Voices" subtitle="Teach the AI how each of your leaders sounds." />
-        <Card><p className="text-sm text-muted">This feature isn&apos;t enabled for your account yet. Contact your PubcoZone admin to turn on Voice Profiles.</p></Card>
+        <UpgradePrompt
+          icon="🎙️"
+          title="Executive Voice Profiles"
+          pitch="Set up each leader once — then every AI-drafted post sounds like them, and gets voice-checked before it goes out."
+          bullets={[
+            "Per-executive voice: tone, style examples, banned words",
+            "AI drafts in the chosen voice in one click",
+            "Automatic voice-check flags anything off-brand",
+            "Works across the whole content pipeline",
+          ]}
+        />
       </div>
     );
   }

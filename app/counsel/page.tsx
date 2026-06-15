@@ -5,6 +5,7 @@ import { listPosts, isQuietPeriodActive } from "@/lib/iros";
 import { PageHeader, Card } from "@/components/ui";
 import CounselSign from "@/components/CounselSign";
 import QuietPeriodToggle from "@/components/QuietPeriodToggle";
+import UpgradePrompt from "@/components/UpgradePrompt";
 
 export const dynamic = "force-dynamic";
 
@@ -15,9 +16,19 @@ export default async function CounselConsole() {
   const enabled = await companyHasFeature(mine.id, "compliance");
   if (!enabled) {
     return (
-      <div className="max-w-2xl">
+      <div>
         <PageHeader title="Counsel Console" subtitle="Reg FD sign-off for sensitive posts." />
-        <Card><p className="text-sm text-muted">This feature isn&apos;t enabled for your account yet. Contact your PubcoZone admin to turn on the Compliance suite.</p></Card>
+        <UpgradePrompt
+          icon="⚖️"
+          title="Reg FD Compliance & Counsel Console"
+          pitch="Catch material-disclosure risk before it posts — and give your counsel a one-click, signed sign-off trail."
+          bullets={[
+            "Every draft auto-classified GREEN / YELLOW / RED",
+            "RED posts can't publish without counsel's signed approval",
+            "Quiet-period mode blocks sensitive posts automatically",
+            "Tamper-evident audit trail for every decision",
+          ]}
+        />
       </div>
     );
   }

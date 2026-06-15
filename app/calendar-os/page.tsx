@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 import { getMyCompany } from "@/lib/supabase/store";
 import { companyHasFeature } from "@/lib/platform";
 import { listPosts, listVoices } from "@/lib/iros";
-import { PageHeader, Card } from "@/components/ui";
+import { PageHeader } from "@/components/ui";
+import UpgradePrompt from "@/components/UpgradePrompt";
 import EditorialBoard from "@/components/EditorialBoard";
 
 export const dynamic = "force-dynamic";
@@ -13,9 +14,19 @@ export default async function CalendarOsPage() {
 
   if (!(await companyHasFeature(mine.id, "calendar"))) {
     return (
-      <div className="max-w-2xl">
+      <div>
         <PageHeader title="Content Pipeline" subtitle="Draft, classify, approve, schedule — in one place." />
-        <Card><p className="text-sm text-muted">This feature isn&apos;t enabled for your account yet. Contact your PubcoZone admin to turn on the Editorial Calendar.</p></Card>
+        <UpgradePrompt
+          icon="🧩"
+          title="Content Pipeline"
+          pitch="One board to take any post from idea to published — with the Reg FD check and approvals built in."
+          bullets={[
+            "Type a topic, AI drafts it (in an executive's voice)",
+            "1-click Reg FD check routes risky posts to counsel",
+            "Approve, schedule, and publish to every channel",
+            "See everything by stage: draft → review → approved → live",
+          ]}
+        />
       </div>
     );
   }

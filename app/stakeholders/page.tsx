@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 import { getMyCompany } from "@/lib/supabase/store";
 import { companyHasFeature } from "@/lib/platform";
 import { listStakeholders, listInteractions } from "@/lib/iros";
-import { PageHeader, Card } from "@/components/ui";
+import { PageHeader } from "@/components/ui";
+import UpgradePrompt from "@/components/UpgradePrompt";
 import StakeholderHub from "@/components/StakeholderHub";
 
 export const dynamic = "force-dynamic";
@@ -13,9 +14,19 @@ export default async function StakeholdersPage() {
 
   if (!(await companyHasFeature(mine.id, "stakeholders"))) {
     return (
-      <div className="max-w-2xl">
+      <div>
         <PageHeader title="Stakeholders" subtitle="Everyone who matters — investors, analysts, press — in one place." />
-        <Card><p className="text-sm text-muted">This feature isn&apos;t enabled for your account yet. Contact your PubcoZone admin to turn on the Stakeholder Graph.</p></Card>
+        <UpgradePrompt
+          icon="🤝"
+          title="Stakeholder Graph & Inbound Triage"
+          pitch="Keep every investor, analyst, and reporter in one searchable place — and let AI triage your inbound."
+          bullets={[
+            "Searchable CRM of everyone who follows your story",
+            "Paste any inbound DM/email → AI suggests who & how to reply",
+            "Reg FD-safe suggested replies, every time",
+            "Track topics, last touch, and open items",
+          ]}
+        />
       </div>
     );
   }

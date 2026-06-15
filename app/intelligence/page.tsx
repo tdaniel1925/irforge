@@ -4,6 +4,7 @@ import { companyHasFeature } from "@/lib/platform";
 import { getMetrics } from "@/lib/iros";
 import { PageHeader, Card } from "@/components/ui";
 import SummaryButton from "@/components/SummaryButton";
+import UpgradePrompt from "@/components/UpgradePrompt";
 
 export const dynamic = "force-dynamic";
 
@@ -13,9 +14,19 @@ export default async function IntelligencePage() {
 
   if (!(await companyHasFeature(mine.id, "intelligence"))) {
     return (
-      <div className="max-w-2xl">
+      <div>
         <PageHeader title="Intelligence" subtitle="Your IR program at a glance + a weekly summary." />
-        <Card><p className="text-sm text-muted">This feature isn&apos;t enabled for your account yet. Contact your PubcoZone admin to turn on Intelligence.</p></Card>
+        <UpgradePrompt
+          icon="📊"
+          title="Intelligence & Weekly Summary"
+          pitch="See how your IR program is actually running — and hand your board a clean recap in one click."
+          bullets={[
+            "Live dashboard: pipeline, Reg FD mix, inbound volume",
+            "1-click AI weekly summary, emailed to your execs",
+            "Spot what shipped, what's pending, what needs attention",
+            "No spreadsheets, no manual reporting",
+          ]}
+        />
       </div>
     );
   }
