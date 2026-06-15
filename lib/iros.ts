@@ -251,3 +251,69 @@ export async function endQuietPeriods(): Promise<void> {
     .or(`expires_at.is.null,expires_at.gt.${now}`);
   await writeAudit({ companyId: cid, actorUserId: user?.id, actorEmail: user?.email, action: "quiet_period.ended", entityType: "quiet_period" });
 }
+
+// ── Voice profiles ──
+export interface VoiceProfile {
+  id: string;
+  name: string;
+  roleTitle: string;
+  guidance: string;
+  styleExamples: string[];
+  forbiddenPhrases: string[];
+  active: boolean;
+}
+
+function rowToVoice(r: Record<string, unknown>): VoiceProfile {
+  return {
+    id: String(r.id),
+    name: (r.name as string) ?? "",
+    roleTitle: (r.role_title as string) ?? "",
+    guidance: (r.guidance as string) ?? "",
+    styleExamples: (r.style_examples as string[]) ?? [],
+    forbiddenPhrases: (r.forbidden_phrases as string[]) ?? [],
+    active: Boolean(r.active),
+  };
+}
+
+export async function listVoices(): Promise<VoiceProfile[]> {
+  const supabase = await createServerSupabase();
+  const cid = await myCompanyId();
+  if (!cid) return [];
+  const { data } = await supabase.from("iros_voice_profiles").select("*").eq("company_id", cid).order("created_at", { ascending: true });
+  return (data ?? []).map(rowToVoice);
+}
+
+export async function getVoice(id: string): Promise<VoiceProfile | null> {
+  const supabase = await createServerSupabase();
+  const { data } = await supabase.from("iros_voice_profiles").select("*").eq("id", id).maybeSingle();
+  return data ? rowToVoice(data) : null;
+}
+
+export async function upsertVoice(input: Partial<VoiceProfile> & { id?: string }): Promise<VoiceProfile | null> {
+  const supabase = await createServerSupabase();
+  const { data: { user } } = await supabase.auth.getUser();
+  const cid = await myCompanyId();
+  if (!cid) return null;
+  const row = {
+    company_id: cid,
+    name: (input.name ?? "").slice(0, 120),
+    role_title: (input.roleTitle ?? "").slice(0, 80),
+    guidance: (input.guidance ?? "").slice(0, 2000),
+    style_examples: (input.styleExamples ?? []).slice(0, 5),
+    forbidden_phrases: (input.forbiddenPhrases ?? []).slice(0, 30),
+    active: input.active ?? true,
+  };
+  let data;
+  if (input.id) {
+    ({ data } = await supabase.from("iros_voice_profiles").update(row).eq("id", input.id).select("*").single());
+  } else {
+    ({ data } = await supabase.from("iros_voice_profiles").insert(row).select("*").single());
+  }
+  if (data) await writeAudit({ companyId: cid, actorUserId: user?.id, actorEmail: user?.email, action: input.id ? "voice.updated" : "voice.created", entityType: "voice", entityId: String(data.id) });
+  return data ? rowToVoice(data) : null;
+}
+
+export async function deleteVoice(id: string): Promise<void> {
+  const supabase = await createServerSupabase();
+  await supabase.from("iros_voice_profiles").delete().eq("id", id);
+}

@@ -348,6 +348,41 @@ export async function classifyRegFD(
   };
 }
 
+// Draft a post in a specific executive's voice profile.
+export interface VoiceSpec { name: string; roleTitle: string; guidance: string; styleExamples: string[]; forbiddenPhrases: string[] }
+export async function draftInVoice(topic: string, voice: VoiceSpec, company: Company): Promise<{ text: string; engine: "claude" | "template" }> {
+  const sys =
+    `You are ghost-writing an investor-relations post AS ${voice.name}${voice.roleTitle ? `, ${voice.roleTitle}` : ""} of ${company.name} ($${company.ticker}). ` +
+    `Voice guidance: ${voice.guidance || "professional, plain-spoken, credible"}. ` +
+    (voice.forbiddenPhrases.length ? `NEVER use these words/phrases: ${voice.forbiddenPhrases.join(", ")}. ` : "") +
+    `STRICT compliance rules: only state things that are public or clearly non-material; never predict the stock price; never give investment advice; never promise outcomes. ` +
+    (voice.styleExamples.length ? `Match the style of these examples:\n${voice.styleExamples.map((e, i) => `${i + 1}. ${e}`).join("\n")}\n` : "") +
+    `Return ONLY the post text, no preamble, under 280 words.`;
+  const ai = await claude(sys, `Write a post about: ${topic}`);
+  if (ai) return { text: ai.trim(), engine: "claude" };
+  return { text: `${topic}\n\n— ${voice.name}${voice.roleTitle ? `, ${voice.roleTitle}` : ""}`, engine: "template" };
+}
+
+// Check whether a draft matches a voice profile; return pass/fail + specific notes.
+export async function voiceCheck(draft: string, voice: VoiceSpec): Promise<{ passed: boolean; notes: string; engine: "claude" | "template" }> {
+  // Fast deterministic check: forbidden phrases are an automatic fail.
+  const hit = voice.forbiddenPhrases.find((p) => p && draft.toLowerCase().includes(p.toLowerCase()));
+  if (hit) return { passed: false, notes: `Uses a forbidden phrase: "${hit}".`, engine: "template" };
+
+  const ai = await claude(
+    `You verify whether a draft matches an executive's voice. Voice: ${voice.name}, ${voice.roleTitle}. Guidance: ${voice.guidance}. ` +
+      `Return ONLY JSON: {"passed": boolean, "notes": "one specific sentence — if it fails, say exactly what's off"}.`,
+    `Draft:\n"${draft.slice(0, 3000)}"`
+  );
+  if (ai) {
+    try {
+      const m = ai.match(/\{[\s\S]*\}/);
+      if (m) { const v = JSON.parse(m[0]); return { passed: Boolean(v.passed), notes: String(v.notes ?? "").slice(0, 300), engine: "claude" }; }
+    } catch { /* fall through */ }
+  }
+  return { passed: true, notes: "No forbidden phrases found (AI voice check unavailable).", engine: "template" };
+}
+
 // Document analyzer — summarize, extract terms, flag risks, and assess disclosure impact.
 export async function analyzeDocument(
   docName: string,
