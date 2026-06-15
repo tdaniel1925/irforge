@@ -1,9 +1,10 @@
 import { redirect } from "next/navigation";
 import { getMyCompany } from "@/lib/supabase/store";
 import { companyHasFeature } from "@/lib/platform";
-import { listPosts } from "@/lib/iros";
+import { listPosts, isQuietPeriodActive } from "@/lib/iros";
 import { PageHeader, Card } from "@/components/ui";
 import CounselSign from "@/components/CounselSign";
+import QuietPeriodToggle from "@/components/QuietPeriodToggle";
 
 export const dynamic = "force-dynamic";
 
@@ -21,13 +22,17 @@ export default async function CounselConsole() {
     );
   }
 
-  const posts = await listPosts();
+  const [posts, quietActive] = await Promise.all([listPosts(), isQuietPeriodActive()]);
   // Counsel sees RED posts that are awaiting sign-off (not yet approved/published/pulled).
   const redQueue = posts.filter((p) => p.classification === "red" && ["draft", "reviewed"].includes(p.status));
 
   return (
     <div className="max-w-3xl">
       <PageHeader title="Counsel Console" subtitle="Posts flagged RED by the Reg FD classifier. Sign to approve, or send back. Nothing publishes without you." />
+
+      <div className="mb-6">
+        <QuietPeriodToggle initialActive={quietActive} />
+      </div>
 
       {redQueue.length === 0 ? (
         <Card>

@@ -153,6 +153,14 @@ export async function recordApproval(input: {
     return { ok: false, error: "RED posts require counsel sign-off before approval." };
   }
 
+  // During an active quiet period, RED/YELLOW posts can't be approved at all —
+  // and even counsel sign-off is blocked (no selective disclosure in the window).
+  if (input.decision === "approved" && (post.classification === "red" || post.classification === "yellow")) {
+    if (await isQuietPeriodActive()) {
+      return { ok: false, error: "A quiet period is active — sensitive (yellow/red) posts can't be approved until it ends." };
+    }
+  }
+
   const ts = new Date().toISOString();
   let signatureHash: string | null = null;
   if (post.classification === "red" && input.stage === "counsel") {
