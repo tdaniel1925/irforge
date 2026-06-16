@@ -7,49 +7,55 @@ import ThemeToggle from "./ThemeToggle";
 type NavItem = { href: string; label: string; icon: string; hint?: string };
 type NavGroup = { section: string; items: NavItem[] };
 
-// Grouped so a busy exec finds things by what they're trying to DO, not by a
-// 20-item flat scroll. Order = most-used first.
+// Grouped by the job to be done, in the order an IR person actually works:
+// create & approve content → stay compliant → manage investors → know your
+// numbers → show up publicly → resources → settings. Plain-English headers.
 const NAV: NavGroup[] = [
   {
-    section: "Publish",
+    section: "Start here",
     items: [
-      { href: "/app", label: "Approvals", icon: "✓", hint: "Posts we want to send — approve or edit them" },
+      { href: "/app", label: "Approvals", icon: "✅", hint: "Posts waiting for your one-tap approval" },
+      { href: "/intelligence", label: "Dashboard", icon: "📊", hint: "Your IR program at a glance + weekly summary" },
+    ],
+  },
+  {
+    section: "Create & post",
+    items: [
       { href: "/calendar-os", label: "Content Pipeline", icon: "🧩", hint: "Draft → Reg FD check → approve → schedule" },
-      { href: "/counsel", label: "Counsel Console", icon: "⚖️", hint: "Sign off on Reg FD–flagged posts" },
-      { href: "/voices", label: "Executive Voices", icon: "🎙", hint: "Teach the AI how each leader sounds" },
       { href: "/studio", label: "Writing Studio", icon: "📝", hint: "Draft press releases + disclosure checks" },
-    ],
-  },
-  {
-    section: "Investors",
-    items: [
-      { href: "/stakeholders", label: "Inbound Triage", icon: "📥", hint: "Paste any inbound message — AI suggests who it's from and a safe reply" },
-      { href: "/crm", label: "Investor CRM", icon: "👥", hint: "Funds, analysts, shareholders + 13F intel" },
-      { href: "/investors", label: "Find Investors", icon: "🎯", hint: "Funds that own similar companies" },
-      { href: "/company", label: "Defense & Reach", icon: "🛡", hint: "Threats to your name + your visibility score" },
-    ],
-  },
-  {
-    section: "Records",
-    items: [
+      { href: "/voices", label: "Executive Voices", icon: "🎙", hint: "Teach the AI how each leader sounds" },
       { href: "/calendar", label: "IR Calendar", icon: "📅", hint: "Earnings, deadlines, auto quiet periods" },
-      { href: "/captable", label: "Cap Table", icon: "📈", hint: "Ownership, dilution, convertible notes" },
+    ],
+  },
+  {
+    section: "Stay compliant",
+    items: [
+      { href: "/counsel", label: "Counsel Console", icon: "⚖️", hint: "Sign off on Reg FD–flagged posts" },
       { href: "/analyzer", label: "Doc Analyzer", icon: "🔬", hint: "AI reads any document, flags risks + disclosure" },
       { href: "/documents", label: "Document Vault", icon: "🗂", hint: "Filings, board docs, policies, decks" },
     ],
   },
   {
-    section: "Insights",
+    section: "Investors",
     items: [
-      { href: "/intelligence", label: "Intelligence", icon: "📊", hint: "Your IR program at a glance + weekly summary" },
-      { href: "/proof", label: "Your Results", icon: "📈", hint: "Numbers to show your board" },
+      { href: "/crm", label: "CRM", icon: "👥", hint: "Contacts, companies, deals, tasks — your whole pipeline" },
+      { href: "/stakeholders", label: "Inbound Triage", icon: "📥", hint: "Paste any inbound message — AI drafts a safe reply" },
+      { href: "/investors", label: "Find Investors", icon: "🎯", hint: "Funds that own similar companies" },
+      { href: "/captable", label: "Cap Table", icon: "📈", hint: "Ownership, dilution, convertible notes" },
     ],
   },
   {
-    section: "Your public presence",
+    section: "Your reputation",
     items: [
-      { href: "/t", label: "Public Page", icon: "🌐", hint: "What investors see when they look you up" },
-      { href: "/marketing-kit", label: "Marketing Kit", icon: "📣", hint: "Spread the word — posts, graphics, links" },
+      { href: "/company", label: "Defense & Reach", icon: "🛡", hint: "Threats to your name + your visibility score" },
+      { href: "/proof", label: "Results & Proof", icon: "📈", hint: "Numbers to show your board" },
+    ],
+  },
+  {
+    section: "Get the word out",
+    items: [
+      { href: "/t", label: "Your Public Page", icon: "🌐", hint: "What investors see when they look you up" },
+      { href: "/marketing-kit", label: "Marketing Kit", icon: "📣", hint: "Ready-made posts, graphics & links to share" },
       { href: "/embeds", label: "Embeds & Badges", icon: "🔗", hint: "Live widgets for your own website" },
       { href: "/ticker-audit", label: "Look Up a Ticker", icon: "🔎", hint: "Live report on any company" },
     ],
@@ -63,9 +69,9 @@ const NAV: NavGroup[] = [
     ],
   },
   {
-    section: "Operations",
+    section: "Admin",
     items: [
-      { href: "/admin", label: "Admin", icon: "🛠", hint: "All companies, revenue, claims (admins only)" },
+      { href: "/admin", label: "Back Office", icon: "🛠", hint: "All companies, revenue, claims (admins only)" },
       { href: "/onboarding", label: "New Company Setup", icon: "✦", hint: "The wizard a new company fills out" },
     ],
   },
@@ -83,7 +89,7 @@ export default function Sidebar() {
         </Link>
         <ThemeToggle />
       </div>
-      <nav className="flex-1 space-y-5 overflow-y-auto">
+      <nav className="flex-1 space-y-4 overflow-y-auto">
         {NAV.map((group) => (
           <div key={group.section}>
             <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-faint">
@@ -112,7 +118,7 @@ export default function Sidebar() {
           </div>
         ))}
       </nav>
-      <div className="mt-auto px-2 pt-6 text-[11px] leading-relaxed text-slate-600">
+      <div className="mt-auto px-2 pt-6 text-[11px] leading-relaxed text-faint">
         AI-powered IR for public companies.
         <br />
         Nothing posts without human approval.
