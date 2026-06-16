@@ -12,7 +12,7 @@ import StockChart from "@/components/StockChart";
 import WatchButton from "@/components/WatchButton";
 import MessageBoard from "@/components/MessageBoard";
 import TickerTabs from "@/components/TickerTabs";
-import { generateAnalystContent, generateResearchPanel } from "@/lib/ai";
+import { generateResearchPanel } from "@/lib/ai";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -96,18 +96,17 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
 
   // Each of these can fail in production (AI rate limits, Supabase/file access on a
   // read-only host) — none should take the whole page down. Degrade per-call.
-  const [explainerR, analystR, panelR, viewCountR] = await Promise.allSettled([
+  // The 4-lens research panel supersedes the old 2-lens bull/bear analyst, so we
+  // run two AI calls (explainer + panel) instead of three — keeps the page fast.
+  const [explainerR, panelR, viewCountR] = await Promise.allSettled([
     generateTickerExplainer(audit),
-    generateAnalystContent(audit),
     generateResearchPanel(audit),
     bumpViews(ticker),
   ]);
   const explainer = explainerR.status === "fulfilled"
     ? explainerR.value
     : { text: `${audit.companyName ?? `$${audit.ticker}`} — live public-data report.`, engine: "template" as const };
-  const analyst = analystR.status === "fulfilled"
-    ? analystR.value
-    : { bull: "", bear: "", faq: [] as { q: string; a: string }[] };
+  const analyst = { bull: "", bear: "", faq: [] as { q: string; a: string }[] }; // legacy section now hidden; panel covers it
   const panel = panelR.status === "fulfilled" ? panelR.value : { lenses: [], engine: "template" as const };
   const viewCount = viewCountR.status === "fulfilled" ? viewCountR.value : 0;
 
