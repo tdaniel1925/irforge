@@ -1,11 +1,15 @@
-// Renders a Sponsored Research Brief's markdown as a styled, theme-aware document
-// with a sticky table-of-contents (built from ## headings) and section anchors.
+// Renders Sponsored Research Brief markdown as styled, theme-aware content.
 // Self-contained mini-markdown (## / ### headings, **bold**, - and 1. lists,
 // > blockquotes, markdown tables, paragraphs) — no markdown dependency.
+//
+// - renderMarkdown(md): the block renderer, shared by the static and paginated views.
+// - splitSections(md): split markdown into { title, body } chunks at each ## heading
+//   (intro before the first ## is returned as a section with an empty title).
+// - BriefView: the original single-scroll document with a sticky table of contents.
 
 import { Fragment } from "react";
 
-function slugify(s: string) {
+export function slugify(s: string) {
   return s
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
@@ -41,19 +45,40 @@ function splitRow(line: string) {
     .map((c) => c.trim());
 }
 
-export default function BriefView({ markdown }: { markdown: string }) {
+// Split a markdown doc into sections at each top-level (##) heading.
+export interface BriefSection {
+  title: string; // "" for the intro block before the first ##
+  id: string;
+  body: string; // markdown including the ## heading line (except the intro)
+}
+export function splitSections(markdown: string): BriefSection[] {
   const lines = (markdown || "").replace(/\r\n/g, "\n").split("\n");
+  const sections: BriefSection[] = [];
+  let cur: { title: string; lines: string[] } | null = null;
+  const intro: string[] = [];
 
-  // First pass: collect the ## headings for the table of contents.
-  const toc: { id: string; text: string }[] = [];
-  for (const raw of lines) {
-    const m = raw.match(/^##\s+(?!#)(.*)$/);
+  for (const line of lines) {
+    const m = line.match(/^##\s+(?!#)(.*)$/);
     if (m) {
-      const text = m[1].trim();
-      toc.push({ id: slugify(text), text });
+      if (cur) sections.push({ title: cur.title, id: slugify(cur.title), body: cur.lines.join("\n") });
+      cur = { title: m[1].trim(), lines: [line] };
+    } else if (cur) {
+      cur.lines.push(line);
+    } else {
+      intro.push(line);
     }
   }
+  if (cur) sections.push({ title: cur.title, id: slugify(cur.title), body: cur.lines.join("\n") });
 
+  const introText = intro.join("\n").trim();
+  if (introText) sections.unshift({ title: "", id: "intro", body: introText });
+  return sections;
+}
+
+// The core markdown → React block renderer. `headingsAnchored` adds id anchors
+// to ## headings (used by the single-scroll view's TOC).
+export function renderMarkdown(markdown: string, keyPrefix = "", headingsAnchored = true): React.ReactNode[] {
+  const lines = (markdown || "").replace(/\r\n/g, "\n").split("\n");
   const blocks: React.ReactNode[] = [];
   let list: { ordered: boolean; items: string[] } | null = null;
   let para: string[] = [];
@@ -86,7 +111,7 @@ export default function BriefView({ markdown }: { markdown: string }) {
 
   for (let idx = 0; idx < lines.length; idx++) {
     const line = lines[idx].trimEnd();
-    const k = `b${idx}`;
+    const k = `${keyPrefix}b${idx}`;
 
     if (!line.trim()) {
       flushPara(k);
@@ -146,9 +171,12 @@ export default function BriefView({ markdown }: { markdown: string }) {
       flushPara(k);
       flushList(k);
       const txt = h2[1].trim();
-      const id = slugify(txt);
       blocks.push(
-        <h2 key={k} id={id} className="scroll-mt-24 border-b border-app pb-2 pt-4 text-xl font-bold tracking-tight text-app first:pt-0">
+        <h2
+          key={k}
+          {...(headingsAnchored ? { id: slugify(txt) } : {})}
+          className="scroll-mt-24 border-b border-app pb-2 pt-4 text-xl font-bold tracking-tight text-app first:pt-0"
+        >
           {inline(txt, k)}
         </h2>
       );
@@ -189,12 +217,21 @@ export default function BriefView({ markdown }: { markdown: string }) {
     flushList(k);
     para.push(line.trim());
   }
-  flushPara("end-p");
-  flushList("end-l");
+  flushPara(`${keyPrefix}end-p`);
+  flushList(`${keyPrefix}end-l`);
+  return blocks;
+}
+
+// Single-scroll document with a sticky table of contents (used where pagination
+// isn't wanted, e.g. inline on the ticker page).
+export default function BriefView({ markdown }: { markdown: string }) {
+  const toc = splitSections(markdown)
+    .filter((s) => s.title)
+    .map((s) => ({ id: s.id, text: s.title }));
+  const blocks = renderMarkdown(markdown);
 
   return (
     <div className="lg:grid lg:grid-cols-[200px_1fr] lg:gap-8">
-      {/* Sticky table of contents */}
       {toc.length > 1 && (
         <nav className="mb-6 lg:mb-0">
           <div className="lg:sticky lg:top-20">

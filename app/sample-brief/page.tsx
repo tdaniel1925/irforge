@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getSampleBrief } from "@/lib/briefs";
-import BriefView from "@/components/BriefView";
+import BriefReader from "@/components/BriefReader";
 
 export const dynamic = "force-dynamic";
 
@@ -51,7 +51,7 @@ export default async function SampleBriefPage() {
             <h2 className="mt-2 text-xl font-bold text-app">{brief.title}</h2>
           </div>
           <div className="px-6 py-6">
-            <BriefView markdown={brief.markdown} />
+            <BriefReader markdown={brief.markdown} />
             <p className="mt-6 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-[11px] leading-relaxed text-amber-700 dark:text-amber-300">
               {brief.disclosure}
             </p>

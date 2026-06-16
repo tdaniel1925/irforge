@@ -14,7 +14,7 @@ import MessageBoard from "@/components/MessageBoard";
 import TickerTabs from "@/components/TickerTabs";
 import { generateResearchPanel } from "@/lib/ai";
 import { getPublishedBriefsForTicker } from "@/lib/briefs";
-import BriefView from "@/components/BriefView";
+import BriefReader from "@/components/BriefReader";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -316,7 +316,7 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
             </p>
           )}
           <h3 className="mb-3 text-base font-bold text-white">{b.title}</h3>
-          <BriefView markdown={b.markdown} />
+          <BriefReader markdown={b.markdown} />
           <p className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] leading-relaxed text-amber-300">{b.disclosure}</p>
         </Section>
       ))}
