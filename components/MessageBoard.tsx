@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { BoardPost, ReactionKind } from "@/lib/publicStats";
+import ManipulationRadar from "@/components/ManipulationRadar";
 
 function ago(ts: string): string {
   const s = Math.max(0, (Date.now() - new Date(ts).getTime()) / 1000);
@@ -258,6 +259,8 @@ export default function MessageBoard({ ticker }: { ticker: string }) {
 
   return (
     <div>
+      {/* Manipulation radar — neutral caution about board posting patterns + public volume. */}
+      <ManipulationRadar ticker={ticker} />
       {/* Transient action error (e.g. a rejected reaction) — visible regardless of auth/composer. */}
       {error && !authed && (
         <p className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/[0.06] px-3 py-2 text-xs text-amber-600 dark:text-amber-400">{error}</p>
@@ -431,6 +434,11 @@ function PostCard({
             </div>
           )}
 
+          {/* FEATURE-1: truth-check the board — reality-check vs filings.
+              Only on factual posts so it never collides with feature-2's
+              manipulation banner (which renders above the composer, not here). */}
+          {f === "factual" && <TruthCheck ticker={post.ticker} post={post} />}
+
           {/* reactions + reply */}
           <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
             {REACTIONS.map((r) => {
@@ -468,6 +476,125 @@ function PostCard({
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// ===================================================================
+// FEATURE-1: truth-check the board
+// Self-contained child of PostCard. Lazily reality-checks a factual post
+// against the live public record (EDGAR/FINRA/XBRL) on button click.
+// COMPLIANCE: public record only — never advice, never rates the buy/sell
+// merit; "unverifiable" = the filings are silent, NOT that the poster lies.
+// ===================================================================
+type TruthCitation = { label: string; url?: string };
+type TruthResult = {
+  checkable: boolean;
+  verdict: "supported" | "contradicted" | "unverifiable";
+  claim: string;
+  reality: string;
+  citations: TruthCitation[];
+  engine: "claude" | "template";
+};
+
+const VERDICT_STYLE: Record<TruthResult["verdict"], { label: string; cls: string }> = {
+  supported: { label: "Public record agrees", cls: "border-emerald-500/40 bg-emerald-500/[0.06] text-emerald-600 dark:text-emerald-300" },
+  contradicted: { label: "Public record shows otherwise", cls: "border-orange-500/40 bg-orange-500/[0.06] text-orange-600 dark:text-orange-300" },
+  unverifiable: { label: "Filings neither confirm nor deny", cls: "border-app bg-surface-2 text-muted" },
+};
+
+function TruthCheck({ ticker, post }: { ticker: string; post: BoardPost }) {
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const [result, setResult] = useState<TruthResult | null>(null);
+
+  const run = async () => {
+    // Toggle closed if we already have a result.
+    if (result || open) { setOpen((v) => !v); return; }
+    setBusy(true); setErr("");
+    try {
+      const res = await fetch("/api/board/truth-check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ticker, body: post.body }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Couldn't run the reality-check.");
+      setResult(data.result as TruthResult);
+      setOpen(true);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Couldn't run the reality-check.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="mt-2">
+      <button
+        onClick={run}
+        disabled={busy}
+        className="text-[11px] font-medium text-emerald-600 underline-offset-2 hover:underline disabled:opacity-50 dark:text-emerald-400"
+      >
+        {busy ? "Checking the public record…" : open ? "Hide reality-check" : "🔎 Reality-check vs filings"}
+      </button>
+
+      {err && <p className="mt-1 text-[11px] text-amber-500">{err}</p>}
+
+      {open && result && (
+        <div className="mt-2 rounded-lg border border-app bg-surface-2 p-3">
+          <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-faint">
+            PubcoZone reality-check — public record only
+          </p>
+
+          {result.checkable ? (
+            <>
+              <span className={`inline-block rounded-md border px-2 py-0.5 text-[10px] font-bold ${VERDICT_STYLE[result.verdict].cls}`}>
+                {VERDICT_STYLE[result.verdict].label}
+              </span>
+              {result.claim && (
+                <p className="mt-2 text-[12px] text-muted">
+                  <span className="font-semibold text-app">Claim checked:</span> {result.claim}
+                </p>
+              )}
+              {result.reality && (
+                <p className="mt-1 text-[12px] leading-relaxed text-app">{result.reality}</p>
+              )}
+              {result.citations.length > 0 && (
+                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-faint">Sources:</span>
+                  {result.citations.map((c, i) =>
+                    c.url ? (
+                      <a
+                        key={i}
+                        href={c.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded-full border border-app px-2 py-0.5 text-[10px] font-medium text-muted transition hover:bg-app-hover hover:text-app"
+                      >
+                        {c.label} ↗
+                      </a>
+                    ) : (
+                      <span key={i} className="rounded-full border border-app px-2 py-0.5 text-[10px] font-medium text-faint">
+                        {c.label}
+                      </span>
+                    )
+                  )}
+                </div>
+              )}
+            </>
+          ) : (
+            <p className="text-[12px] italic text-muted">
+              No checkable factual claim here — nothing in this post maps to a figure in the public record.
+            </p>
+          )}
+
+          <p className="mt-2 text-[10px] text-faint">
+            Facts from the public record only — not investment advice. {result.engine === "template" ? "(offline fallback)" : ""}
+          </p>
+        </div>
+      )}
     </div>
   );
 }

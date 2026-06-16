@@ -159,6 +159,21 @@ export async function screenCompanies(f: ScreenFilters): Promise<CompanyStatRow[
   return (data ?? []) as CompanyStatRow[];
 }
 
+// Fetch the snapshot rows for a specific set of tickers (e.g. a member's
+// watchlist). company_stats only holds the screener UNIVERSE, so a watched
+// ticker may simply have no row — callers must tolerate a shorter result set.
+export async function getStatRowsForTickers(tickers: string[]): Promise<CompanyStatRow[]> {
+  const upper = Array.from(new Set(tickers.map((t) => t.toUpperCase()).filter(Boolean)));
+  if (upper.length === 0) return [];
+  const svc = createServiceClient();
+  const { data, error } = await svc.from("company_stats").select("*").in("ticker", upper);
+  if (error) {
+    console.error("[company_stats] getStatRowsForTickers failed:", error.message);
+    return [];
+  }
+  return (data ?? []) as CompanyStatRow[];
+}
+
 // How many companies are in the snapshot + when it was last refreshed.
 export async function getUniverseMeta(): Promise<{ count: number; lastSnapshot: string | null }> {
   const svc = createServiceClient();

@@ -7,6 +7,7 @@ import {
   type WatchSnapshot,
 } from "@/lib/publicStats";
 import { sendWatchAlert } from "@/lib/email";
+import { explainFiling } from "@/lib/filingExplain";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -107,6 +108,17 @@ export async function GET(req: Request) {
 
       let recipients = 0;
       if (changes.length > 0) {
+        // Enrich a new-filing alert with a plain-English explanation of what the
+        // filing TYPE means (facts only — never interprets the contents). Best-effort.
+        if (cur.lastForm && cur.lastFilingDate && cur.lastFilingDate !== prev?.lastFilingDate) {
+          const filingChange = changes.find((c) => c.headline.startsWith("New SEC filing"));
+          if (filingChange) {
+            try {
+              const exp = await explainFiling(cur.lastForm, audit.companyName ?? ticker, cur.lastFilingDate);
+              filingChange.detail += ` ${exp.plain} ${exp.watchFor}`;
+            } catch { /* keep the base detail */ }
+          }
+        }
         const watchers = await getWatchersFor(ticker);
         recipients = watchers.length;
         for (const ch of changes) {

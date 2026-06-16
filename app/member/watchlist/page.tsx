@@ -12,7 +12,10 @@ export default async function MemberWatchlist() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <h1 className="text-2xl font-bold text-app">Your watchlist</h1>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold text-app">Your watchlist</h1>
+        <Link href="/member/watchlist/xray" className="shrink-0 rounded-lg border border-app bg-surface px-3 py-1.5 text-sm font-medium text-app transition hover:bg-app-hover">Portfolio x-ray →</Link>
+      </div>
       <p className="mt-1 text-sm text-muted">Tickers you&apos;re watching. You get alerts on new filings, insider trades, halts, and grade changes.</p>
 
       {watches.length === 0 ? (
