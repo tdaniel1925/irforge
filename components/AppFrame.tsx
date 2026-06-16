@@ -10,7 +10,7 @@ import type { Feature } from "@/lib/billing";
 // The landing page (/) and other public routes render full-bleed with no app sidebar —
 // these are what a logged-out visitor (e.g. someone running a free ticker report) sees.
 // Everything else gets the dashboard shell.
-const BARE_EXACT = ["/", "/login", "/privacy", "/terms", "/how-its-legal", "/t", "/discover", "/sample-brief"];
+const BARE_EXACT = ["/", "/login", "/privacy", "/terms", "/how-its-legal", "/t", "/discover", "/sample-brief", "/for-investors", "/for-companies"];
 const BARE_PREFIXES = ["/t/", "/embed/", "/welcome/"]; // public ticker pages + embeds + investor welcome pages
 
 // Which paid feature each dashboard route requires. Routes not listed (settings,

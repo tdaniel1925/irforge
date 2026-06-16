@@ -11,6 +11,7 @@ export default function Landing() {
     <div className="bg-app text-app">
       <Nav />
       <Hero />
+      <PathChooser />
       <LevelField />
       <ForInvestors />
       <LogoStrip />
@@ -29,6 +30,32 @@ export default function Landing() {
   );
 }
 
+/* ------------------------------ Path chooser ----------------------------- */
+function PathChooser() {
+  return (
+    <section className="border-b border-app bg-surface-2/40">
+      <div className="mx-auto max-w-5xl px-6 py-14">
+        <h2 className="text-center text-2xl font-bold tracking-tight text-app">Which one are you?</h2>
+        <p className="mx-auto mt-2 max-w-xl text-center text-sm text-muted">PubcoZone serves both sides of the table. Pick your path for the full story.</p>
+        <div className="mt-8 grid gap-5 sm:grid-cols-2">
+          <Link href="/for-companies" className="group rounded-2xl border border-app bg-surface p-7 transition hover:border-emerald-500/50 hover:shadow-lg">
+            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/10 text-2xl">🏢</div>
+            <h3 className="text-xl font-bold text-app">I run a public company</h3>
+            <p className="mt-2 text-sm leading-relaxed text-muted">Turn filings into compliant updates you approve, answer shareholders on the record, run an IR CRM, and defend your name — for less than an agency.</p>
+            <span className="mt-4 inline-block text-sm font-semibold text-emerald-600 group-hover:underline dark:text-emerald-400">For companies →</span>
+          </Link>
+          <Link href="/for-investors" className="group rounded-2xl border border-app bg-surface p-7 transition hover:border-sky-500/50 hover:shadow-lg">
+            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-sky-500/10 text-2xl">📈</div>
+            <h3 className="text-xl font-bold text-app">I&apos;m an investor</h3>
+            <p className="mt-2 text-sm leading-relaxed text-muted">A board where claims get checked against filings, pumps get flagged, and you filter out the noise. Facts over hype — and you&apos;re not the exit liquidity.</p>
+            <span className="mt-4 inline-block text-sm font-semibold text-sky-600 group-hover:underline dark:text-sky-400">For investors →</span>
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /* ---------------------------------- Nav ---------------------------------- */
 function Nav() {
   return (
@@ -38,10 +65,10 @@ function Nav() {
           <span className="text-app">Pubco</span><span className="text-emerald-600 dark:text-emerald-400">Zone</span><span className="text-emerald-600 dark:text-emerald-400">.</span>
         </Link>
         <nav className="hidden items-center gap-7 text-sm text-muted sm:flex">
+          <Link href="/for-companies" className="hover:text-app">For companies</Link>
+          <Link href="/for-investors" className="hover:text-app">For investors</Link>
           <Link href="/discover" className="hover:text-app">Discover</Link>
-          <a href="#how" className="hover:text-app">How it works</a>
           <Link href="/how-its-legal" className="hover:text-app">Is it legal?</Link>
-          <a href="#pricing" className="hover:text-app">Pricing</a>
         </nav>
         <div className="flex items-center gap-3">
           <ThemeToggle />
