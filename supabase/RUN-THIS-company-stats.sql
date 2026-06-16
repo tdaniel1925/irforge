@@ -1,6 +1,3 @@
--- Paste into Supabase dashboard -> SQL Editor -> New query -> Run.
--- Creates the company_stats table the AI investor screener queries.
-
 create table if not exists public.company_stats (
   ticker              text primary key,
   company_name        text default '',

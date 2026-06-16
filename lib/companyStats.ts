@@ -47,6 +47,15 @@ export interface CompanyStatRow {
 
 const num = (v: unknown): number | null => (typeof v === "number" && isFinite(v) ? v : null);
 
+// A 1-year share-count change beyond ±300% is almost always a split/reverse-split
+// or a share-count parsing artifact, not real dilution. Null it so the screener
+// and portfolio x-ray don't surface false "heavy dilution" signals.
+const dilution = (v: unknown): number | null => {
+  const n = num(v);
+  if (n === null) return null;
+  return Math.abs(n) > 300 ? null : n;
+};
+
 // Flatten a full audit into a stats row for the snapshot table.
 export function auditToStatRow(audit: TickerAudit, reason: string, trendScore: number): Record<string, unknown> {
   const lastVol = num(audit.market?.lastVolume);
@@ -72,7 +81,7 @@ export function auditToStatRow(audit: TickerAudit, reason: string, trendScore: n
     revenue_annual: num(audit.fundamentals?.revenueAnnual),
     net_income_annual: num(audit.fundamentals?.netIncomeAnnual),
     shares_outstanding: num(audit.fundamentals?.sharesOutstanding),
-    shares_change_pct_1y: num(audit.fundamentals?.sharesChangePct1y),
+    shares_change_pct_1y: dilution(audit.fundamentals?.sharesChangePct1y),
     runway_quarters: num(audit.fundamentals?.runwayQuarters),
     insider_buys: buys,
     insider_sells: sells,

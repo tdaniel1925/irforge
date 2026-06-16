@@ -81,7 +81,7 @@ export default function PortfolioXray({
               <div className="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-5">
                 <Stat label="Dilution 1y" value={fmtPct(h.dilutionPct1y)} />
                 <Stat label="Runway" value={fmtRunway(h.runwayQuarters)} />
-                <Stat label="Short %" value={fmtNum(h.shortPct, "%")} />
+                <Stat label="Short-vol %" value={fmtNum(h.shortPct, "%")} />
                 <Stat label="Insider net" value={fmtNum(h.insiderNet)} />
                 <Stat label="Volume vs avg" value={fmtNum(h.volumeRatio, "x")} />
               </div>

@@ -5,7 +5,7 @@ import type { CompanyStatRow } from "./companyStats";
 // rows for a member's watched tickers.
 //
 // COMPLIANCE: This is a FACTS x-ray, not advice. It surfaces only neutral public
-// figures (dilution, runway, short interest, insider net, volume) and neutral
+// figures (dilution, runway, short-volume %, insider net, volume) and neutral
 // fact flags ("share count +40% in 1y"). It does NOT score, rank, or judge any
 // holding as best/worst/risky, and never says reduce/trim/sell. "Here's what the
 // filings say" — research, not recommendations.
@@ -15,7 +15,10 @@ import type { CompanyStatRow } from "./companyStats";
 // thresholds for "is this figure notable enough to call out", NOT risk verdicts.
 const DILUTION_FLAG_PCT = 20;   // share count up >20% in 1y
 const LOW_RUNWAY_QUARTERS = 4;  // runway under 4 quarters
-const HIGH_SHORT_PCT = 20;      // short interest >20% of float
+// NOTE: short_pct is daily short-VOLUME % (FINRA daily file), NOT short interest as
+// a % of float. Short-volume % routinely runs 40-60%, so only call it out when
+// it's genuinely elevated, and label it precisely.
+const HIGH_SHORT_VOLUME_PCT = 65;
 
 export interface XrayHolding {
   ticker: string;
@@ -49,8 +52,8 @@ function buildFlags(row: CompanyStatRow): string[] {
     const q = Math.round(row.runway_quarters * 10) / 10;
     flags.push(`Cash runway under ${LOW_RUNWAY_QUARTERS} quarters (~${q})`);
   }
-  if (row.short_pct != null && row.short_pct >= HIGH_SHORT_PCT) {
-    flags.push(`Short interest ${Math.round(row.short_pct)}% of float`);
+  if (row.short_pct != null && row.short_pct >= HIGH_SHORT_VOLUME_PCT) {
+    flags.push(`Elevated short-volume: ${Math.round(row.short_pct)}% of daily volume sold short`);
   }
   if (row.insider_net < 0) {
     flags.push(`Net insider selling (${row.insider_net} net Form 4s)`);
@@ -88,7 +91,7 @@ export function buildPortfolioXray(rows: CompanyStatRow[]): PortfolioXray {
     (h) => h.runwayQuarters != null && h.runwayQuarters < LOW_RUNWAY_QUARTERS,
   ).length;
   const highShortCount = holdings.filter(
-    (h) => h.shortPct != null && h.shortPct >= HIGH_SHORT_PCT,
+    (h) => h.shortPct != null && h.shortPct >= HIGH_SHORT_VOLUME_PCT,
   ).length;
 
   // Neutral count-of-facts notes only — no ranking, no verdict.
@@ -101,7 +104,7 @@ export function buildPortfolioXray(rows: CompanyStatRow[]): PortfolioXray {
       notes.push(`${lowRunwayCount} of ${holdings.length} holdings report cash runway under ${LOW_RUNWAY_QUARTERS} quarters.`);
     }
     if (highShortCount > 0) {
-      notes.push(`${highShortCount} of ${holdings.length} holdings carry short interest at or above ${HIGH_SHORT_PCT}% of float.`);
+      notes.push(`${highShortCount} of ${holdings.length} holdings show elevated short-volume (${HIGH_SHORT_VOLUME_PCT}%+ of daily volume sold short — note: short volume, not short interest).`);
     }
     if (notes.length === 0) {
       notes.push("None of your holdings in our snapshot crossed the dilution, runway, or short-interest fact thresholds.");
