@@ -52,6 +52,7 @@ export default function Documents() {
   };
 
   const remove = async (id: string) => {
+    if (!confirm("Remove this document from the vault?")) return;
     setNotice(null);
     try {
       const res = await fetch("/api/documents", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "delete", id }) });

@@ -2,6 +2,11 @@
 
 import { useEffect, useState } from "react";
 
+const SITE = "https://pubcozone.com";
+// Previews should load on localhost/staging; rewrite the prod host to the current origin.
+const toOrigin = (url: string) =>
+  typeof window !== "undefined" ? url.replace(SITE, window.location.origin) : url;
+
 interface Kit {
   ticker: string; name: string; welcome: string; report: string;
   posts: string[]; replySnippets: string[]; emailTemplate: string; irHtmlBlock: string;
@@ -74,7 +79,7 @@ function renderSection(key: string, kit: Kit) {
           <div key={g.type}>
             <p className="mb-1 text-xs font-medium text-app">{g.label}</p>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={g.url} alt={g.label} className="w-full rounded-lg border border-app" />
+            <img src={toOrigin(g.url)} alt={g.label} className="w-full rounded-lg border border-app" />
             <a href={g.url} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs text-emerald-600 hover:underline dark:text-emerald-400">Open / download →</a>
           </div>
         ))}

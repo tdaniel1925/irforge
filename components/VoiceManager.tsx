@@ -49,6 +49,7 @@ export default function VoiceManager({ initial }: { initial: Voice[] }) {
   };
 
   const remove = async (id: string) => {
+    if (!confirm("Delete this voice? This can't be undone.")) return;
     setError("");
     try {
       const res = await fetch("/api/iros/voices", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });

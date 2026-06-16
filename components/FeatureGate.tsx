@@ -22,7 +22,8 @@ export default function FeatureGate({ feature, children }: { feature: Feature; c
         setTier(t);
         setState(tierHasFeature(t, feature) ? "ok" : "locked");
       })
-      .catch(() => setState("ok"));
+      // Fail CLOSED: if we can't confirm access, lock rather than unlock.
+      .catch(() => setState("locked"));
   }, [feature]);
 
   if (state === "loading") return <LoadingState />;

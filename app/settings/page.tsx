@@ -39,6 +39,7 @@ export default function SettingsPage() {
   };
 
   const reset = async () => {
+    if (!confirm("This wipes all demo data. Continue?")) return;
     const err = await act("/api/reset", "POST");
     setForm(null);
     setNotice(err ? { text: err, tone: "error" } : { text: "Demo data restored to its original state.", tone: "success" });
@@ -52,8 +53,8 @@ export default function SettingsPage() {
       <Card className={`mb-6 ${db.company.quietMode ? "border-red-500/40" : "border-emerald-500/20"}`}>
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="font-semibold text-white">Quiet mode</h2>
-            <p className="mt-1 text-sm text-slate-400">
+            <h2 className="font-semibold text-app">Quiet mode</h2>
+            <p className="mt-1 text-sm text-muted">
               One switch suspends ALL publishing — use before earnings, financings, or any material announcement window.
             </p>
           </div>
@@ -64,7 +65,7 @@ export default function SettingsPage() {
       </Card>
 
       <Card className="mb-6">
-        <h2 className="mb-4 font-semibold text-white">Company profile</h2>
+        <h2 className="mb-4 font-semibold text-app">Company profile</h2>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Company name" value={form.name} onChange={(v) => set("name", v)} />
           <Field label="Ticker" value={form.ticker} onChange={(v) => set("ticker", v.toUpperCase())} />
@@ -81,7 +82,7 @@ export default function SettingsPage() {
             value={form.description}
             onChange={(e) => set("description", e.target.value)}
             rows={3}
-            className="w-full rounded-lg border border-slate-700 bg-slate-950 p-3 text-sm text-slate-200 focus:border-emerald-500 focus:outline-none"
+            className="w-full rounded-lg border border-app bg-surface-2 p-3 text-sm text-app focus:border-emerald-500 focus:outline-none"
           />
         </div>
         <div className="mt-4">
@@ -89,14 +90,14 @@ export default function SettingsPage() {
           <input
             value={form.peers.join(", ")}
             onChange={(e) => set("peers", e.target.value.split(",").map((p) => p.trim().toUpperCase()).filter(Boolean))}
-            className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 focus:border-emerald-500 focus:outline-none"
+            className="w-full rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:border-emerald-500 focus:outline-none"
           />
         </div>
       </Card>
 
       <Card className="mb-6">
-        <h2 className="mb-1 font-semibold text-white">Mandatory disclosure language</h2>
-        <p className="mb-4 text-xs text-slate-500">
+        <h2 className="mb-1 font-semibold text-app">Mandatory disclosure language</h2>
+        <p className="mb-4 text-xs text-faint">
           Appended to every published post automatically. The publish path physically cannot skip these.
         </p>
         <Label text="Section 17(b) service-provider disclosure" />
@@ -104,24 +105,24 @@ export default function SettingsPage() {
           value={form.disclosureText}
           onChange={(e) => set("disclosureText", e.target.value)}
           rows={3}
-          className="mb-4 w-full rounded-lg border border-slate-700 bg-slate-950 p-3 text-sm text-slate-200 focus:border-emerald-500 focus:outline-none"
+          className="mb-4 w-full rounded-lg border border-app bg-surface-2 p-3 text-sm text-app focus:border-emerald-500 focus:outline-none"
         />
         <Label text="Forward-looking statements notice" />
         <textarea
           value={form.flsText}
           onChange={(e) => set("flsText", e.target.value)}
           rows={2}
-          className="w-full rounded-lg border border-slate-700 bg-slate-950 p-3 text-sm text-slate-200 focus:border-emerald-500 focus:outline-none"
+          className="w-full rounded-lg border border-app bg-surface-2 p-3 text-sm text-app focus:border-emerald-500 focus:outline-none"
         />
       </Card>
 
       <AddDisclosure onDone={(msg) => setNotice({ text: msg, tone: "success" })} />
 
       <Card className="mb-6">
-        <h2 className="mb-2 font-semibold text-white">Connections</h2>
-        <div className="space-y-2 text-sm text-slate-400">
+        <h2 className="mb-2 font-semibold text-app">Connections</h2>
+        <div className="space-y-2 text-sm text-muted">
           <p>
-            <span className={`mr-2 rounded px-1.5 py-0.5 text-xs font-semibold ${db.hasAyrshare ? "bg-emerald-500/15 text-emerald-300" : "bg-slate-800 text-slate-500"}`}>
+            <span className={`mr-2 rounded px-1.5 py-0.5 text-xs font-semibold ${db.hasAyrshare ? "bg-emerald-500/15 text-emerald-300" : "bg-surface-2 text-faint"}`}>
               {db.hasAyrshare ? "LIVE" : "SIMULATED"}
             </span>
             X (Twitter) posting via Ayrshare —{" "}
@@ -130,7 +131,7 @@ export default function SettingsPage() {
               : "no AYRSHARE_API_KEY set; publishing marks posts as posted locally only."}
           </p>
           <p>
-            <span className={`mr-2 rounded px-1.5 py-0.5 text-xs font-semibold ${db.hasAi ? "bg-emerald-500/15 text-emerald-300" : "bg-slate-800 text-slate-500"}`}>
+            <span className={`mr-2 rounded px-1.5 py-0.5 text-xs font-semibold ${db.hasAi ? "bg-emerald-500/15 text-emerald-300" : "bg-surface-2 text-faint"}`}>
               {db.hasAi ? "LIVE" : "TEMPLATE"}
             </span>
             Claude AI drafting —{" "}
@@ -188,8 +189,8 @@ function AddDisclosure({ onDone }: { onDone: (msg: string) => void }) {
     <Card className="mb-6 border-sky-500/20">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="font-semibold text-white">Add a disclosure</h2>
-          <p className="mt-1 text-sm text-slate-400">
+          <h2 className="font-semibold text-app">Add a disclosure</h2>
+          <p className="mt-1 text-sm text-muted">
             We pull SEC filings automatically. For OTC, SEDAR, or anything not on EDGAR, add it here — paste the text or link it,
             and it flows into your posts, AI answers, and public page like any other filing.
           </p>
@@ -202,24 +203,24 @@ function AddDisclosure({ onDone }: { onDone: (msg: string) => void }) {
           <div className="grid gap-3 sm:grid-cols-3">
             <div>
               <Label text="Type" />
-              <input value={form} onChange={(e) => setForm(e.target.value)} placeholder="8-K, news, MD&A…" className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 focus:border-emerald-500 focus:outline-none" />
+              <input value={form} onChange={(e) => setForm(e.target.value)} placeholder="8-K, news, MD&A…" className="w-full rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:border-emerald-500 focus:outline-none" />
             </div>
             <div className="sm:col-span-2">
               <Label text="Title" />
-              <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Q2 Operations Update" className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 focus:border-emerald-500 focus:outline-none" />
+              <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Q2 Operations Update" className="w-full rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:border-emerald-500 focus:outline-none" />
             </div>
           </div>
           <div>
             <Label text="Link to the disclosure (we'll fetch & read it) — or leave blank and paste below" />
-            <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://…" className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 focus:border-emerald-500 focus:outline-none" />
+            <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://…" className="w-full rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:border-emerald-500 focus:outline-none" />
           </div>
           <div>
             <Label text="Or paste the disclosure text" />
-            <textarea value={text} onChange={(e) => setText(e.target.value)} rows={4} placeholder="Paste the announcement…" className="w-full rounded-lg border border-slate-700 bg-slate-950 p-3 text-sm text-slate-200 focus:border-emerald-500 focus:outline-none" />
+            <textarea value={text} onChange={(e) => setText(e.target.value)} rows={4} placeholder="Paste the announcement…" className="w-full rounded-lg border border-app bg-surface-2 p-3 text-sm text-app focus:border-emerald-500 focus:outline-none" />
           </div>
           <div className="w-48">
             <Label text="Date (optional)" />
-            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 focus:border-emerald-500 focus:outline-none" />
+            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:border-emerald-500 focus:outline-none" />
           </div>
           {err && <p className="text-xs text-red-400">{err}</p>}
           <div className="flex gap-2">
@@ -233,7 +234,7 @@ function AddDisclosure({ onDone }: { onDone: (msg: string) => void }) {
 }
 
 function Label({ text }: { text: string }) {
-  return <label className="mb-1 block text-xs font-medium text-slate-400">{text}</label>;
+  return <label className="mb-1 block text-xs font-medium text-muted">{text}</label>;
 }
 
 function Field({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
@@ -243,7 +244,7 @@ function Field({ label, value, onChange }: { label: string; value: string; onCha
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 focus:border-emerald-500 focus:outline-none"
+        className="w-full rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:border-emerald-500 focus:outline-none"
       />
     </div>
   );

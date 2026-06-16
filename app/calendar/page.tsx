@@ -40,6 +40,7 @@ export default function CalendarPage() {
   };
 
   const remove = async (id: string) => {
+    if (!confirm("Remove this event from your calendar?")) return;
     await fetch(`/api/calendar?id=${id}`, { method: "DELETE" });
     await refresh();
   };

@@ -108,6 +108,7 @@ function Contacts({ contacts, setContacts, companies }: { contacts: Contact[]; s
     } finally { setBusy(false); }
   };
   const del = async (id: string) => {
+    if (!confirm("Delete this contact? This can't be undone.")) return;
     try { await api({ entity: "contact", action: "delete", id }); setContacts((cs) => cs.filter((c) => c.id !== id)); }
     catch (e) { alert(e instanceof Error ? e.message : "Couldn't delete that contact."); }
   };
@@ -171,6 +172,7 @@ function Companies({ companies, setCompanies }: { companies: Company[]; setCompa
     try { const d = await api({ entity: "company", action: "save", data: editing }); setCompanies((cs) => { const ex = cs.some((c) => c.id === d.company.id); return ex ? cs.map((c) => c.id === d.company.id ? d.company : c) : [d.company, ...cs]; }); setEditing(null); } finally { setBusy(false); }
   };
   const del = async (id: string) => {
+    if (!confirm("Delete this company? This can't be undone.")) return;
     try { await api({ entity: "company", action: "delete", id }); setCompanies((cs) => cs.filter((c) => c.id !== id)); }
     catch (e) { alert(e instanceof Error ? e.message : "Couldn't delete that company."); }
   };
@@ -276,6 +278,7 @@ function Tasks({ tasks, setTasks, contacts }: { tasks: Task[]; setTasks: (f: (t:
   };
   const toggle = async (t: Task) => { const d = await api({ entity: "task", action: "save", data: { ...t, done: !t.done } }); setTasks((ts) => ts.map((x) => x.id === t.id ? d.task : x)); };
   const del = async (id: string) => {
+    if (!confirm("Delete this task?")) return;
     try { await api({ entity: "task", action: "delete", id }); setTasks((ts) => ts.filter((t) => t.id !== id)); }
     catch (e) { alert(e instanceof Error ? e.message : "Couldn't delete that task."); }
   };

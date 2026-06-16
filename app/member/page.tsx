@@ -22,14 +22,14 @@ export default async function MemberHome() {
         )}
         <div>
           <h1 className="text-2xl font-bold text-app">{me.member.displayName || me.member.handle}</h1>
-          <p className="text-sm text-muted">@{me.member.handle} · {me.member.plan === "member_plus" ? "Member+" : "Free member"}</p>
+          <p className="text-sm text-muted">@{me.member.handle} · {me.member.plan === "member_plus" ? "Investor+" : "Free member"}</p>
         </div>
       </div>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-3">
         <Card label="Watching" value={watches.length} href="/member/watchlist" />
         <Card label="Posts" value={posts.length >= 5 ? "5+" : posts.length} href="/member/activity" />
-        <Card label="Plan" value={me.member.plan === "member_plus" ? "Member+" : "Free"} href="/member/billing" />
+        <Card label="Plan" value={me.member.plan === "member_plus" ? "Investor+" : "Free"} href="/member/billing" />
       </div>
 
       <Section title="Your watchlist" href="/member/watchlist" cta="Manage">
