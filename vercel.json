@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/watch-alerts",
       "schedule": "0 */2 * * *"
+    },
+    {
+      "path": "/api/cron/snapshot-stats",
+      "schedule": "0 9 * * 1-5"
     }
   ]
 }
