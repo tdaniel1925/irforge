@@ -5,13 +5,16 @@ import MemberBillingActions from "@/components/MemberBillingActions";
 
 export const dynamic = "force-dynamic";
 
-export default async function MemberBilling() {
+export default async function MemberBilling({ searchParams }: { searchParams: { checkout?: string } }) {
   const me = await getMyMember();
   if (!me) redirect("/login");
   const current = me.member.plan;
+  const checkout = searchParams.checkout;
 
   return (
     <div className="mx-auto max-w-3xl">
+      {checkout === "success" && <p className="mb-4 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-700 dark:text-emerald-300">🎉 You&apos;re subscribed! Your plan updates within a few seconds.</p>}
+      {checkout === "cancel" && <p className="mb-4 rounded-lg border border-app bg-surface-2 px-4 py-3 text-sm text-muted">Checkout canceled — no charge was made.</p>}
       <h1 className="text-2xl font-bold text-app">Membership</h1>
       <p className="mt-1 text-sm text-muted">
         You&apos;re on the{" "}

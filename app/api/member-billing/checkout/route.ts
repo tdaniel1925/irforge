@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { getStripe, MEMBER_PLANS, type MemberPlan } from "@/lib/billing";
 import { getMyMember } from "@/lib/members";
-import { createServiceClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -27,8 +26,8 @@ export async function POST(req: Request) {
     metadata: { memberId: me.id, plan },
   });
 
-  const svc = createServiceClient();
-  await svc.from("members").update({ subscription_status: "trialing" }).eq("id", me.id);
+  // Status flips to 'active' only after the webhook confirms payment — no
+  // premature 'trialing' write (it would strand abandoned checkouts).
 
   return NextResponse.json({ url: session.url });
 }

@@ -49,7 +49,7 @@ export default async function WelcomePage({ params }: Props) {
         <Link href={`/t/${ticker}`} className="rounded-xl bg-emerald-600 px-6 py-3 text-base font-bold text-white shadow-lg shadow-emerald-500/25 transition hover:bg-emerald-500">
           See the real ${ticker} page →
         </Link>
-        <Link href={`/t/${ticker}#ask`} className="rounded-xl border border-app px-6 py-3 text-base font-medium text-app transition hover:bg-app-hover">
+        <Link href={`/t/${ticker}`} className="rounded-xl border border-app px-6 py-3 text-base font-medium text-app transition hover:bg-app-hover">
           Ask the company
         </Link>
       </div>

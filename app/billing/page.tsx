@@ -20,6 +20,7 @@ export default function Billing() {
   useEffect(() => {
     const p = new URLSearchParams(window.location.search);
     if (p.get("checkout") === "cancel") setNotice({ text: "Checkout canceled — no charge was made.", tone: "info" });
+    else if (p.get("checkout") === "success") setNotice({ text: "🎉 You're subscribed! Your plan updates within a few seconds.", tone: "success" });
   }, []);
 
   if (error) return <ErrorBanner message={error} />;

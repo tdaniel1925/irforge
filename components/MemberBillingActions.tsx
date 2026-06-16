@@ -39,9 +39,12 @@ export default function MemberBillingActions({
     return isCurrent ? (
       <span className="block rounded-lg border border-app px-4 py-2 text-center text-sm text-muted">Your current plan</span>
     ) : (
-      <button onClick={() => go("/api/member-billing/portal")} disabled={busy} className="w-full rounded-lg border border-app px-4 py-2 text-sm font-medium text-app transition hover:bg-app-hover disabled:opacity-50">
-        {busy ? "…" : "Downgrade in portal"}
-      </button>
+      <>
+        <button onClick={() => go("/api/member-billing/portal")} disabled={busy} className="w-full rounded-lg border border-app px-4 py-2 text-sm font-medium text-app transition hover:bg-app-hover disabled:opacity-50">
+          {busy ? "…" : "Downgrade in portal"}
+        </button>
+        {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
+      </>
     );
   }
 

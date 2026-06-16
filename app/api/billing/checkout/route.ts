@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { getStripe, TIERS, type Tier } from "@/lib/billing";
 import { getMyCompany } from "@/lib/supabase/store";
-import { createServiceClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -21,15 +20,15 @@ export async function POST(req: Request) {
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
     line_items: [{ price: t.priceId, quantity: 1 }],
-    success_url: `${origin}/app?checkout=success`,
+    success_url: `${origin}/billing?checkout=success`,
     cancel_url: `${origin}/billing?checkout=cancel`,
     client_reference_id: mine.id,
     metadata: { companyId: mine.id, tier },
   });
 
-  // Stash the session intent so the webhook can match it back.
-  const svc = createServiceClient();
-  await svc.from("companies").update({ subscription_status: "trialing" }).eq("id", mine.id);
+  // NOTE: we do NOT set a status here — the webhook flips it to 'active' only
+  // after payment succeeds. Setting 'trialing' pre-payment leaves abandoned
+  // checkouts stuck. (Webhook: checkout.session.completed.)
 
   return NextResponse.json({ url: session.url });
 }
