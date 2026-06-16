@@ -88,16 +88,27 @@ export function FlagList({ flags }: { flags: ComplianceFlag[] }) {
 }
 
 export function Thread({ tweets, handle }: { tweets: string[]; handle: string }) {
+  const isThread = tweets.length > 1;
   return (
-    <div className="mt-3 space-y-2">
-      {tweets.map((t, i) => (
-        <div key={i} className="rounded-lg border border-slate-800 bg-slate-950/70 p-3">
-          <div className="mb-1 text-xs font-medium text-slate-500">
-            {handle} · {i + 1}/{tweets.length}
+    <div className="mt-3 overflow-hidden rounded-xl border border-app bg-surface-2/50">
+      <div className="flex items-center justify-between border-b border-app px-4 py-2">
+        <span className="text-xs font-medium text-muted">{handle || "Your X account"}</span>
+        <span className="rounded-full bg-app-hover px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-faint">
+          {isThread ? `1 X thread · ${tweets.length} parts` : "1 post"}
+        </span>
+      </div>
+      <div className="space-y-0 px-4 py-3">
+        {tweets.map((t, i) => (
+          <div key={i} className="relative pl-6">
+            {/* connector rail so the parts read as ONE thread, not separate posts */}
+            <span className="absolute left-2 top-1 text-[11px] font-semibold text-faint">{isThread ? i + 1 : ""}</span>
+            {isThread && i < tweets.length - 1 && (
+              <span className="absolute left-[11px] top-5 bottom-0 w-px bg-app" aria-hidden />
+            )}
+            <p className={`whitespace-pre-wrap text-sm leading-relaxed text-app ${i < tweets.length - 1 ? "pb-4" : ""}`}>{t}</p>
           </div>
-          <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-200">{t}</p>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }

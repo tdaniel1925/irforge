@@ -37,13 +37,27 @@ const SYSTEM_PROMPT = (c: Company) =>
   `You write X (Twitter) threads for ${c.name} ($${c.ticker}), a public company. ` +
   `STRICT RULES: Use ONLY facts provided. Never predict stock price, never use words like "undervalued", ` +
   `never give investment advice, never guarantee outcomes. Plain, factual, confident tone. ` +
-  `Cite the SEC filing as the source. Return ONLY the tweets, one per line, separated by a blank line, max 270 chars each, 3-4 tweets.`;
+  `Cite the SEC filing as the source. Return ONLY the tweets themselves, separated by a blank line, max 270 chars each, 3-4 tweets. ` +
+  `Do NOT include any preamble, intro, or label such as "Here is the thread:" — output the first tweet directly as the first line.`;
+
+// Models sometimes prefix the output with a conversational preamble ("Here is the
+// thread:", "Sure! Here are the tweets:") or a trailing sign-off. Those are not
+// tweets — strip them so they never become tweet 1/N.
+const PREAMBLE_RE = /^(here'?s?( is| are)?|sure|here you go|of course|certainly|below( is| are)?|the (thread|tweets?|posts?)|i'?ve (written|drafted)|happy to help)\b.*?(thread|tweets?|posts?|:)\s*$/i;
+function isPreambleLine(t: string): boolean {
+  const s = t.trim();
+  if (!s) return true;
+  // A short line that ends in a colon and contains no real content (e.g. "Here is the thread:")
+  if (PREAMBLE_RE.test(s)) return true;
+  if (s.length <= 40 && /:$/.test(s) && /\b(thread|tweets?|posts?|here)\b/i.test(s)) return true;
+  return false;
+}
 
 function parseTweets(text: string): string[] {
   return text
     .split(/\n\s*\n/)
     .map((t) => t.replace(/^\d+[\/.).]\s*/, "").trim())
-    .filter((t) => t.length > 0)
+    .filter((t) => t.length > 0 && !isPreambleLine(t))
     .slice(0, 5);
 }
 
