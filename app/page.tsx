@@ -19,6 +19,7 @@ export default function Landing() {
       <Compliance />
       <Comparison />
       <PlatformComparison />
+      <BothSides />
       <WhyClaim />
       <Stats />
       <Pricing />
@@ -474,6 +475,125 @@ function PlatformCell({ value, highlighted = false }: { value: string; highlight
   }
   // Plain text values (Minimal / Ads / Heavy ads + paywall)
   return <span className={`text-xs ${highlighted ? "font-semibold text-app" : "text-muted"}`}>{label || kind}</span>;
+}
+
+/* ----------------------- Both Sides + Sponsored Brief -------------------- */
+function BothSides() {
+  const lenses = [
+    { icon: "💵", name: "Value", blurb: "What the balance sheet and cash flows actually justify." },
+    { icon: "🚀", name: "Growth Optimist", blurb: "The credible upside if the plan executes." },
+    { icon: "🧐", name: "Skeptic", blurb: "The bear case, the risks, and what could break." },
+    { icon: "📖", name: "Explainer", blurb: "Plain-English context, no spin, no jargon." },
+  ];
+  return (
+    <section className="border-y border-app bg-surface-2/40">
+      <div className="mx-auto max-w-6xl px-6 py-20">
+        <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-app bg-surface px-3 py-1 text-xs font-medium text-muted">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> New on every company page
+        </div>
+        <h2 className="text-3xl font-bold tracking-tight text-app sm:text-4xl">
+          Both sides of every stock. <span className="text-emerald-600 dark:text-emerald-400">Instantly. Cited.</span>
+        </h2>
+        <p className="mt-3 max-w-2xl text-muted">
+          Message boards give you one-sided, anonymous pumping and bashing. PubcoZone gives you a fair, multi-angle read —
+          the bull case <em>and</em> the bear case, every claim grounded in the company&apos;s real SEC filings. And the part
+          that matters most: the independent panel is free, and <span className="font-semibold text-app">you can&apos;t pay for a good rating.</span>
+        </p>
+
+        <div className="mt-10 grid gap-6 lg:grid-cols-2">
+          {/* LEFT — Free, independent Both Sides panel */}
+          <div className="flex flex-col rounded-3xl border border-emerald-500/30 bg-emerald-500/5 p-6 sm:p-8">
+            <div className="flex items-center gap-2">
+              <span className="rounded-full bg-emerald-600 px-2.5 py-1 text-xs font-bold text-white">FREE · INDEPENDENT</span>
+              <span className="text-xs font-medium text-faint">On every PubcoZone company page</span>
+            </div>
+            <h3 className="mt-4 text-xl font-bold text-app">The &ldquo;Both Sides&rdquo; AI Research Panel</h3>
+            <p className="mt-2 text-sm leading-relaxed text-muted">
+              A panel of clearly-labeled AI lenses gives investors a fair, multi-angle read on the stock — grounded in the
+              real filings, every one badged <span className="font-semibold text-app">🤖 AI</span>.
+            </p>
+
+            <div className="mt-5 flex flex-wrap gap-2">
+              <span className="rounded-full border border-app bg-surface px-3 py-1.5 text-xs font-medium text-app">💵 Value</span>
+              <span className="rounded-full border border-app bg-surface px-3 py-1.5 text-xs font-medium text-app">🚀 Growth</span>
+              <span className="rounded-full border border-app bg-surface px-3 py-1.5 text-xs font-medium text-app">🧐 Skeptic</span>
+              <span className="rounded-full border border-app bg-surface px-3 py-1.5 text-xs font-medium text-app">📖 Explainer</span>
+            </div>
+
+            <ul className="mt-6 space-y-3">
+              {lenses.map((l) => (
+                <li key={l.name} className="flex items-start gap-3 rounded-xl border border-app bg-surface p-3">
+                  <span className="text-lg leading-none">{l.icon}</span>
+                  <div>
+                    <p className="flex items-center gap-2 text-sm font-semibold text-app">
+                      {l.name}
+                      <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">🤖 AI</span>
+                    </p>
+                    <p className="mt-0.5 text-xs leading-relaxed text-muted">{l.blurb}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+
+            <p className="mt-6 text-sm font-medium text-app">
+              The bull case AND the bear case, fairly — and <span className="text-emerald-600 dark:text-emerald-400">you can&apos;t pay for a good rating.</span>
+            </p>
+            <p className="mt-1 text-xs text-faint">Free, independent, and cited to the filings. Always.</p>
+          </div>
+
+          {/* RIGHT — Paid, disclosed Sponsored Research Brief */}
+          <div className="flex flex-col rounded-3xl border border-app bg-surface p-6 sm:p-8">
+            <div className="flex items-center gap-2">
+              <span className="rounded-full bg-surface-2 px-2.5 py-1 text-xs font-bold text-muted">PAID · DISCLOSED</span>
+              <span className="text-xs font-medium text-faint">Ordered by the company, about itself</span>
+            </div>
+            <div className="mt-4 flex items-baseline gap-2">
+              <h3 className="text-xl font-bold text-app">Sponsored Research Brief</h3>
+            </div>
+            <p className="mt-1">
+              <span className="text-3xl font-bold text-app">$3,500</span>
+              <span className="ml-2 text-sm text-faint">one-time</span>
+            </p>
+            <p className="mt-3 text-sm leading-relaxed text-muted">
+              Companies can order a thorough, AI-written, filing-based research brief about themselves to publish to their feed —
+              clearly <span className="font-semibold text-app">disclosed as company-sponsored</span>, the way a sell-side initiation
+              report carries its disclosure.
+            </p>
+
+            <div className="mt-5 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
+              <p className="text-sm font-semibold text-app">You pay us to write it, not to rate it.</p>
+              <p className="mt-1 text-xs leading-relaxed text-muted">
+                Factual, filing-based, and it includes the risks. It carries a visible sponsorship disclosure and is kept
+                clearly separate from the free, independent Both Sides panel — which it can never influence.
+              </p>
+            </div>
+
+            <ul className="mt-5 space-y-2.5">
+              {[
+                "AI-written from your SEC filings — factual, not promotional",
+                "Risk section included, like a real initiation report",
+                "Visible “company-sponsored” disclosure on every brief",
+                "Separate from the independent panel — it can't buy a rating",
+              ].map((f) => (
+                <li key={f} className="flex items-start gap-2 text-sm text-muted">
+                  <span className="mt-0.5 text-emerald-600 dark:text-emerald-400">✓</span> {f}
+                </li>
+              ))}
+            </ul>
+
+            <p className="mt-auto pt-6 text-xs text-faint">
+              A fraction of the $15,000+ a traditional sponsored research report costs.
+            </p>
+          </div>
+        </div>
+
+        <p className="mx-auto mt-10 max-w-3xl text-center text-sm text-faint">
+          Two clearly separate things: the <span className="font-medium text-muted">free, independent panel</span> you can&apos;t buy,
+          and a <span className="font-medium text-muted">disclosed, factual brief</span> a company pays to have written. That line is the whole point.
+        </p>
+      </div>
+    </section>
+  );
 }
 
 /* ----------------------- Why claim your company page --------------------- */

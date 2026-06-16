@@ -12,7 +12,7 @@ import StockChart from "@/components/StockChart";
 import WatchButton from "@/components/WatchButton";
 import MessageBoard from "@/components/MessageBoard";
 import TickerTabs from "@/components/TickerTabs";
-import { generateAnalystContent } from "@/lib/ai";
+import { generateAnalystContent, generateResearchPanel } from "@/lib/ai";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -96,9 +96,10 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
 
   // Each of these can fail in production (AI rate limits, Supabase/file access on a
   // read-only host) — none should take the whole page down. Degrade per-call.
-  const [explainerR, analystR, viewCountR] = await Promise.allSettled([
+  const [explainerR, analystR, panelR, viewCountR] = await Promise.allSettled([
     generateTickerExplainer(audit),
     generateAnalystContent(audit),
+    generateResearchPanel(audit),
     bumpViews(ticker),
   ]);
   const explainer = explainerR.status === "fulfilled"
@@ -107,6 +108,7 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
   const analyst = analystR.status === "fulfilled"
     ? analystR.value
     : { bull: "", bear: "", faq: [] as { q: string; a: string }[] };
+  const panel = panelR.status === "fulfilled" ? panelR.value : { lenses: [], engine: "template" as const };
   const viewCount = viewCountR.status === "fulfilled" ? viewCountR.value : 0;
 
   let db: ReturnType<typeof getDb> | null = null;
@@ -275,6 +277,32 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
       <Section title="Overview" badge={explainer.engine === "claude" ? "AI-written from observed facts" : "generated from observed facts"}>
         <p className="text-sm leading-relaxed text-slate-300">{explainer.text}</p>
       </Section>
+
+      {/* Both Sides — the AI Research Panel: labeled lenses, never fake people */}
+      {panel.lenses.length > 0 && (
+        <Section title="Both Sides" badge="🤖 AI research panel · transparent perspectives, not real investors · not investment advice">
+          <p className="mb-4 text-sm text-slate-400">
+            Instead of anonymous pumpers and bashers, here&apos;s a fair, multi-angle read on ${audit.ticker} — each one a
+            clearly-labeled AI lens, grounded in the public filings. <span className="text-slate-300">You can&apos;t pay for a good rating.</span>
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {panel.lenses.map((l) => (
+              <div key={l.key} className="rounded-lg border border-slate-800 bg-slate-950/40 p-4">
+                <div className="mb-1.5 flex items-center gap-2">
+                  <span className="text-base">{l.icon}</span>
+                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-300">{l.name}</span>
+                  <span className="ml-auto rounded bg-slate-800 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-slate-400">🤖 AI</span>
+                </div>
+                <p className="text-sm leading-relaxed text-slate-300">{l.take}</p>
+              </div>
+            ))}
+          </div>
+          <p className="mt-3 text-[11px] text-slate-600">
+            These are AI-generated analytical perspectives drawn from public data — not real investors, not the company&apos;s view,
+            and not investment advice. Verify everything against the company&apos;s SEC filings.
+          </p>
+        </Section>
+      )}
 
       {/* AI Analyst — labeled, balanced bull/bear from public data */}
       {(analyst.bull || analyst.bear) && (

@@ -553,6 +553,130 @@ export async function generateAnalystContent(audit: TA): Promise<AnalystContent>
   };
 }
 
+// ── Sponsored Research Brief ──
+// A company PAYS for production of a thorough, factual, filing-based profile of
+// THEIR OWN company. It is clearly DISCLOSED as company-sponsored (like a sell-
+// side initiation carries a disclosure). The company pays us to WRITE it, not to
+// RATE it — so: no buy/sell, no price targets, no valuation calls, no
+// predictions. Just a deep, balanced, public-record write-up. Disclosure is
+// baked in by construction.
+export interface SponsoredBrief {
+  title: string;
+  markdown: string;        // the brief body
+  disclosure: string;      // the mandatory sponsorship disclosure
+  engine: "claude" | "template";
+}
+export async function generateSponsoredBrief(company: Company, audit: TA): Promise<SponsoredBrief> {
+  const disclosure = `This research brief was commissioned and paid for by ${company.name} ($${company.ticker}) and prepared by PubcoZone from the company's public SEC filings and public data. It is a company-sponsored profile, not independent research or a rating, and it is not investment advice or a recommendation to buy or sell any security. Verify all figures against the company's filings at sec.gov.`;
+  const facts = [
+    audit.companyName ? `${audit.companyName} ($${audit.ticker})` : `$${audit.ticker}`,
+    audit.profile?.industry ? `Industry: ${audit.profile.industry}` : "",
+    audit.profile?.hq ? `HQ: ${audit.profile.hq}` : "",
+    typeof audit.market.price === "number" ? `Price ~$${audit.market.price}` : "",
+    audit.filings.last12mo ? `${audit.filings.last12mo} SEC filings in 12mo; latest ${audit.filings.lastForm} ${audit.filings.lastFilingDate}` : "",
+    typeof audit.fundamentals?.cash === "number" ? `Cash $${(audit.fundamentals.cash / 1e6).toFixed(1)}M` : "",
+    typeof audit.fundamentals?.revenueAnnual === "number" ? `Revenue $${(audit.fundamentals.revenueAnnual / 1e6).toFixed(1)}M` : "",
+    typeof audit.fundamentals?.runwayQuarters === "number" ? `~${audit.fundamentals.runwayQuarters.toFixed(1)} quarters runway` : "",
+    audit.catalysts?.trials ? `${audit.catalysts.trials.total} clinical trials` : "",
+    company.description ? `Company description: ${company.description}` : "",
+  ].filter(Boolean).join(". ");
+
+  const ai = await claude(
+    `You write a thorough, factual COMPANY-SPONSORED research brief about a public company, prepared from its public filings. ` +
+      `This is paid content the company will publish, so it must be accurate, balanced, and squarely compliant: NO price targets, NO buy/sell/hold, NO "undervalued", NO predictions or guidance, NO forward-looking promises. Present the business, the financials, the recent filings, the catalysts, AND the risks (a sponsored brief that hides risk is misleading — include a real risk section). ` +
+      `Use only the facts provided + general public context; point to EDGAR for specifics. Return ONLY JSON: {"title":"...","markdown":"a structured brief in markdown with ## sections: Overview, Business, Financial Snapshot, Recent Filings, Catalysts, Risks"}.`,
+    `Company data: ${facts}`
+  );
+  if (ai) {
+    try {
+      const m = ai.match(/\{[\s\S]*\}/);
+      if (m) {
+        const v = JSON.parse(m[0]);
+        if (v.markdown) return { title: String(v.title ?? `${company.name} — Company Brief`).slice(0, 160), markdown: String(v.markdown).slice(0, 8000), disclosure, engine: "claude" };
+      }
+    } catch {
+      /* fall through */
+    }
+  }
+  return {
+    engine: "template",
+    title: `${company.name} ($${company.ticker}) — Company Brief`,
+    markdown: `## Overview\n${company.name} is an SEC-registered public company${company.sector ? ` in ${company.sector}` : ""}.\n\n## Recent Filings\nReview the latest filings on EDGAR for current figures.\n\n## Risks\nAs with any company, review cash position, dilution, and execution risk in the filings before drawing conclusions.`,
+    disclosure,
+  };
+}
+
+// ── AI Research Panel ("Both Sides") ──
+// A panel of clearly-labeled AI lenses (NOT human personas) that each give a
+// grounded take on a stock from a stated analytical angle. Transparency is the
+// point: every entry is badged 🤖 AI. Strict compliance: no price predictions,
+// no buy/sell, no made-up non-public info — opinions grounded in the public record.
+export type PanelLensKey = "value" | "growth" | "skeptic" | "explainer";
+export interface PanelLens {
+  key: PanelLensKey;
+  name: string;     // e.g. "The Value Lens"
+  icon: string;
+  take: string;     // the lens's analysis
+}
+export interface ResearchPanel {
+  lenses: PanelLens[];
+  engine: "claude" | "template";
+}
+
+const PANEL_LENSES: { key: PanelLensKey; name: string; icon: string; angle: string }[] = [
+  { key: "value", name: "The Value Lens", icon: "💵", angle: "fundamentals — cash, runway, dilution, revenue, and valuation relative to the filings" },
+  { key: "growth", name: "The Growth Optimist", icon: "🚀", angle: "the bull case — catalysts, momentum, and upside, but ONLY grounded in real news/filings, never hype" },
+  { key: "skeptic", name: "The Skeptic", icon: "🧐", angle: "the fair bear case — risks, red flags, dilution, short interest, and hard questions. Be candid even if unflattering" },
+  { key: "explainer", name: "The Explainer", icon: "📖", angle: "plain-English context for a first-time investor — what the company does and what the latest filing means, no jargon" },
+];
+
+export async function generateResearchPanel(audit: TA): Promise<ResearchPanel> {
+  const facts = [
+    audit.companyName ? `${audit.companyName} ($${audit.ticker})` : `$${audit.ticker}`,
+    audit.profile?.industry ? `Industry: ${audit.profile.industry}` : "",
+    typeof audit.market.price === "number" ? `Price ~$${audit.market.price}${typeof audit.market.changePct3mo === "number" ? `, ${audit.market.changePct3mo.toFixed(1)}% over 3mo` : ""}` : "",
+    audit.filings.last12mo ? `${audit.filings.last12mo} SEC filings in 12mo; latest ${audit.filings.lastForm} ${audit.filings.lastFilingDate}` : "no recent SEC filings found",
+    typeof audit.fundamentals?.cash === "number" ? `Cash $${(audit.fundamentals.cash / 1e6).toFixed(1)}M` : "",
+    typeof audit.fundamentals?.runwayQuarters === "number" ? `~${audit.fundamentals.runwayQuarters.toFixed(1)} quarters runway` : "",
+    typeof audit.fundamentals?.sharesChangePct1y === "number" ? `share count ${audit.fundamentals.sharesChangePct1y >= 0 ? "+" : ""}${audit.fundamentals.sharesChangePct1y.toFixed(0)}% in 1yr` : "",
+    audit.shortData ? `${audit.shortData.shortPct.toFixed(0)}% of daily volume short` : "",
+    audit.insiders ? `${audit.insiders.buys} insider buys / ${audit.insiders.sells} sells (180d)` : "",
+    audit.news.articles30d ? `${audit.news.articles30d} news articles in 30d` : "",
+  ].filter(Boolean).join(". ");
+
+  const ai = await claude(
+    `You are a panel of distinct, CLEARLY-LABELED AI research lenses analyzing a public stock for retail investors. You are NOT pretending to be people — you are transparent AI perspectives. ` +
+      `Each lens argues from its angle, fairly and measured, using ONLY the data provided. STRICT RULES for every lens: no stock-price predictions, no "buy"/"sell"/"undervalued"/"overvalued", no investment advice, no invented or non-public information. Ground every claim in the provided facts and point to EDGAR for specifics. The Skeptic must be genuinely candid about risks even if unflattering. ` +
+      `Return ONLY JSON: {"value":"2-3 sentences","growth":"2-3 sentences","skeptic":"2-3 sentences","explainer":"2-3 sentences"}.`,
+    `Company data: ${facts}`
+  );
+  if (ai) {
+    try {
+      const m = ai.match(/\{[\s\S]*\}/);
+      if (m) {
+        const v = JSON.parse(m[0]);
+        const lenses = PANEL_LENSES
+          .filter((l) => v[l.key])
+          .map((l) => ({ key: l.key, name: l.name, icon: l.icon, take: String(v[l.key]).slice(0, 600) }));
+        if (lenses.length) return { lenses, engine: "claude" };
+      }
+    } catch {
+      /* fall through */
+    }
+  }
+  // Deterministic fallback (no AI key) — neutral, factual, still labeled.
+  const co = audit.companyName ?? `$${audit.ticker}`;
+  return {
+    engine: "template",
+    lenses: [
+      { key: "value", name: "The Value Lens", icon: "💵", take: `${co}'s fundamentals are in its SEC filings — review cash, runway, and share count on EDGAR for the current picture.` },
+      { key: "growth", name: "The Growth Optimist", icon: "🚀", take: `Any upside case for ${co} should be checked against its latest filings and news — confirm catalysts in the public record.` },
+      { key: "skeptic", name: "The Skeptic", icon: "🧐", take: `Key risks for any small-cap include cash runway, dilution, and execution. Verify the latest figures before drawing conclusions.` },
+      { key: "explainer", name: "The Explainer", icon: "📖", take: `${co} is an SEC-registered company. Start with its most recent filing on EDGAR to understand what it does and how it's performing.` },
+    ],
+  };
+}
+
 export async function generateReplyDraft(
   mention: Mention,
   company: Company,

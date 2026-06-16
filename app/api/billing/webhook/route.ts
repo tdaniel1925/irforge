@@ -24,7 +24,14 @@ export async function POST(req: Request) {
 
   switch (event.type) {
     case "checkout.session.completed": {
-      const s = event.data.object as { client_reference_id?: string; customer?: string; subscription?: string; metadata?: { tier?: string } };
+      const s = event.data.object as { id?: string; client_reference_id?: string; customer?: string; subscription?: string; metadata?: { tier?: string; kind?: string } };
+      // One-time Sponsored Brief purchase → generate the brief, don't touch the subscription.
+      if (s.metadata?.kind === "sponsored_brief" && s.id) {
+        const { fulfillBriefBySession } = await import("@/lib/briefs");
+        await fulfillBriefBySession(s.id);
+        break;
+      }
+      // Subscription checkout → activate the company's plan.
       if (s.client_reference_id) {
         await svc.from("companies").update({
           stripe_customer_id: s.customer ?? null,
