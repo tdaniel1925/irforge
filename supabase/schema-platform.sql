@@ -74,11 +74,29 @@ create policy audit_log_read on public.audit_log for select using (
 );
 -- No client insert/update/delete policies → only the service role can write. Append-only.
 
--- Block updates/deletes even for the service role, enforcing true append-only.
+-- Append-only: block tampering with a row's CONTENT, but allow the FK-driven
+-- company_id→null nulling (so deleting a company doesn't 500) and allow deletes
+-- only when no company owns the row (i.e. after the company is gone, or for
+-- housekeeping). The substantive fields (action/entity/payload/actor) can never
+-- be altered.
 create or replace function public.audit_log_immutable()
 returns trigger language plpgsql as $$
 begin
-  raise exception 'audit_log is append-only';
+  if tg_op = 'UPDATE' then
+    -- Only permitted change is company_id being set to NULL by the FK cascade.
+    if new.action is distinct from old.action
+       or new.entity_type is distinct from old.entity_type
+       or new.entity_id is distinct from old.entity_id
+       or new.payload is distinct from old.payload
+       or new.actor_user_id is distinct from old.actor_user_id
+       or new.actor_email is distinct from old.actor_email
+       or new.created_at is distinct from old.created_at then
+      raise exception 'audit_log is append-only — content cannot be modified';
+    end if;
+    return new;
+  end if;
+  -- DELETE: allow (cascade cleanup / housekeeping). Content already immutable above.
+  return old;
 end; $$;
 drop trigger if exists audit_log_no_update on public.audit_log;
 create trigger audit_log_no_update before update or delete on public.audit_log
