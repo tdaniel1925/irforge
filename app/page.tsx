@@ -71,7 +71,7 @@ function Hero() {
           <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted">
             For years, message boards like InvestorsHub and StockTwits let anonymous pumpers and short-side bashers
             write your story — and you were legally gagged from answering. PubcoZone is your <span className="font-semibold text-app">entire IR program in one platform</span>:
-            AI turns your filings into compliant posts, a Reg FD check and counsel sign-off keep you safe, a built-in CRM
+            AI turns your filings into ready-to-post updates, a Reg FD check and counsel sign-off put the decision in your hands, a built-in CRM
             tracks every investor, and you answer the board on the record — all approved by you with one tap.
           </p>
           <TickerLookup />
@@ -182,6 +182,7 @@ function Contrast({ bad, good }: { bad: string; good: string }) {
 /* --------------------------- For investors ------------------------------- */
 function ForInvestors() {
   const points = [
+    { title: "You control what you see", body: "Filter out the trash and the noise. Mute the hype, hide the unverified, and show only what's labeled factual — your feed, your rules. The board works for you, not for whoever's loudest." },
     { title: "No pump-and-dump land", body: "Hype and coordinated ramping get AI-flagged before they spread. You see what's labeled \"factual\" vs. \"hype\" vs. \"unverified\" — so you're not the exit liquidity for someone else's scheme." },
     { title: "Answers from the actual company", body: "Ask a question and get a verified, filing-cited answer from the company itself — not a guess from an anonymous account. The truth, on the record, where you can check it." },
     { title: "Everything in one place", body: "Price, SEC filings, cash & runway, insider buying, short interest, and news — the research that takes an hour across six tabs, on one page." },
@@ -193,10 +194,10 @@ function ForInvestors() {
       <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-app bg-surface px-3 py-1 text-xs font-medium text-muted">
         <span className="h-1.5 w-1.5 rounded-full bg-sky-500" /> For investors
       </div>
-      <h2 className="text-3xl font-bold tracking-tight text-app">A straight place to research a stock — finally.</h2>
+      <h2 className="text-3xl font-bold tracking-tight text-app">Finally — a board where you control what you see.</h2>
       <p className="mt-3 max-w-2xl text-muted">
-        PubcoZone isn&apos;t another message board where anonymous accounts pump, dump, and bash. It&apos;s built so the
-        signal beats the noise, the company is on the record, and you can actually trust what you&apos;re reading.
+        PubcoZone isn&apos;t another message board where anonymous accounts pump, dump, and bash. You filter out the trash
+        and the noise, the company answers on the record, and you can actually trust what you&apos;re reading.
       </p>
       <div className="mt-10 grid gap-6 sm:grid-cols-2">
         {points.map((p) => (
@@ -230,7 +231,7 @@ function LogoStrip() {
 function Pillars() {
   const items = [
     { icon: "🧩", title: "Content pipeline", body: "Turn any filing into a post your execs sound like — AI drafts it, the Reg FD check screens it, you approve in a tap. Idea to published in minutes." },
-    { icon: "⚖️", title: "Compliance built in", body: "Every draft is auto-classified green/yellow/red. Risky ones route to your counsel for a signed, tamper-evident sign-off. Quiet-period mode locks sensitive posts automatically." },
+    { icon: "⚖️", title: "Compliance tools, your control", body: "Every draft gets a first-pass green/yellow/red flag for your review — risky ones route to your counsel for a signed, tamper-evident sign-off. You decide what's safe; nothing posts without your approval. Quiet-period mode lets you suspend publishing in one tap." },
     { icon: "🛡️", title: "Defend your name", body: "Threats and FUD get flagged within minutes — with a calm, filing-cited rebuttal ready to approve. On other boards you're gagged. Here you have a voice." },
     { icon: "👥", title: "A real CRM", body: "Contacts, firms, deals, tasks, and a full pipeline — built for IR. Find funds that hold your peers, import your list, and let AI triage every inbound." },
     { icon: "📣", title: "Get the word out", body: "A free Marketing Kit (AI posts, branded graphics, share links), embeddable live badges for your site, and a public page investors actually trust." },
@@ -239,7 +240,7 @@ function Pillars() {
   return (
     <section className="mx-auto max-w-6xl px-6 py-20">
       <h2 className="text-center text-3xl font-bold tracking-tight text-app">Your whole IR program. One platform.</h2>
-      <p className="mx-auto mt-3 max-w-2xl text-center text-muted">From drafting compliant posts to managing investors to defending your name — everything an in-house IR team and a $10k/mo agency does, in one place, for less.</p>
+      <p className="mx-auto mt-3 max-w-2xl text-center text-muted">From drafting investor updates to managing investors to defending your name — everything an in-house IR team and a $10k/mo agency does, in one place, for less.</p>
       <div className="mt-12 grid gap-5 md:grid-cols-3">
         {items.map((it) => (
           <div key={it.title} className="rounded-2xl border border-app bg-surface p-6">
@@ -285,20 +286,21 @@ function HowItWorks() {
 /* ------------------------------ Compliance ------------------------------- */
 function Compliance() {
   const checks = [
-    "Nothing posts without a named human's approval",
-    "Disclosures attach automatically — Section 17(b) + forward-looking statements",
-    "AI answers only from your public filings — Reg FD-safe by design",
-    "A complete audit log, ready for regulators or your exchange",
+    "Nothing posts without a named human's approval — you hold the keys",
+    "Your disclosures attach automatically — Section 17(b) + forward-looking statements",
+    "AI drafts only from your public filings — you and your counsel decide what's safe",
+    "A complete audit log, ready for your counsel, regulators, or your exchange",
   ];
   return (
     <section id="compliance" className="mx-auto max-w-6xl px-6 py-20">
       <div className="rounded-3xl border border-emerald-500/30 bg-emerald-500/5 p-8 sm:p-12">
         <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
           <div>
-            <h2 className="text-3xl font-bold tracking-tight text-app">Built for compliance, not around it.</h2>
+            <h2 className="text-3xl font-bold tracking-tight text-app">You stay in control. We give you the tools.</h2>
             <p className="mt-3 text-muted">
-              Promoting a public company is not like marketing a restaurant. PubcoZone is designed so the safe path is the only path —
-              reviewed with securities counsel in mind, so the answer to &ldquo;is this legal?&rdquo; is always yes.
+              Promoting a public company is not like marketing a restaurant. PubcoZone gives you the controls — first-pass flagging,
+              counsel sign-off, automatic disclosures, and a full audit trail — and puts every decision in your hands. We don&apos;t
+              decide what&apos;s compliant; you and your counsel do. What we do is publish what you approve, publicly and on the record.
             </p>
             <Link href="/how-its-legal" className="mt-4 inline-block text-sm font-semibold text-emerald-600 hover:underline dark:text-emerald-400">
               Read exactly why it&apos;s legal for your company to respond →
@@ -327,7 +329,7 @@ function Comparison() {
     ["Speed (filing → post)", "—", "2–3 days", "Minutes"],
     ["Monthly cost", "$0", "$10,000+", "From $1,500"],
     ["Defends you from attacks", "No", "Rarely", "Yes — in minutes"],
-    ["Answers shareholders legally", "No", "Slowly", "Yes — Reg FD-safe"],
+    ["Answer shareholders on the record", "No", "Slowly", "Yes — public & simultaneous"],
     ["Proof for your board", "None", "Quarterly deck", "Live score + log"],
     ["Always on", "No", "Business hours", "24/7"],
   ];
@@ -367,7 +369,7 @@ function PlatformComparison() {
   // value type: "yes" | "no" | "partial" | text
   const rows: { label: string; pz: string; st: string; ih: string }[] = [
     { label: "AI-moderated posts (hype & FUD labeled)", pz: "yes", st: "no", ih: "no" },
-    { label: "The company can respond on the record", pz: "yes:Compliant, Reg FD-safe", st: "no", ih: "no" },
+    { label: "The company can respond on the record", pz: "yes:Public & simultaneous", st: "no", ih: "no" },
     { label: "Real SEC filings, financials, insider & short data on every page", pz: "yes", st: "partial", ih: "no" },
     { label: "Verified company identity", pz: "yes", st: "no", ih: "no" },
     { label: "Anonymous pump-and-dump culture", pz: "no:That's the point", st: "rampant", ih: "rampant" },
@@ -640,7 +642,7 @@ function Stats() {
   const stats = [
     ["11", "public data sources, in one score"],
     ["Minutes", "from a filing to a ready-to-post update"],
-    ["100%", "of posts compliance-checked before you see them"],
+    ["You", "approve every post — nothing publishes without your tap"],
   ];
   return (
     <section className="mx-auto max-w-5xl px-6 py-16">

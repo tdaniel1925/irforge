@@ -3,11 +3,12 @@ import { getStore, logAudit } from "@/lib/db";
 import { buildPublishedThread, checkContent, hasBlockingFlags, publishGate } from "@/lib/compliance";
 import { postThreadToX } from "@/lib/ayrshare";
 import { tierHasFeature, type Tier } from "@/lib/billing";
+import { classifyRegFD } from "@/lib/ai";
 
 export const dynamic = "force-dynamic";
 
 type Action =
-  | { action: "approve" }
+  | { action: "approve"; acknowledgeRisk?: boolean }
   | { action: "reject" }
   | { action: "publish" }
   | { action: "edit"; tweets: string[] };
@@ -38,6 +39,22 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       }
       if (draft.status !== "pending") {
         return NextResponse.json({ error: `Cannot approve a draft in status '${draft.status}'.` }, { status: 422 });
+      }
+      // AI Reg FD pre-publication check (assist, not a guarantee). A "red" draft
+      // looks like it may carry material non-public info — it should go through
+      // counsel before it's approved for publishing, not be cleared by a regex.
+      // Only enforced when the caller hasn't explicitly acknowledged the risk.
+      if (!body.acknowledgeRisk) {
+        const cls = await classifyRegFD(draft.tweets.join("\n\n"), db.company).catch(() => null);
+        if (cls && cls.classification === "red") {
+          logAudit(db, approver, "DRAFT_REGFD_RED", `${draft.id}: AI flagged possible material info — ${cls.reasoning}`);
+          await save();
+          return NextResponse.json({
+            error: "This draft looks like it may contain material non-public information. Have your counsel review it before publishing — disclose it publicly and simultaneously, or revise the draft.",
+            regFd: { classification: cls.classification, flags: cls.flags, reasoning: cls.reasoning },
+            requiresAcknowledgement: true,
+          }, { status: 409 });
+        }
       }
       draft.status = "approved";
       draft.decidedAt = new Date().toISOString();

@@ -124,7 +124,7 @@ export default function Onboarding() {
 
       {/* STEP 2 — approver */}
       {step === 2 && (
-        <Panel title="Who approves what goes out?" sub="Nothing publishes without this person's tap. This is the compliance gate at the heart of PubcoZone.">
+        <Panel title="Who approves what goes out?" sub="Nothing publishes without this person's tap — the human approval at the heart of PubcoZone. You stay in control of every post.">
           <div className="grid grid-cols-2 gap-3">
             <Field label="Approver name" value={form.approverName} onChange={(v) => set("approverName", v)} />
             <Field label="Title" value={form.approverTitle} onChange={(v) => set("approverTitle", v)} placeholder="CFO" />

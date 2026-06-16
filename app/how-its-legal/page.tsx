@@ -35,11 +35,11 @@ export default function HowItsLegal() {
           <p>Answer from the public record, broadcast to all, and you are on the same ground as issuing a press release.</p>
         </Card>
 
-        <Card n="4" title="How PubcoZone enforces this — by design, not by trust">
-          <p>We don&apos;t just <em>tell</em> you to stay compliant; the platform is built so the safe path is the only path:</p>
+        <Card n="4" title="The controls PubcoZone gives you — you make the call">
+          <p>PubcoZone doesn&apos;t decide what&apos;s compliant; <em>you and your counsel</em> do. What the platform does is give you the controls to run a careful disclosure process, and keep you in charge of every one of them:</p>
           <ul className="list-disc space-y-2 pl-5">
-            <li><strong>Citation-locked answers.</strong> When an investor asks a question, our AI drafts a reply using only your public filings. If a question would require non-public information, it&apos;s flagged and the draft is a polite deflection to your official disclosures — never a leak.</li>
-            <li><strong>Simultaneous, broad publication.</strong> When you approve an answer, it publishes to your public page <em>and</em> your X account at the same moment — broad dissemination through your declared channels. That simultaneity is what makes it fair public disclosure rather than a selective response.</li>
+            <li><strong>Citation-grounded drafts.</strong> When an investor asks a question, our AI drafts a reply using only your public filings. If a question looks like it would require non-public information, it&apos;s flagged for your review and the draft points to your official disclosures rather than answering — but you always decide what actually goes out.</li>
+            <li><strong>Simultaneous, broad publication.</strong> When you approve an answer, it publishes to your public page <em>and</em> your X account at the same moment — broad dissemination through your declared channels. That simultaneity is what the SEC&apos;s fair-disclosure standard looks for — broad, public dissemination rather than a selective response.</li>
             <li><strong>A named human approves everything.</strong> Nothing is ever posted automatically. Your designated officer (CFO, IR head, or counsel) reviews and approves each answer before it goes out.</li>
             <li><strong>A complete audit log.</strong> Every question, draft, approval, and publication is recorded — the report you can hand a regulator or exchange if they ever ask.</li>
           </ul>
@@ -50,7 +50,7 @@ export default function HowItsLegal() {
         </Card>
 
         <Card n="6" title="What this is not">
-          <p>PubcoZone does not let you, and you should never use it to: predict your stock price, tell anyone to buy or sell, hype or promote, or share information that isn&apos;t public. Those aren&apos;t Reg FD issues — they&apos;re anti-fraud and anti-touting issues (including Section 17(b), the rule requiring paid promoters to disclose their compensation). Our compliance filter blocks that language before a human ever sees it, and every published post carries the required compensated-provider and forward-looking-statements disclosures automatically.</p>
+          <p>PubcoZone is not a substitute for your securities counsel, and it does not certify that any post is legal — you and your counsel are responsible for what you approve. You should never use it to: predict your stock price, tell anyone to buy or sell, hype or promote, or share information that isn&apos;t public. Those aren&apos;t Reg FD issues — they&apos;re anti-fraud and anti-touting issues (including Section 17(b), the rule requiring paid promoters to disclose their compensation). Our first-pass filter flags that kind of language for your review — it&apos;s an assist, not a guarantee — and every post you approve carries the compensated-provider and forward-looking-statements disclosures you&apos;ve set, attached automatically.</p>
         </Card>
 
         <div className="rounded-xl border border-app bg-surface-2 p-5">

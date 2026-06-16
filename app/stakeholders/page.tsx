@@ -23,7 +23,7 @@ export default async function StakeholdersPage() {
           bullets={[
             "Searchable CRM of everyone who follows your story",
             "Paste any inbound DM/email → AI suggests who & how to reply",
-            "Reg FD-safe suggested replies, every time",
+            "Suggested replies drawn only from your public record — you approve before sending",
             "Track topics, last touch, and open items",
           ]}
         />

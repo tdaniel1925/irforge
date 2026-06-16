@@ -21,11 +21,11 @@ export default async function CounselConsole() {
         <UpgradePrompt
           icon="⚖️"
           title="Reg FD Compliance & Counsel Console"
-          pitch="Catch material-disclosure risk before it posts — and give your counsel a one-click, signed sign-off trail."
+          pitch="Flag possible material-disclosure risk for review before anything posts — and give your counsel a one-click, signed sign-off trail."
           bullets={[
-            "Every draft auto-classified GREEN / YELLOW / RED",
+            "Every draft gets a first-pass GREEN / YELLOW / RED flag for review",
             "RED posts can't publish without counsel's signed approval",
-            "Quiet-period mode blocks sensitive posts automatically",
+            "Quiet-period mode lets you suspend sensitive posts in one tap",
             "Tamper-evident audit trail for every decision",
           ]}
         />
