@@ -70,9 +70,9 @@ function Hero() {
           </h1>
           <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted">
             For years, message boards like InvestorsHub and StockTwits let anonymous pumpers and short-side bashers
-            write your story — and you were legally gagged from answering. PubcoZone <span className="font-semibold text-app">levels the playing field</span>:
-            it turns your SEC filings into compliant updates, answers shareholders from your public record, and
-            lets you set the record straight — all approved by you with one tap.
+            write your story — and you were legally gagged from answering. PubcoZone is your <span className="font-semibold text-app">entire IR program in one platform</span>:
+            AI turns your filings into compliant posts, a Reg FD check and counsel sign-off keep you safe, a built-in CRM
+            tracks every investor, and you answer the board on the record — all approved by you with one tap.
           </p>
           <TickerLookup />
           <p className="mt-3 text-xs text-faint">Free report · no signup · uses only public data</p>
@@ -184,7 +184,8 @@ function ForInvestors() {
   const points = [
     { title: "No pump-and-dump land", body: "Hype and coordinated ramping get AI-flagged before they spread. You see what's labeled \"factual\" vs. \"hype\" vs. \"unverified\" — so you're not the exit liquidity for someone else's scheme." },
     { title: "Answers from the actual company", body: "Ask a question and get a verified, filing-cited answer from the company itself — not a guess from an anonymous account. The truth, on the record, where you can check it." },
-    { title: "Everything in one place", body: "Price, SEC filings, cash & runway, insider buying, short interest, news, and a balanced AI bull/bear take — the research that takes an hour across six tabs, on one page." },
+    { title: "Everything in one place", body: "Price, SEC filings, cash & runway, insider buying, short interest, and news — the research that takes an hour across six tabs, on one page." },
+    { title: "A free AI Research Panel", body: "Four built-in lenses on every company — Value 💵, Growth 🚀, Skeptic 🧐, and Explainer 📖 — drawn straight from the filings. Independent, free, and impossible to buy. Sponsored briefs are always labeled as such." },
     { title: "Manipulation has nowhere to hide", body: "Bashers can't run unchecked and pumpers can't astroturf. Every post is labeled, the company can respond, and bad-faith claims get called out in public." },
   ];
   return (
@@ -228,24 +229,23 @@ function LogoStrip() {
 /* -------------------------------- Pillars -------------------------------- */
 function Pillars() {
   const items = [
-    { img: "/img/defend.png", title: "Defend", body: "When someone spreads false info or sentiment turns against you, you'll know within minutes — with a fact-based, filing-cited response ready to approve. On other platforms you're defenseless. Here you have a voice." },
-    { img: "/img/grow.png", title: "Grow", body: "We turn every filing into investor content, answer questions from your public record, and track one Visibility Score — so you can prove it's working to your board." },
-    { img: "/img/control.png", title: "Control", body: "Nothing posts without your tap. Every post carries your legal disclosures automatically. Every action is logged for your compliance record." },
+    { icon: "🧩", title: "Content pipeline", body: "Turn any filing into a post your execs sound like — AI drafts it, the Reg FD check screens it, you approve in a tap. Idea to published in minutes." },
+    { icon: "⚖️", title: "Compliance built in", body: "Every draft is auto-classified green/yellow/red. Risky ones route to your counsel for a signed, tamper-evident sign-off. Quiet-period mode locks sensitive posts automatically." },
+    { icon: "🛡️", title: "Defend your name", body: "Threats and FUD get flagged within minutes — with a calm, filing-cited rebuttal ready to approve. On other boards you're gagged. Here you have a voice." },
+    { icon: "👥", title: "A real CRM", body: "Contacts, firms, deals, tasks, and a full pipeline — built for IR. Find funds that hold your peers, import your list, and let AI triage every inbound." },
+    { icon: "📣", title: "Get the word out", body: "A free Marketing Kit (AI posts, branded graphics, share links), embeddable live badges for your site, and a public page investors actually trust." },
+    { icon: "📊", title: "Prove it's working", body: "One Visibility Score, a live intelligence dashboard, and a one-click weekly summary for your board. Every action logged for your compliance record." },
   ];
   return (
     <section className="mx-auto max-w-6xl px-6 py-20">
-      <h2 className="text-center text-3xl font-bold tracking-tight text-app">Three jobs. One platform. One number.</h2>
-      <p className="mx-auto mt-3 max-w-2xl text-center text-muted">Everything PubcoZone does maps to defending your name, growing your reach, or keeping you in control — and all of it moves your Visibility Score.</p>
-      <div className="mt-12 grid gap-6 md:grid-cols-3">
+      <h2 className="text-center text-3xl font-bold tracking-tight text-app">Your whole IR program. One platform.</h2>
+      <p className="mx-auto mt-3 max-w-2xl text-center text-muted">From drafting compliant posts to managing investors to defending your name — everything an in-house IR team and a $10k/mo agency does, in one place, for less.</p>
+      <div className="mt-12 grid gap-5 md:grid-cols-3">
         {items.map((it) => (
-          <div key={it.title} className="overflow-hidden rounded-2xl border border-app bg-surface">
-            <div className="relative aspect-[4/3] w-full overflow-hidden border-b border-app">
-              <Image src={it.img} alt={it.title} fill className="object-cover" sizes="(max-width: 768px) 100vw, 33vw" />
-            </div>
-            <div className="p-6">
-              <h3 className="text-lg font-semibold text-app">{it.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-muted">{it.body}</p>
-            </div>
+          <div key={it.title} className="rounded-2xl border border-app bg-surface p-6">
+            <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500/10 text-2xl">{it.icon}</div>
+            <h3 className="text-lg font-semibold text-app">{it.title}</h3>
+            <p className="mt-2 text-sm leading-relaxed text-muted">{it.body}</p>
           </div>
         ))}
       </div>
@@ -256,9 +256,10 @@ function Pillars() {
 /* ------------------------------ How it works ----------------------------- */
 function HowItWorks() {
   const steps = [
-    { n: 1, t: "Connect your ticker", b: "We pull your SEC filings and public data automatically — your profile is ready in minutes." },
-    { n: 2, t: "We draft, you approve", b: "Read what we wrote, tap approve, and it posts to X with your legal disclosures attached. Edit or skip anything." },
-    { n: 3, t: "Watch your score climb", b: "Track your Visibility Score over time, and hand the proof to your board." },
+    { n: 1, t: "Connect your ticker", b: "We pull your SEC filings and live public data automatically — your profile and first drafts are ready in minutes." },
+    { n: 2, t: "AI drafts, the Reg FD check screens", b: "AI writes posts in your execs' voice and flags anything material — green posts you approve, red ones route to counsel for sign-off." },
+    { n: 3, t: "You approve in a tap", b: "Read it, approve it, and it publishes to X, LinkedIn and more with your disclosures attached. Nothing goes out without you." },
+    { n: 4, t: "Watch your score climb", b: "Track your Visibility Score, see the live dashboard, and hand a one-click weekly summary to your board." },
   ];
   return (
     <section id="how" className="border-y border-app bg-surface-2/40">
@@ -655,10 +656,10 @@ function Stats() {
 /* -------------------------------- Pricing -------------------------------- */
 function Pricing() {
   const tiers = [
-    { name: "Free", price: "$0", popular: false, features: ["A verified public page on PubcoZone", "Your profile, filings & live data", "Investors can find & follow you", "No dashboard tools"] },
-    { name: "Starter", price: "$1,500", popular: false, features: ["Post responses to X", "Filing-to-post drafting", "The investor board", "Document vault + monthly proof"] },
-    { name: "Growth", price: "$3,500", popular: true, features: ["Everything in Starter", "Post responses to X", "Threat Radar + AI rebuttals", "AI shareholder Q&A", "13F investor targeting"] },
-    { name: "Command", price: "$6,000", popular: false, features: ["Everything in Growth", "Post responses to X", "AI document analyzer", "Short-attack defense", "Dedicated onboarding"] },
+    { name: "Free", price: "$0", popular: false, features: ["A verified public page with live data", "Free AI Research Panel on your page", "Free Marketing Kit + share links", "Investors can find & follow you"] },
+    { name: "Starter", price: "$1,500", popular: false, features: ["Filing-to-post AI drafting", "Reg FD green/yellow/red screening", "Multi-channel publishing (X, LinkedIn)", "Investor board + document vault", "Embeddable live badges"] },
+    { name: "Growth", price: "$3,500", popular: true, features: ["Everything in Starter", "Full IR CRM — contacts, deals, tasks", "Counsel Console + signed approvals", "Threat Radar + AI rebuttals", "AI shareholder Q&A + 13F targeting"] },
+    { name: "Command", price: "$6,000", popular: false, features: ["Everything in Growth", "Quiet-period mode + custom voices", "Intelligence dashboard + board summaries", "Short-attack defense playbook", "Dedicated onboarding"] },
   ];
   return (
     <section id="pricing" className="border-y border-app bg-surface-2/40">
