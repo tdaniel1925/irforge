@@ -23,7 +23,7 @@ const NAV: NavGroup[] = [
   {
     section: "Investors",
     items: [
-      { href: "/stakeholders", label: "Stakeholders", icon: "🤝", hint: "Investors, analysts, press + AI inbound triage" },
+      { href: "/stakeholders", label: "Inbound Triage", icon: "📥", hint: "Paste any inbound message — AI suggests who it's from and a safe reply" },
       { href: "/crm", label: "Investor CRM", icon: "👥", hint: "Funds, analysts, shareholders + 13F intel" },
       { href: "/investors", label: "Find Investors", icon: "🎯", hint: "Funds that own similar companies" },
       { href: "/company", label: "Defense & Reach", icon: "🛡", hint: "Threats to your name + your visibility score" },
