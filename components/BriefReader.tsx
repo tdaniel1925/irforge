@@ -7,7 +7,13 @@ import { renderMarkdown, splitSections } from "./BriefView";
 // controls, a page indicator, and a jump-to-section list. Keeps the brief on a
 // single URL (good for a shareable demo) without one endless scroll.
 export default function BriefReader({ markdown }: { markdown: string }) {
-  const sections = useMemo(() => splitSections(markdown), [markdown]);
+  const sections = useMemo(() => {
+    const all = splitSections(markdown);
+    // Drop a leading title-less intro that is just the TOC blockquote — the
+    // jump-to-section pills already serve that purpose, so page 1 starts on the
+    // first real section.
+    return all.filter((s, i) => !(i === 0 && !s.title));
+  }, [markdown]);
   const [page, setPage] = useState(0);
   const topRef = useRef<HTMLDivElement>(null);
 
