@@ -183,6 +183,16 @@ export async function getStatRowsForTickers(tickers: string[]): Promise<CompanyS
   return (data ?? []) as CompanyStatRow[];
 }
 
+// Every ticker already in the table with its last snapshot time — used by the
+// chunked cron to refresh the stalest rows first.
+export async function getExistingSnapshotTimes(): Promise<Record<string, string>> {
+  const svc = createServiceClient();
+  const out: Record<string, string> = {};
+  const { data } = await svc.from("company_stats").select("ticker, snapshot_at");
+  for (const r of data ?? []) out[String(r.ticker)] = String(r.snapshot_at ?? "");
+  return out;
+}
+
 // How many companies are in the snapshot + when it was last refreshed.
 export async function getUniverseMeta(): Promise<{ count: number; lastSnapshot: string | null }> {
   const svc = createServiceClient();
