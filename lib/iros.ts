@@ -185,10 +185,14 @@ export async function recordApproval(input: {
 
   // Advance / revert the post status based on the decision.
   if (input.decision === "approved") {
-    const target = post.status === "draft" ? "reviewed" : "approved";
+    // Counsel sign-off is final — it always lands on 'approved' (one click, even
+    // straight from draft). An approver advancing a draft lands on 'reviewed'.
+    const target = input.stage === "counsel" ? "approved" : post.status === "draft" ? "reviewed" : "approved";
     await supabase.from("iros_posts").update({ status: target, updated_at: ts }).eq("id", input.postId);
   } else if (input.decision === "changes" || input.decision === "rejected") {
-    await supabase.from("iros_posts").update({ status: "draft", updated_at: ts }).eq("id", input.postId);
+    // Mark rejected posts as pulled (distinct from a change-request, which returns to draft).
+    const target = input.decision === "rejected" ? "pulled" : "draft";
+    await supabase.from("iros_posts").update({ status: target, updated_at: ts }).eq("id", input.postId);
   }
 
   await writeAudit({

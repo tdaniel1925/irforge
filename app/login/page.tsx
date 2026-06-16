@@ -20,15 +20,22 @@ export default function Login() {
     try {
       const supabase = createClient();
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           // account_type drives the signup trigger (only 'company' mints a company
           // row) and post-signup routing. Absence defaults to 'company' server-side.
           options: { data: { account_type: accountType === "investor" ? "member" : "company" } },
         });
-        if (error) setMsg({ text: error.message, ok: false });
-        else window.location.href = accountType === "investor" ? "/member" : "/onboarding";
+        if (error) { setMsg({ text: error.message, ok: false }); return; }
+        // If email confirmation is ON, signUp returns no session — redirecting now
+        // would bounce off the auth gate. Show a "check your email" state instead.
+        if (!data.session) {
+          setMsg({ text: "Check your email to confirm your account, then sign in.", ok: true });
+          setMode("signin");
+          return;
+        }
+        window.location.href = accountType === "investor" ? "/member" : "/onboarding";
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) { setMsg({ text: error.message, ok: false }); return; }

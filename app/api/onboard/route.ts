@@ -13,7 +13,13 @@ export const maxDuration = 90;
 // mock data from a different company ever survives onboarding.
 export async function POST(req: Request) {
   const b = await req.json().catch(() => ({}));
-  const { db, save } = await getStore();
+  const { db, save, authed } = await getStore();
+
+  // When auth is enforced, onboarding must run against a real logged-in company.
+  // getStore() returns the shared local store only in demo mode (AUTH_ENABLED off).
+  if (process.env.AUTH_ENABLED === "1" && !authed) {
+    return NextResponse.json({ error: "Sign in to set up your company." }, { status: 401 });
+  }
 
   // CIK comes ONLY from the verified lookup. If the lookup found no CIK (ticker not on
   // EDGAR), we store an EMPTY cik — never inherit a previous company's CIK, or we'd pull

@@ -32,7 +32,7 @@ const CLASS_STYLE: Record<string, string> = {
   red: "bg-red-500/15 text-red-600 dark:text-red-300",
 };
 
-export default function EditorialBoard({ initialPosts, voices }: { initialPosts: Post[]; voices: VoiceLite[] }) {
+export default function EditorialBoard({ initialPosts, voices, canPublish = false }: { initialPosts: Post[]; voices: VoiceLite[]; canPublish?: boolean }) {
   const [posts, setPosts] = useState<Post[]>(initialPosts);
   const [composing, setComposing] = useState(false);
   const [topic, setTopic] = useState("");
@@ -68,12 +68,13 @@ export default function EditorialBoard({ initialPosts, voices }: { initialPosts:
   };
 
   const classify = async (id: string) => {
-    setBusy("c" + id);
+    setBusy("c" + id); setError("");
     try {
       const res = await fetch("/api/iros/classify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ postId: id }) });
       const d = await res.json();
-      if (res.ok) patchPost({ ...posts.find((p) => p.id === id)!, classification: d.classification, classConfidence: d.confidence, classFlags: d.flags, classReason: d.reasoning });
-    } finally { setBusy(""); }
+      if (!res.ok) throw new Error(d.error ?? "Classification failed.");
+      patchPost({ ...posts.find((p) => p.id === id)!, classification: d.classification, classConfidence: d.confidence, classFlags: d.flags, classReason: d.reasoning });
+    } catch (e) { setError(e instanceof Error ? e.message : "Failed."); } finally { setBusy(""); }
   };
 
   const transition = async (id: string, to: string) => {
@@ -168,15 +169,20 @@ export default function EditorialBoard({ initialPosts, voices }: { initialPosts:
                         </button>
                       )}
                       {p.classification === "red" && ["draft", "reviewed"].includes(p.status) && (
-                        <span className="rounded bg-red-500/10 px-2 py-1 text-[11px] text-red-600 dark:text-red-300">Needs Counsel Console →</span>
+                        <a href="/counsel" className="rounded bg-red-500/10 px-2 py-1 text-[11px] font-medium text-red-600 hover:bg-red-500/20 dark:text-red-300">Needs Counsel Console →</a>
                       )}
                       {p.classification && p.classification !== "red" && ["draft", "reviewed"].includes(p.status) && (
                         <button onClick={() => approve(p.id)} disabled={busy === "a" + p.id} className="rounded bg-emerald-600 px-2 py-1 text-[11px] font-semibold text-white hover:bg-emerald-500 disabled:opacity-50">
                           {busy === "a" + p.id ? "…" : p.status === "draft" ? "✓ Mark reviewed" : "✓ Approve"}
                         </button>
                       )}
-                      {["approved", "scheduled"].includes(p.status) && (
+                      {["approved", "scheduled"].includes(p.status) && canPublish && (
                         <PublishPicker busy={busy === "p" + p.id} onPublish={(ch) => publish(p.id, ch)} />
+                      )}
+                      {p.status === "approved" && !canPublish && (
+                        <button onClick={() => transition(p.id, "scheduled")} disabled={busy === "t" + p.id} className="rounded bg-emerald-600 px-2 py-1 text-[11px] font-semibold text-white hover:bg-emerald-500 disabled:opacity-50">
+                          {busy === "t" + p.id ? "…" : "📅 Schedule"}
+                        </button>
                       )}
                       {["draft", "reviewed", "approved", "scheduled"].includes(p.status) && (
                         <button onClick={() => transition(p.id, "pulled")} disabled={busy === "t" + p.id} className="rounded border border-app px-2 py-1 text-[11px] text-muted hover:text-red-500">Pull</button>

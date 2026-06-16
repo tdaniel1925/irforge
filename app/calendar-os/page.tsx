@@ -31,11 +31,11 @@ export default async function CalendarOsPage() {
     );
   }
 
-  const [posts, voices] = await Promise.all([listPosts(), listVoices()]);
+  const [posts, voices, canPublish] = await Promise.all([listPosts(), listVoices(), companyHasFeature(mine.id, "publishing")]);
   return (
     <div>
       <PageHeader title="Content Pipeline" subtitle="Write a post (or let AI draft it), check it for Reg FD risk, and move it to approved — all in a couple of clicks." />
-      <EditorialBoard initialPosts={posts} voices={voices.map((v) => ({ id: v.id, name: v.name, roleTitle: v.roleTitle }))} />
+      <EditorialBoard initialPosts={posts} voices={voices.map((v) => ({ id: v.id, name: v.name, roleTitle: v.roleTitle }))} canPublish={canPublish} />
     </div>
   );
 }

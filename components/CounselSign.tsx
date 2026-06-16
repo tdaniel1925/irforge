@@ -11,6 +11,7 @@ export default function CounselSign({ postId }: { postId: string }) {
   const [mode, setMode] = useState<"idle" | "changes" | "reject">("idle");
   const [comment, setComment] = useState("");
   const [error, setError] = useState("");
+  const [done, setDone] = useState("");
 
   const submit = async (decision: "approved" | "rejected" | "changes") => {
     setBusy(true);
@@ -23,12 +24,15 @@ export default function CounselSign({ postId }: { postId: string }) {
       });
       const d = await res.json();
       if (!res.ok) throw new Error(d.error ?? "Failed.");
+      setDone(decision === "approved" ? "Signed & approved ✓" : decision === "rejected" ? "Rejected" : "Sent back");
       router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed.");
       setBusy(false);
     }
   };
+
+  if (done) return <p className="mt-3 text-sm font-medium text-emerald-600 dark:text-emerald-400">{done}</p>;
 
   if (mode !== "idle") {
     return (
