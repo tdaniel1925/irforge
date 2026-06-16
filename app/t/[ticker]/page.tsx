@@ -13,6 +13,8 @@ import WatchButton from "@/components/WatchButton";
 import MessageBoard from "@/components/MessageBoard";
 import TickerTabs from "@/components/TickerTabs";
 import { generateResearchPanel } from "@/lib/ai";
+import { getPublishedBriefsForTicker } from "@/lib/briefs";
+import BriefView from "@/components/BriefView";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -98,10 +100,11 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
   // read-only host) — none should take the whole page down. Degrade per-call.
   // The 4-lens research panel supersedes the old 2-lens bull/bear analyst, so we
   // run two AI calls (explainer + panel) instead of three — keeps the page fast.
-  const [explainerR, panelR, viewCountR] = await Promise.allSettled([
+  const [explainerR, panelR, viewCountR, briefsR] = await Promise.allSettled([
     generateTickerExplainer(audit),
     generateResearchPanel(audit),
     bumpViews(ticker),
+    getPublishedBriefsForTicker(ticker),
   ]);
   const explainer = explainerR.status === "fulfilled"
     ? explainerR.value
@@ -109,6 +112,7 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
   const analyst = { bull: "", bear: "", faq: [] as { q: string; a: string }[] }; // legacy section now hidden; panel covers it
   const panel = panelR.status === "fulfilled" ? panelR.value : { lenses: [], engine: "template" as const };
   const viewCount = viewCountR.status === "fulfilled" ? viewCountR.value : 0;
+  const publishedBriefs = briefsR.status === "fulfilled" ? briefsR.value : [];
 
   let db: ReturnType<typeof getDb> | null = null;
   try {
@@ -302,6 +306,20 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
           </p>
         </Section>
       )}
+
+      {/* Sponsored Research Brief(s) — paid, disclosed, filing-based company profiles */}
+      {publishedBriefs.length > 0 && publishedBriefs.map((b) => (
+        <Section key={b.id} title={b.isSample ? "Sample research brief" : "Sponsored research brief"} badge={b.isSample ? "📄 illustrative sample · company-sponsored format" : "📄 company-sponsored · prepared from public filings"}>
+          {b.isSample && (
+            <p className="mb-3 inline-flex items-center gap-2 rounded border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-400">
+              Sample — example of the product
+            </p>
+          )}
+          <h3 className="mb-3 text-base font-bold text-white">{b.title}</h3>
+          <BriefView markdown={b.markdown} />
+          <p className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] leading-relaxed text-amber-300">{b.disclosure}</p>
+        </Section>
+      ))}
 
       {/* AI Analyst — labeled, balanced bull/bear from public data */}
       {(analyst.bull || analyst.bear) && (

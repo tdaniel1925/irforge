@@ -12,6 +12,7 @@ export interface BriefRow {
   disclosure: string;
   status: string;
   published: boolean;
+  isSample: boolean;
   createdAt: string;
 }
 
@@ -24,6 +25,7 @@ function rowToBrief(r: Record<string, unknown>): BriefRow {
     disclosure: (r.disclosure as string) ?? "",
     status: (r.status as string) ?? "ordered",
     published: Boolean(r.published),
+    isSample: Boolean(r.is_sample),
     createdAt: String(r.created_at ?? ""),
   };
 }
@@ -37,6 +39,36 @@ export async function listMyBriefs(): Promise<BriefRow[]> {
     .from("sponsored_briefs")
     .select("*")
     .eq("company_id", mine.id)
+    .order("created_at", { ascending: false });
+  return (data ?? []).map(rowToBrief);
+}
+
+// The featured public sample brief (is_sample = true, published). Used on the
+// marketing site to show prospects what a brief looks like. Read via service
+// client so it works for logged-out visitors regardless of RLS.
+export async function getSampleBrief(ticker?: string): Promise<BriefRow | null> {
+  const svc = createServiceClient();
+  let q = svc
+    .from("sponsored_briefs")
+    .select("*")
+    .eq("is_sample", true)
+    .eq("published", true)
+    .order("created_at", { ascending: false })
+    .limit(1);
+  if (ticker) q = q.eq("ticker", ticker.toUpperCase());
+  const { data } = await q;
+  return data && data[0] ? rowToBrief(data[0]) : null;
+}
+
+// All published briefs for a ticker (real + sample) — shown on the public
+// ticker report page.
+export async function getPublishedBriefsForTicker(ticker: string): Promise<BriefRow[]> {
+  const svc = createServiceClient();
+  const { data } = await svc
+    .from("sponsored_briefs")
+    .select("*")
+    .eq("ticker", ticker.toUpperCase())
+    .eq("published", true)
     .order("created_at", { ascending: false });
   return (data ?? []).map(rowToBrief);
 }
