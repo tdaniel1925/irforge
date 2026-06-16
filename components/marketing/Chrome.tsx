@@ -7,6 +7,16 @@ import ThemeToggle from "@/components/ThemeToggle";
 // /for-companies so the three pages stay visually consistent. The nav adapts its
 // links to the audience so each page points people at the right next step.
 
+// One nav for every marketing page. Links are absolute (page + anchor) so they
+// always resolve no matter which page you're on — no broken bare "#pricing".
+// The active audience just gets its link highlighted; the link set is identical.
+const NAV_LINKS = [
+  { href: "/for-companies", label: "For companies", key: "companies" as const },
+  { href: "/for-investors", label: "For investors", key: "investors" as const },
+  { href: "/discover", label: "Discover", key: "discover" as const },
+  { href: "/how-its-legal", label: "Is it legal?", key: "legal" as const },
+];
+
 export function MarketingNav({ audience = "hub" }: { audience?: "hub" | "investors" | "companies" }) {
   return (
     <header className="sticky top-0 z-30 border-b border-app bg-app/80 backdrop-blur">
@@ -15,28 +25,18 @@ export function MarketingNav({ audience = "hub" }: { audience?: "hub" | "investo
           <span className="text-app">Pubco</span><span className="text-emerald-600 dark:text-emerald-400">Zone</span><span className="text-emerald-600 dark:text-emerald-400">.</span>
         </Link>
         <nav className="hidden items-center gap-7 text-sm text-muted sm:flex">
-          {audience === "companies" ? (
-            <>
-              <a href="#how" className="hover:text-app">How it works</a>
-              <Link href="/how-its-legal" className="hover:text-app">Is it legal?</Link>
-              <a href="#pricing" className="hover:text-app">Pricing</a>
-              <Link href="/for-investors" className="hover:text-app">For investors</Link>
-            </>
-          ) : audience === "investors" ? (
-            <>
-              <Link href="/discover" className="hover:text-app">Discover</Link>
-              <Link href="/t" className="hover:text-app">Look up a stock</Link>
-              <Link href="/sample-brief" className="hover:text-app">Sample brief</Link>
-              <Link href="/for-companies" className="hover:text-app">For companies</Link>
-            </>
-          ) : (
-            <>
-              <Link href="/for-companies" className="hover:text-app">For companies</Link>
-              <Link href="/for-investors" className="hover:text-app">For investors</Link>
-              <Link href="/discover" className="hover:text-app">Discover</Link>
-              <Link href="/how-its-legal" className="hover:text-app">Is it legal?</Link>
-            </>
-          )}
+          {NAV_LINKS.map((l) => {
+            const active = l.key === audience;
+            return (
+              <Link
+                key={l.href}
+                href={l.href}
+                className={active ? "font-semibold text-app" : "hover:text-app"}
+              >
+                {l.label}
+              </Link>
+            );
+          })}
         </nav>
         <div className="flex items-center gap-3">
           <ThemeToggle />
