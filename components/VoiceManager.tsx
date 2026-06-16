@@ -49,8 +49,18 @@ export default function VoiceManager({ initial }: { initial: Voice[] }) {
   };
 
   const remove = async (id: string) => {
-    await fetch("/api/iros/voices", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
-    setVoices((vs) => vs.filter((v) => v.id !== id));
+    setError("");
+    try {
+      const res = await fetch("/api/iros/voices", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setError(d.error ?? "Couldn't delete that voice.");
+        return;
+      }
+      setVoices((vs) => vs.filter((v) => v.id !== id));
+    } catch {
+      setError("Network error — couldn't delete that voice.");
+    }
   };
 
   if (editing) {
@@ -91,6 +101,7 @@ export default function VoiceManager({ initial }: { initial: Voice[] }) {
   return (
     <div>
       <button onClick={() => setEditing({ ...BLANK })} className="mb-4 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">+ Add a voice</button>
+      {error && <p className="mb-3 text-sm text-red-500">{error}</p>}
       {voices.length === 0 ? (
         <div className="rounded-xl border border-dashed border-app p-10 text-center text-sm text-muted">No voices yet. Add your CEO, CFO, or anyone who posts.</div>
       ) : (

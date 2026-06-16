@@ -18,8 +18,10 @@ export default function ProofPage() {
   const first = history[0];
   const last = history[history.length - 1];
   const posted = db.drafts.filter((d) => d.status === "posted");
-  const latestMetric = db.metrics[db.metrics.length - 1];
-  const firstMetric = db.metrics[0];
+  const metrics = db.metrics ?? [];
+  const hasMetrics = metrics.length > 0;
+  const latestMetric = metrics[metrics.length - 1];
+  const firstMetric = metrics[0];
 
   return (
     <div>
@@ -42,8 +44,8 @@ export default function ProofPage() {
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
             <Big label="Visibility Score" value={last ? `${last.score} (${last.grade})` : "—"} sub={first && last ? `${last.score - first.score >= 0 ? "+" : ""}${last.score - first.score} pts since tracking began` : ""} />
             <Big label="Posts published" value={posted.length} sub="all human-approved, all disclosed" />
-            <Big label="Followers" value={latestMetric.followers.toLocaleString()} sub={`${latestMetric.followers - firstMetric.followers >= 0 ? "+" : ""}${(latestMetric.followers - firstMetric.followers).toLocaleString()} over 12 weeks`} />
-            <Big label="Impressions (last wk)" value={latestMetric.impressions.toLocaleString()} sub={`${latestMetric.engagements.toLocaleString()} engagements`} />
+            <Big label="Followers" value={hasMetrics ? latestMetric.followers.toLocaleString() : "—"} sub={hasMetrics ? `${latestMetric.followers - firstMetric.followers >= 0 ? "+" : ""}${(latestMetric.followers - firstMetric.followers).toLocaleString()} over 12 weeks` : ""} />
+            <Big label="Impressions (last wk)" value={hasMetrics ? latestMetric.impressions.toLocaleString() : "—"} sub={hasMetrics ? `${latestMetric.engagements.toLocaleString()} engagements` : ""} />
           </div>
 
           {history.length > 1 && (

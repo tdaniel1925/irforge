@@ -46,8 +46,18 @@ function Inbound({ inbox, setInbox }: { inbox: Interaction[]; setInbox: (f: (i: 
   };
 
   const resolve = async (id: string) => {
-    await fetch("/api/iros/stakeholders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "interaction_status", id, status: "resolved" }) });
-    setInbox((i) => i.map((x) => (x.id === id ? { ...x, status: "resolved" } : x)));
+    setError("");
+    try {
+      const res = await fetch("/api/iros/stakeholders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "interaction_status", id, status: "resolved" }) });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setError(d.error ?? "Couldn't mark that resolved.");
+        return;
+      }
+      setInbox((i) => i.map((x) => (x.id === id ? { ...x, status: "resolved" } : x)));
+    } catch {
+      setError("Network error — couldn't mark that resolved.");
+    }
   };
 
   return (

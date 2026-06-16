@@ -38,13 +38,28 @@ export default function Documents() {
 
   const importFilings = async () => {
     setNotice(null);
-    const res = await fetch("/api/documents", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "import_filings" }) });
-    if (res.ok) { setNotice({ text: "Imported your SEC filings into the vault.", tone: "success" }); await refresh(); }
+    const before = docs.length;
+    try {
+      const res = await fetch("/api/documents", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "import_filings" }) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { setNotice({ text: data.error ?? "Import failed.", tone: "error" }); return; }
+      const added = Array.isArray(data.documents) ? data.documents.length - before : 0;
+      setNotice(added > 0
+        ? { text: `Imported ${added} filing${added === 1 ? "" : "s"} into the vault.`, tone: "success" }
+        : { text: "No new filings found — everything is already in the vault.", tone: "info" });
+      await refresh();
+    } catch { setNotice({ text: "Network error.", tone: "error" }); }
   };
 
   const remove = async (id: string) => {
-    await fetch("/api/documents", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "delete", id }) });
-    await refresh();
+    setNotice(null);
+    try {
+      const res = await fetch("/api/documents", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "delete", id }) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { setNotice({ text: data.error ?? "Couldn't remove that document.", tone: "error" }); return; }
+      setNotice({ text: "Document removed.", tone: "success" });
+      await refresh();
+    } catch { setNotice({ text: "Network error.", tone: "error" }); }
   };
 
   return (

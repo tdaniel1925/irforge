@@ -107,7 +107,10 @@ function Contacts({ contacts, setContacts, companies }: { contacts: Contact[]; s
       setEditing(null);
     } finally { setBusy(false); }
   };
-  const del = async (id: string) => { await api({ entity: "contact", action: "delete", id }); setContacts((cs) => cs.filter((c) => c.id !== id)); };
+  const del = async (id: string) => {
+    try { await api({ entity: "contact", action: "delete", id }); setContacts((cs) => cs.filter((c) => c.id !== id)); }
+    catch (e) { alert(e instanceof Error ? e.message : "Couldn't delete that contact."); }
+  };
 
   const shown = contacts.filter((c) => (!q || `${c.fullName} ${c.email} ${c.title}`.toLowerCase().includes(q.toLowerCase())) && (!cat || c.category === cat));
   const compName = (id: string | null) => companies.find((co) => co.id === id)?.name ?? "";
@@ -167,7 +170,10 @@ function Companies({ companies, setCompanies }: { companies: Company[]; setCompa
     setBusy(true);
     try { const d = await api({ entity: "company", action: "save", data: editing }); setCompanies((cs) => { const ex = cs.some((c) => c.id === d.company.id); return ex ? cs.map((c) => c.id === d.company.id ? d.company : c) : [d.company, ...cs]; }); setEditing(null); } finally { setBusy(false); }
   };
-  const del = async (id: string) => { await api({ entity: "company", action: "delete", id }); setCompanies((cs) => cs.filter((c) => c.id !== id)); };
+  const del = async (id: string) => {
+    try { await api({ entity: "company", action: "delete", id }); setCompanies((cs) => cs.filter((c) => c.id !== id)); }
+    catch (e) { alert(e instanceof Error ? e.message : "Couldn't delete that company."); }
+  };
 
   if (editing) {
     return (
@@ -208,7 +214,10 @@ function Deals({ deals, setDeals, contacts }: { deals: Deal[]; setDeals: (f: (d:
     setBusy(true);
     try { const d = await api({ entity: "deal", action: "save", data: { ...editing, value: Number(editing.value) || 0 } }); setDeals((ds) => { const ex = ds.some((x) => x.id === d.deal.id); return ex ? ds.map((x) => x.id === d.deal.id ? d.deal : x) : [d.deal, ...ds]; }); setEditing(null); } finally { setBusy(false); }
   };
-  const move = async (id: string, stage: string) => { await api({ entity: "deal", action: "move", id, stage }); setDeals((ds) => ds.map((d) => d.id === id ? { ...d, stage, status: stage === "won" ? "won" : stage === "lost" ? "lost" : "open" } : d)); };
+  const move = async (id: string, stage: string) => {
+    try { await api({ entity: "deal", action: "move", id, stage }); setDeals((ds) => ds.map((d) => d.id === id ? { ...d, stage, status: stage === "won" ? "won" : stage === "lost" ? "lost" : "open" } : d)); }
+    catch (e) { alert(e instanceof Error ? e.message : "Couldn't move that deal."); }
+  };
 
   if (editing) {
     return (
@@ -266,7 +275,10 @@ function Tasks({ tasks, setTasks, contacts }: { tasks: Task[]; setTasks: (f: (t:
     try { const d = await api({ entity: "task", action: "save", data: { title, dueDate: due || null } }); setTasks((ts) => [...ts, d.task]); setTitle(""); setDue(""); } finally { setBusy(false); }
   };
   const toggle = async (t: Task) => { const d = await api({ entity: "task", action: "save", data: { ...t, done: !t.done } }); setTasks((ts) => ts.map((x) => x.id === t.id ? d.task : x)); };
-  const del = async (id: string) => { await api({ entity: "task", action: "delete", id }); setTasks((ts) => ts.filter((t) => t.id !== id)); };
+  const del = async (id: string) => {
+    try { await api({ entity: "task", action: "delete", id }); setTasks((ts) => ts.filter((t) => t.id !== id)); }
+    catch (e) { alert(e instanceof Error ? e.message : "Couldn't delete that task."); }
+  };
   const contactName = (id: string | null) => contacts.find((c) => c.id === id)?.fullName ?? "";
 
   const open = tasks.filter((t) => !t.done), done = tasks.filter((t) => t.done);

@@ -19,6 +19,7 @@ export default function CompanyCommandCenter() {
   const [notice, setNotice] = useState<Notice>(null);
   const [threats, setThreats] = useState<ThreatReport | null>(null);
   const [scanning, setScanning] = useState(false);
+  const [threatErr, setThreatErr] = useState("");
   const [card, setCard] = useState<Scorecard | null>(null);
   const [scoring, setScoring] = useState(false);
 
@@ -26,11 +27,16 @@ export default function CompanyCommandCenter() {
   useEffect(() => {
     (async () => {
       setScanning(true);
+      setThreatErr("");
       try {
         const res = await fetch("/api/threats");
         if (res.ok) setThreats(await res.json());
+        else {
+          const data = await res.json().catch(() => ({}));
+          setThreatErr(data.error ?? `Couldn't scan for threats (${res.status}).`);
+        }
       } catch {
-        /* ignore */
+        setThreatErr("Couldn't reach the threat scanner — check your connection and refresh.");
       } finally {
         setScanning(false);
       }
@@ -72,10 +78,19 @@ export default function CompanyCommandCenter() {
 
   const refreshScore = async () => {
     setScoring(true);
+    setNotice(null);
     try {
       const res = await fetch("/api/score", { method: "POST" });
-      if (res.ok) setCard(await res.json());
-      await refresh();
+      if (res.ok) {
+        setCard(await res.json());
+        setNotice({ text: "Visibility score refreshed.", tone: "success" });
+        await refresh();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setNotice({ text: data.error ?? `Couldn't refresh your score (${res.status}).`, tone: "error" });
+      }
+    } catch {
+      setNotice({ text: "Network error — couldn't refresh your score.", tone: "error" });
     } finally {
       setScoring(false);
     }
@@ -129,7 +144,9 @@ export default function CompanyCommandCenter() {
               <span className="text-xs text-faint">{scanning ? "checking now…" : threats ? `checked ${timeAgo(threats.generatedAt)}` : ""}</span>
             </div>
             <p className="mb-3 text-xs text-muted">We watch message boards, social media, news, and trading data. If someone spreads false info or sentiment turns against you, it shows up here — with a factual response ready for you to approve.</p>
-            {!threats ? (
+            {!threats && threatErr ? (
+              <p className="py-6 text-sm text-red-500">{threatErr}</p>
+            ) : !threats ? (
               <p className="py-6 text-sm text-faint">Scanning the board, StockTwits, news, short data, and halts…</p>
             ) : threats.threats.length === 0 ? (
               <p className="py-6 text-sm text-muted">No active threats. The conversation is clean and the tape is calm — we&apos;ll alert you the moment that changes.</p>

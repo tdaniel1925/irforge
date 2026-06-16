@@ -23,20 +23,30 @@ export default function CapTablePage() {
   const { db, error, refresh } = useAppState();
   const [tab, setTab] = useState<"cap" | "notes">("cap");
   const [notice, setNotice] = useState<Notice>(null);
+  // Share price drives note-conversion + dilution math. Default $1.00, but the
+  // user sets the real current price so the numbers aren't misleading.
+  const [priceInput, setPriceInput] = useState("1.00");
 
   if (error) return <ErrorBanner message={error} />;
   if (!db) return <LoadingState />;
 
   const cap: CapTableEntry[] = db.capTable ?? [];
   const notes: ConvertibleNote[] = db.convertibleNotes ?? [];
-  // Market price from the latest score-refresh audit isn't stored; use a demo price.
-  const marketPrice = 1.0;
+  const marketPrice = Math.max(0.0001, Number(priceInput) || 1.0);
   const d = computeDilution(cap, notes, marketPrice);
 
   return (
     <div>
       <PageHeader title="Cap Table & Dilution" subtitle="Your ownership, fully diluted — common, preferred, insiders, options, warrants, and what your convertible notes turn into. The fully-diluted number every financing decision hinges on, in one place." />
       {notice && <Banner message={notice.text} tone={notice.tone} onDismiss={() => setNotice(null)} />}
+
+      <div className="mb-4 flex items-center gap-2 rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm">
+        <label className="font-medium text-app">Current share price</label>
+        <span className="text-faint">$</span>
+        <input value={priceInput} onChange={(e) => setPriceInput(e.target.value)} type="number" step="0.01" min="0"
+          className="w-24 rounded border border-app bg-surface px-2 py-1 text-app focus:border-emerald-500 focus:outline-none" />
+        <span className="text-xs text-faint">Used to value note conversions &amp; dilution. Enter your live price for accurate numbers.</span>
+      </div>
 
       {/* Dilution summary */}
       <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">

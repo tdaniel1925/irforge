@@ -33,6 +33,7 @@ export default function Studio() {
 function PressBuilder({ db, refresh }: { db: any; refresh: () => void }) {
   const [topic, setTopic] = useState("");
   const [busy, setBusy] = useState(false);
+  const [acting, setActing] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
 
   const draft = async () => {
@@ -46,8 +47,14 @@ function PressBuilder({ db, refresh }: { db: any; refresh: () => void }) {
   };
 
   const act = async (id: string, action: string) => {
-    await fetch("/api/press", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, action }) });
-    await refresh();
+    if (acting) return;
+    setActing(id); setNotice(null);
+    try {
+      const res = await fetch("/api/press", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, action }) });
+      const data = await res.json().catch(() => ({}));
+      setNotice(res.ok ? { text: action === "approve" ? "Release approved." : "Draft discarded.", tone: "success" } : { text: data.error ?? "Failed.", tone: "error" });
+      if (res.ok) await refresh();
+    } catch { setNotice({ text: "Network error.", tone: "error" }); } finally { setActing(null); }
   };
 
   const releases: PressRelease[] = db.pressReleases;
@@ -79,8 +86,8 @@ function PressBuilder({ db, refresh }: { db: any; refresh: () => void }) {
               <FlagList flags={pr.complianceFlags} />
               {pr.status === "pending" && (
                 <div className="mt-3 flex gap-2">
-                  <Button onClick={() => act(pr.id, "approve")}>✓ Approve release</Button>
-                  <Button variant="danger" onClick={() => act(pr.id, "reject")}>✕ Discard</Button>
+                  <Button onClick={() => act(pr.id, "approve")} disabled={acting === pr.id}>{acting === pr.id ? "…" : "✓ Approve release"}</Button>
+                  <Button variant="danger" onClick={() => act(pr.id, "reject")} disabled={acting === pr.id}>✕ Discard</Button>
                 </div>
               )}
               <p className="mt-3 text-xs text-faint">Once approved, copy this into your wire service (GlobeNewswire, ACCESSWIRE) or paste into Settings to add it to your public page.</p>

@@ -10,7 +10,15 @@ export default function MetricsPage() {
   if (error) return <ErrorBanner message={error} />;
   if (!db) return <LoadingState />;
 
-  const m = db.metrics;
+  const m = db.metrics ?? [];
+  if (m.length === 0) {
+    return (
+      <div>
+        <PageHeader title="Results" subtitle="Your numbers, updated weekly — forward this to the board as proof the IR budget is working." />
+        <Card><p className="text-sm text-muted">No results yet. Your weekly metrics will appear here once your page has activity to measure.</p></Card>
+      </div>
+    );
+  }
   const latest = m[m.length - 1];
   const first = m[0];
   const postedCount = db.drafts.filter((d) => d.status === "posted").length;

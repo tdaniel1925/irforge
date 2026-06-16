@@ -19,11 +19,13 @@ export default function FilingsPage() {
     setNotice(null);
     try {
       const res = await fetch("/api/filings/sync", { method: "POST" });
-      const data = await res.json();
+      // Match useAppState.act: bounce to login on 401 instead of a confusing error.
+      if (res.status === 401) { window.location.href = "/login"; return; }
+      const data = await res.json().catch(() => ({}));
       setNotice(
-        data.ok
-          ? { text: `Checked EDGAR — found ${data.added} new filing(s).`, tone: "success" }
-          : { text: data.error, tone: "error" }
+        res.ok
+          ? { text: `Checked EDGAR — found ${data.added ?? 0} new filing(s).`, tone: "success" }
+          : { text: data.error ?? `Sync failed (${res.status}).`, tone: "error" }
       );
     } catch {
       setNotice({ text: "Sync failed — network error.", tone: "error" });
@@ -59,10 +61,10 @@ export default function FilingsPage() {
         title="SEC Filings"
         subtitle="Every filing here can become a post with one click. We check EDGAR automatically — or check now with the button."
       >
-        <Button variant="secondary" onClick={cadence} disabled={busy} title="Draft a post even when there's no news — keeps your account active">
+        <Button variant="secondary" onClick={cadence} disabled={busy || syncing} title="Draft a post even when there's no news — keeps your account active">
           + Write a post (no news needed)
         </Button>
-        <Button onClick={sync} disabled={syncing}>
+        <Button onClick={sync} disabled={syncing || busy}>
           {syncing ? "Checking…" : "↻ Check for new filings"}
         </Button>
       </PageHeader>
@@ -95,7 +97,7 @@ export default function FilingsPage() {
                       Post drafted ✓ → read & approve
                     </Link>
                   ) : (
-                    <Button onClick={() => generate(f.id)} disabled={busy} title="AI writes a post about this filing for you to approve">
+                    <Button onClick={() => generate(f.id)} disabled={busy || syncing} title="AI writes a post about this filing for you to approve">
                       ✦ Turn into a post
                     </Button>
                   )}

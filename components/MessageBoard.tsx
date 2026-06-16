@@ -195,8 +195,19 @@ export default function MessageBoard({ ticker }: { ticker: string }) {
   };
 
   const react = async (postId: string, kind: ReactionKind) => {
-    await fetch("/api/board", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ react: kind, postId }) });
-    await load();
+    try {
+      const res = await fetch("/api/board", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ react: kind, postId }) });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? (res.status === 429 ? "You're reacting too fast — try again in a moment." : "Couldn't save that reaction."));
+        setTimeout(() => setError(""), 4000);
+        return;
+      }
+      await load();
+    } catch {
+      setError("Network error — couldn't save that reaction.");
+      setTimeout(() => setError(""), 4000);
+    }
   };
 
   const submitTop = async () => {
@@ -247,6 +258,10 @@ export default function MessageBoard({ ticker }: { ticker: string }) {
 
   return (
     <div>
+      {/* Transient action error (e.g. a rejected reaction) — visible regardless of auth/composer. */}
+      {error && !authed && (
+        <p className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/[0.06] px-3 py-2 text-xs text-amber-600 dark:text-amber-400">{error}</p>
+      )}
       {/* Composer — members only. Guests see a sign-in CTA. */}
       {authed ? (
         <div className="mb-5 rounded-xl border border-app bg-surface p-4">
