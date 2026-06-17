@@ -717,3 +717,65 @@ export async function generateReplyDraft(
     ],
   };
 }
+
+// ── Fund Finder ──
+// Suggests institutional-investor TARGETS for a company to research and approach,
+// based on the kinds of funds that hold its peers, and drafts a compliant intro
+// note for each. These are RESEARCH STARTING POINTS the company verifies against
+// real 13F filings — not a claim of current holdings. Compliance: flat-fee model,
+// the company does its own outreach, no solicitation on its behalf, no promises.
+export interface GeneratedInvestorTarget {
+  fund: string;
+  type: string;
+  aum: string;
+  peersHeld: string[];
+  positionNote: string;
+  outreachDraft: string;
+}
+export async function generateInvestorTargets(
+  company: Company
+): Promise<{ targets: GeneratedInvestorTarget[]; engine: "claude" | "template" }> {
+  const peers = (company.peers ?? []).filter(Boolean);
+  const sector = company.sector || company.description || "its sector";
+  const ai = await claude(
+    `You help a small public company build a RESEARCH LIST of institutional investors to approach. ` +
+      `Suggest realistic fund TYPES and representative names of funds that typically hold small-cap companies in this sector, ` +
+      `and for each write a short, professional intro note the company can personalize and send ITSELF. ` +
+      `STRICT COMPLIANCE: these are research starting points to verify against real 13F filings — do NOT claim a fund currently holds a specific position as fact. ` +
+      `The note must NOT promise returns, predict the stock price, give investment advice, or offer compensation. It simply introduces the company and points to its public filings. ` +
+      `Return ONLY JSON: {"targets":[{"fund":"name","type":"Hedge Fund|Family Office|Small-Cap Fund|RIA","aum":"approx e.g. $250M","peersHeld":["TICKER"],"positionNote":"1 sentence why they may be a fit (framed as 'funds like this often hold...')","outreachDraft":"3-4 sentence intro note"}]}. Provide 5-8 targets.`,
+    `Company: ${company.name} ($${company.ticker}). Sector: ${sector}. Peer companies: ${peers.length ? peers.join(", ") : "(none provided — suggest based on sector)"}.`
+  );
+  if (ai) {
+    try {
+      const m = ai.match(/\{[\s\S]*\}/);
+      if (m) {
+        const v = JSON.parse(m[0]);
+        if (Array.isArray(v.targets) && v.targets.length) {
+          const targets: GeneratedInvestorTarget[] = v.targets.slice(0, 8).map((t: Record<string, unknown>) => ({
+            fund: String(t.fund ?? "Institutional investor").slice(0, 120),
+            type: String(t.type ?? "Fund").slice(0, 40),
+            aum: String(t.aum ?? "—").slice(0, 40),
+            peersHeld: Array.isArray(t.peersHeld) ? t.peersHeld.map((p: unknown) => String(p).toUpperCase().slice(0, 6)).slice(0, 6) : [],
+            positionNote: String(t.positionNote ?? "").slice(0, 300),
+            outreachDraft: String(t.outreachDraft ?? "").slice(0, 800),
+          }));
+          return { targets, engine: "claude" };
+        }
+      }
+    } catch {
+      /* fall through */
+    }
+  }
+  // Template fallback — generic but usable research prompts.
+  const types = ["Small-Cap Fund", "Family Office", "RIA", "Hedge Fund"];
+  const targets: GeneratedInvestorTarget[] = types.map((type, i) => ({
+    fund: `${sector.split(" ")[0] || "Small-cap"}-focused ${type} (research ${i + 1})`,
+    type,
+    aum: "verify in 13F",
+    peersHeld: peers.slice(0, 2),
+    positionNote: `Funds like this often hold small-caps in ${sector}. Verify current holdings in their latest 13F on EDGAR.`,
+    outreachDraft: `Hello — I'm reaching out on behalf of ${company.name} ($${company.ticker}), a public company in ${sector}. We're expanding our investor outreach and thought our story may be relevant given your focus on companies like our peers. Our latest filings are on SEC EDGAR; I'd welcome the chance to share a brief overview. Thank you for your time.`,
+  }));
+  return { targets, engine: "template" };
+}
