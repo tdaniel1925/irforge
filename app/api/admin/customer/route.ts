@@ -1,16 +1,14 @@
 import { NextResponse } from "next/server";
 import { getStripe, TIERS, type Tier } from "@/lib/billing";
-import { getMyCompany } from "@/lib/supabase/store";
 import { createServiceClient } from "@/lib/supabase/server";
+import { isSuperAdmin } from "@/lib/platform";
 
 export const dynamic = "force-dynamic";
 
+// Gate on platform super-admin (platform_admins), not the legacy companies.is_admin.
 async function requireAdmin() {
-  const mine = await getMyCompany();
-  if (!mine) return null;
-  const svc = createServiceClient();
-  const { data } = await svc.from("companies").select("is_admin").eq("id", mine.id).single();
-  return data?.is_admin ? svc : null;
+  if (!(await isSuperAdmin())) return null;
+  return createServiceClient();
 }
 
 // POST — admin actions for manual customer management.

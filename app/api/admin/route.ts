@@ -1,19 +1,16 @@
 import { NextResponse } from "next/server";
-import { getMyCompany } from "@/lib/supabase/store";
 import { createServiceClient } from "@/lib/supabase/server";
+import { isSuperAdmin } from "@/lib/platform";
 
 export const dynamic = "force-dynamic";
 
-// Admin-only: returns all companies + claim requests. Hard-gated on is_admin.
-// Uses the service-role client (bypasses RLS) ONLY after confirming the caller is an admin.
+// Admin-only: returns all companies + claim requests. Hard-gated on super-admin
+// (platform_admins). Uses the service-role client (bypasses RLS) ONLY after
+// confirming the caller is a platform super-admin.
 export async function GET() {
-  const mine = await getMyCompany();
-  if (!mine) return NextResponse.json({ error: "Not authorized" }, { status: 401 });
+  if (!(await isSuperAdmin())) return NextResponse.json({ error: "Admin only" }, { status: 403 });
 
   const svc = createServiceClient();
-  const { data: meRow } = await svc.from("companies").select("is_admin").eq("id", mine.id).single();
-  if (!meRow?.is_admin) return NextResponse.json({ error: "Admin only" }, { status: 403 });
-
   const { data: companies } = await svc
     .from("companies")
     .select("id, name, ticker, tier, subscription_status, onboarding_complete, created_at, stripe_customer_id, stripe_subscription_id")
@@ -44,11 +41,8 @@ export async function GET() {
 
 // PATCH — verify/reject a claim request.
 export async function PATCH(req: Request) {
-  const mine = await getMyCompany();
-  if (!mine) return NextResponse.json({ error: "Not authorized" }, { status: 401 });
+  if (!(await isSuperAdmin())) return NextResponse.json({ error: "Admin only" }, { status: 403 });
   const svc = createServiceClient();
-  const { data: meRow } = await svc.from("companies").select("is_admin").eq("id", mine.id).single();
-  if (!meRow?.is_admin) return NextResponse.json({ error: "Admin only" }, { status: 403 });
 
   const { id, status } = await req.json().catch(() => ({}));
   if (!id || !["verified", "rejected"].includes(status)) return NextResponse.json({ error: "Bad request" }, { status: 422 });
