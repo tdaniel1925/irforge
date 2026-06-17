@@ -55,20 +55,31 @@ export interface FundResearch {
   lastFiling: string;      // most recent filing date on record
 }
 
+function nowISODate(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+function isoDaysAgo(days: number): string {
+  return new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
+}
+
 // Find the funds (13F filers) that reported holding a peer ticker.
-async function filersHolding(peer: string): Promise<{ name: string; cik: string }[]> {
+async function filersHolding(peer: string): Promise<{ name: string; cik: string; fileDate: string }[]> {
   const cik = await tickerToCik(peer);
   if (!cik) return [];
-  // Full-text search across 13F-HR filings mentioning the peer's CIK/ticker.
+  // Full-text search across RECENT 13F-HR filings mentioning the peer. Restricting
+  // the date range drops dormant funds whose last 13F was years ago, so the list
+  // is current, actively-filing managers — not dead shells.
   const q = encodeURIComponent(`"${peer}"`);
+  const today = nowISODate();
+  const start = isoDaysAgo(730); // ~2 years
   let data: unknown;
   try {
-    data = await getJson(`https://efts.sec.gov/LATEST/search-index?q=${q}&forms=13F-HR`);
+    data = await getJson(`https://efts.sec.gov/LATEST/search-index?q=${q}&forms=13F-HR&dateRange=custom&startdt=${start}&enddt=${today}`);
   } catch {
     return [];
   }
-  const hits = (data as { hits?: { hits?: { _source?: { display_names?: string[]; ciks?: string[] } }[] } })?.hits?.hits ?? [];
-  const out: { name: string; cik: string }[] = [];
+  const hits = (data as { hits?: { hits?: { _source?: { display_names?: string[]; ciks?: string[]; file_date?: string } }[] } })?.hits?.hits ?? [];
+  const out: { name: string; cik: string; fileDate: string }[] = [];
   const seen = new Set<string>();
   for (const h of hits) {
     const src = h?._source ?? {};
@@ -76,7 +87,7 @@ async function filersHolding(peer: string): Promise<{ name: string; cik: string 
     const fcik = (src?.ciks ?? [])[0];
     if (!name || !fcik || seen.has(fcik)) continue;
     seen.add(fcik);
-    out.push({ name: name.slice(0, 120), cik: String(fcik).padStart(10, "0") });
+    out.push({ name: name.slice(0, 120), cik: String(fcik).padStart(10, "0"), fileDate: String(src?.file_date ?? "") });
     if (out.length >= 12) break;
   }
   return out;
@@ -126,20 +137,24 @@ export async function findRealFunds(company: Company): Promise<FundResearch[]> {
   const peers = (company.peers ?? []).map((p) => p.toUpperCase().trim()).filter(Boolean).slice(0, 4);
   if (peers.length === 0) return [];
 
-  // Map fund CIK -> { name, peersHeld[] } across all peers.
-  const byCik = new Map<string, { name: string; peers: Set<string> }>();
+  // Map fund CIK -> { name, peersHeld[], latest file date } across all peers.
+  const byCik = new Map<string, { name: string; peers: Set<string>; fileDate: string }>();
   for (const peer of peers) {
     const filers = await filersHolding(peer);
     for (const f of filers) {
       const cur = byCik.get(f.cik);
-      if (cur) cur.peers.add(peer);
-      else byCik.set(f.cik, { name: f.name, peers: new Set([peer]) });
+      if (cur) {
+        cur.peers.add(peer);
+        if (f.fileDate > cur.fileDate) cur.fileDate = f.fileDate;
+      } else {
+        byCik.set(f.cik, { name: f.name, peers: new Set([peer]), fileDate: f.fileDate });
+      }
     }
   }
 
-  // Prefer funds that hold MORE of the peers (stronger fit), cap the enrichment count.
+  // Rank by fit (holds more of the peers) then recency (most recent 13F first).
   const ranked = Array.from(byCik.entries())
-    .sort((a, b) => b[1].peers.size - a[1].peers.size)
+    .sort((a, b) => b[1].peers.size - a[1].peers.size || (b[1].fileDate > a[1].fileDate ? 1 : -1))
     .slice(0, 10);
 
   const enriched: FundResearch[] = [];
