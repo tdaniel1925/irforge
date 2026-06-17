@@ -46,18 +46,21 @@ export async function createAyrshareProfile(title: string): Promise<{ ok: boolea
 export async function generateAyrshareLinkUrl(profileKey: string): Promise<{ ok: boolean; url?: string; error?: string }> {
   const key = process.env.AYRSHARE_API_KEY;
   const privateKey = process.env.AYRSHARE_PRIVATE_KEY;
-  const domain = process.env.AYRSHARE_DOMAIN; // optional: your Ayrshare domain (Business Plan)
+  // Ayrshare's Business Plan assigns a domain ID (e.g. "id-1MW7j"); it's the prefix
+  // on your private-key filename in the integration package.
+  const domain = process.env.AYRSHARE_DOMAIN || "id-1MW7j";
   if (!key || !privateKey) return { ok: false, error: "Ayrshare multi-account is not configured (missing private key)." };
   try {
+    // generateJWT expects an application/x-www-form-urlencoded body, NOT JSON.
+    const form = new URLSearchParams();
+    form.set("domain", domain);
+    form.set("privateKey", privateKey);
+    form.set("profileKey", profileKey);
     const res = await fetch("https://api.ayrshare.com/api/profiles/generateJWT", {
       method: "POST",
-      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/x-www-form-urlencoded" },
       signal: AbortSignal.timeout(20000),
-      body: JSON.stringify({
-        domain: domain || "id",
-        privateKey,
-        profileKey,
-      }),
+      body: form.toString(),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.url) {
