@@ -14,6 +14,14 @@ export default function Login() {
 
   const configured = supabaseConfigured();
 
+  // Optional post-login destination (e.g. accepting a team invite). Only allow
+  // same-site relative paths.
+  const nextParam = (() => {
+    if (typeof window === "undefined") return null;
+    const n = new URLSearchParams(window.location.search).get("next");
+    return n && n.startsWith("/") ? n : null;
+  })();
+
   const submit = async () => {
     setBusy(true);
     setMsg(null);
@@ -35,13 +43,13 @@ export default function Login() {
           setMode("signin");
           return;
         }
-        window.location.href = accountType === "investor" ? "/member" : "/onboarding";
+        window.location.href = nextParam ?? (accountType === "investor" ? "/member" : "/onboarding");
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) { setMsg({ text: error.message, ok: false }); return; }
-        // Route by the account type stamped at signup.
+        // Route by the account type stamped at signup (or honor an explicit next=).
         const type = data.user?.user_metadata?.account_type;
-        window.location.href = type === "member" ? "/member" : "/app";
+        window.location.href = nextParam ?? (type === "member" ? "/member" : "/app");
       }
     } catch (e) {
       setMsg({ text: e instanceof Error ? e.message : "Something went wrong.", ok: false });

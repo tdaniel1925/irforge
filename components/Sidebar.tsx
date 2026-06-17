@@ -66,6 +66,7 @@ const NAV: NavGroup[] = [
     section: "Settings & account",
     items: [
       { href: "/settings", label: "Settings", icon: "⚙", hint: "Company profile, social accounts, disclosures", detail: "The single source of truth for your company: profile (name, ticker, sector, approver), connect your social accounts for publishing, and your disclosure + forward-looking-statement language. Everything about your account lives here." },
+      { href: "/admin/team", label: "Team", icon: "👤", hint: "Invite & manage who can access this company", detail: "Add teammates to your company account. Admins can invite users by email, set them as admin or member, and remove access anytime. Everyone shares the company dashboard and data; each person also gets their own CRM ownership and workspace. The last admin can't be removed." },
       { href: "/billing", label: "Billing & Plan", icon: "💳", hint: "Your subscription and plan", detail: "Manage your subscription and plan. Upgrade, see what each tier includes, and open the secure Stripe portal to update payment details or cancel anytime." },
       { href: "/learn", label: "Public Company 101", icon: "📚", hint: "Plain-English IR & filing guides", detail: "A plain-English library on being a public company — IR best practices, what each SEC filing means, disclosure rules, and how to engage investors compliantly. No jargon, written for busy operators." },
     ],
