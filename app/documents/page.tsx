@@ -69,7 +69,7 @@ export default function Documents() {
     <div>
       <PageHeader title="Document Vault" subtitle="Every document being a public company requires — filings, board materials, financings, policies, IR decks — organized by what it's for, not scattered across drives.">
         <Button variant="secondary" onClick={importFilings}>Import SEC filings</Button>
-        <Button onClick={() => setAdding(!adding)}>{adding ? "Cancel" : "+ Add document"}</Button>
+        <Button onClick={() => setAdding(!adding)}>{adding ? "Cancel" : "+ Add link"}</Button>
       </PageHeader>
 
       {notice && <Banner message={notice.text} tone={notice.tone} onDismiss={() => setNotice(null)} />}

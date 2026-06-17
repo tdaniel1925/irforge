@@ -146,9 +146,9 @@ export default function Onboarding() {
         </Panel>
       )}
 
-      {/* STEP 4 — tier */}
+      {/* STEP 4 — tier (no charge at signup; you can add billing later) */}
       {step === 4 && (
-        <Panel title="Pick your plan" sub="You can change this anytime. Most companies start on Growth.">
+        <Panel title="Which plan fits you?" sub="No card needed to get started — we'll activate your dashboard now and sort out billing with you later. This just tells us what you're after.">
           <div className="space-y-3">
             {TIERS.map((t) => (
               <button
@@ -162,10 +162,11 @@ export default function Onboarding() {
                   </p>
                   <p className="mt-0.5 text-sm text-muted">{t.blurb}</p>
                 </div>
-                <span className="shrink-0 font-bold text-app">{t.price}</span>
+                <span className="shrink-0 text-right text-sm font-medium text-faint">{t.price}<br /><span className="text-[10px] uppercase tracking-wide text-emerald-600 dark:text-emerald-400">free to start</span></span>
               </button>
             ))}
           </div>
+          <p className="mt-3 text-xs text-faint">You won&apos;t be charged today. Activate your dashboard and we&apos;ll set up billing together when you&apos;re ready.</p>
           <Back onClick={() => setStep(3)} />
           <Next onClick={finish} busy={busy} label="Activate my dashboard →" />
         </Panel>

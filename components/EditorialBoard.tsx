@@ -184,6 +184,11 @@ export default function EditorialBoard({ initialPosts, voices, canPublish = fals
                           {busy === "t" + p.id ? "…" : "📅 Schedule"}
                         </button>
                       )}
+                      {p.status === "scheduled" && !canPublish && (
+                        <a href="/billing" className="rounded border border-emerald-500/40 px-2 py-1 text-[11px] font-medium text-emerald-600 hover:bg-emerald-500/10 dark:text-emerald-400">
+                          ⤴ Publishing needs an upgrade
+                        </a>
+                      )}
                       {["draft", "reviewed", "approved", "scheduled"].includes(p.status) && (
                         <button onClick={() => transition(p.id, "pulled")} disabled={busy === "t" + p.id} className="rounded border border-app px-2 py-1 text-[11px] text-muted hover:text-red-500">Pull</button>
                       )}

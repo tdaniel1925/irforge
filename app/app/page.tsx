@@ -19,6 +19,22 @@ export default function ApprovalInbox() {
   if (error) return <ErrorBanner message={error} />;
   if (!db) return <LoadingState />;
 
+  // A company that signed up but hasn't completed onboarding has no ticker yet —
+  // send them to finish setup instead of showing an empty, nameless inbox.
+  if (!db.company.ticker?.trim()) {
+    return (
+      <div className="mx-auto max-w-lg py-16 text-center">
+        <h1 className="text-2xl font-semibold text-app">Let&apos;s finish setting up</h1>
+        <p className="mx-auto mt-2 max-w-md text-sm text-muted">
+          Your account is ready — connect your ticker and we&apos;ll pull your public profile and draft your first posts. Takes about a minute.
+        </p>
+        <Link href="/onboarding" className="mt-6 inline-block rounded-xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500">
+          Finish setup →
+        </Link>
+      </div>
+    );
+  }
+
   // The things that need a decision, newest first. Blocked items show too (need fixing).
   const inbox = db.drafts.filter((d) => d.status === "pending" || d.status === "blocked");
   const readyToSend = db.drafts.filter((d) => d.status === "approved");

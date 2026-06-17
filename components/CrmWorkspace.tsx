@@ -30,12 +30,17 @@ export default function CrmWorkspace({ initialContacts, initialCompanies, initia
   const [deals, setDeals] = useState(initialDeals);
   const [tasks, setTasks] = useState(initialTasks);
 
+  // Scope filter shared by the tab counts AND the rendered tabs, so "Mine" is consistent.
+  const me = currentUserEmail.toLowerCase();
+  const mine = <T extends { ownerEmail?: string }>(arr: T[]) => scope === "mine" && me ? arr.filter((x) => (x.ownerEmail ?? "").toLowerCase() === me) : arr;
+  const sContacts = mine(contacts), sCompanies = mine(companies), sDeals = mine(deals), sTasks = mine(tasks);
+
   const TABS = [
     { k: "dashboard", label: "📊 Dashboard" },
-    { k: "contacts", label: `👤 Contacts (${contacts.length})` },
-    { k: "companies", label: `🏢 Companies (${companies.length})` },
-    { k: "deals", label: `💼 Deals (${deals.filter((d) => d.status === "open").length})` },
-    { k: "tasks", label: `✅ Tasks (${tasks.filter((t) => !t.done).length})` },
+    { k: "contacts", label: `👤 Contacts (${sContacts.length})` },
+    { k: "companies", label: `🏢 Companies (${sCompanies.length})` },
+    { k: "deals", label: `💼 Deals (${sDeals.filter((d) => d.status === "open").length})` },
+    { k: "tasks", label: `✅ Tasks (${sTasks.filter((t) => !t.done).length})` },
   ];
 
   return (
@@ -53,19 +58,11 @@ export default function CrmWorkspace({ initialContacts, initialCompanies, initia
         <a href="/crm/import" className={`rounded-lg border border-app px-3 py-1.5 text-sm font-medium text-app hover:bg-app-hover ${currentUserEmail && tab !== "dashboard" ? "" : "ml-auto"}`}>⤓ Import / Export</a>
       </div>
 
-      {(() => {
-        const me = currentUserEmail.toLowerCase();
-        const mine = <T extends { ownerEmail?: string }>(arr: T[]) => scope === "mine" && me ? arr.filter((x) => (x.ownerEmail ?? "").toLowerCase() === me) : arr;
-        return (
-          <>
-            {tab === "dashboard" && <Dashboard metrics={metrics} deals={deals} tasks={tasks} />}
-            {tab === "contacts" && <Contacts contacts={mine(contacts)} setContacts={setContacts} companies={companies} />}
-            {tab === "companies" && <Companies companies={mine(companies)} setCompanies={setCompanies} />}
-            {tab === "deals" && <Deals deals={mine(deals)} setDeals={setDeals} contacts={contacts} />}
-            {tab === "tasks" && <Tasks tasks={mine(tasks)} setTasks={setTasks} contacts={contacts} />}
-          </>
-        );
-      })()}
+      {tab === "dashboard" && <Dashboard metrics={metrics} deals={deals} tasks={tasks} />}
+      {tab === "contacts" && <Contacts contacts={sContacts} setContacts={setContacts} companies={companies} />}
+      {tab === "companies" && <Companies companies={sCompanies} setCompanies={setCompanies} />}
+      {tab === "deals" && <Deals deals={sDeals} setDeals={setDeals} contacts={contacts} />}
+      {tab === "tasks" && <Tasks tasks={sTasks} setTasks={setTasks} contacts={contacts} />}
     </div>
   );
 }
