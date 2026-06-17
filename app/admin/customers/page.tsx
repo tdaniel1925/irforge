@@ -14,6 +14,8 @@ export default function AdminCustomers() {
 
   // New-customer form
   const [nc, setNc] = useState({ name: "", email: "", ticker: "", tier: "growth" });
+  // Promo-invite form (everything free)
+  const [promo, setPromo] = useState({ name: "", email: "" });
 
   const load = async () => {
     try {
@@ -59,7 +61,15 @@ export default function AdminCustomers() {
   };
 
   const comp = async (c: Company) => { setBusy(c.id + "comp"); await act({ action: "comp", companyId: c.id, tier: c.tier }, `${c.name} comped to active.`); setBusy(""); };
+  const compFull = async (c: Company) => { setBusy(c.id + "full"); await act({ action: "comp_full", companyId: c.id }, `${c.name || "Company"} now has everything free (Command tier + all features).`); setBusy(""); };
   const cancel = async (c: Company) => { setBusy(c.id + "cancel"); await act({ action: "cancel_sub", subscriptionId: c.stripe_subscription_id, companyId: c.id }, "Subscription canceled."); setBusy(""); };
+
+  const invitePromo = async () => {
+    setBusy("promo");
+    const r = await act({ action: "promo_invite", name: promo.name, email: promo.email });
+    if (r.ok) { setNotice({ text: `Promo invite sent to ${promo.email} — full free access.`, tone: "success" }); setPromo({ name: "", email: "" }); }
+    setBusy("");
+  };
 
   if (loading) return <LoadingState />;
   if (error) return (
@@ -70,6 +80,17 @@ export default function AdminCustomers() {
     <div>
       <PageHeader title="Customer Management" subtitle="Set up customers, send them a subscription invoice they pay via Stripe, charge the setup fee, comp strategic accounts, or cancel. You never handle card numbers — customers pay through Stripe's hosted page." />
       {notice && <Banner message={notice.text} tone={notice.tone} onDismiss={() => setNotice(null)} />}
+
+      {/* Invite a promo company — everything free */}
+      <Card className="mb-6 border-emerald-500/30 bg-emerald-500/[0.04]">
+        <h2 className="font-semibold text-app">🎁 Invite a promo company — everything free</h2>
+        <p className="mb-3 mt-1 text-sm text-muted">Creates a comped account on the top (Command) tier with every feature unlocked, and emails them a link to set up. No card, no charge.</p>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <input value={promo.name} onChange={(e) => setPromo({ ...promo, name: e.target.value })} placeholder="Company name (optional)" className="rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:outline-none" />
+          <input value={promo.email} onChange={(e) => setPromo({ ...promo, email: e.target.value })} placeholder="Their email" className="rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:outline-none" />
+          <Button onClick={invitePromo} disabled={busy === "promo" || !promo.email}>{busy === "promo" ? "Sending…" : "Send free-access invite"}</Button>
+        </div>
+      </Card>
 
       {/* Create a new customer */}
       <Card className="mb-6">
@@ -104,6 +125,7 @@ export default function AdminCustomers() {
                   <Button onClick={() => subscribe(c, (document.getElementById(`tier-${c.id}`) as HTMLSelectElement).value)} disabled={busy === c.id}>{busy === c.id ? "…" : "Send subscription invoice"}</Button>
                   <Button variant="secondary" onClick={() => setupFee(c)} disabled={busy === c.id + "fee"}>Setup fee</Button>
                   <Button variant="secondary" onClick={() => comp(c)} disabled={busy === c.id + "comp"}>Comp</Button>
+                  <Button variant="secondary" onClick={() => compFull(c)} disabled={busy === c.id + "full"} title="Command tier + every feature, free">{busy === c.id + "full" ? "…" : "🎁 Comp full (free)"}</Button>
                   {c.stripe_subscription_id && <Button variant="danger" onClick={() => cancel(c)} disabled={busy === c.id + "cancel"}>Cancel</Button>}
                 </div>
               </div>

@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
+import { randomUUID } from "crypto";
 import { getStripe, TIERS, type Tier } from "@/lib/billing";
 import { createServiceClient } from "@/lib/supabase/server";
-import { isSuperAdmin } from "@/lib/platform";
+import { isSuperAdmin, setCompanyFeature, IROS_FEATURES } from "@/lib/platform";
+import { sendEmail } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
+
+const SITE = process.env.NEXT_PUBLIC_SITE_URL || "https://pubcozone.com";
 
 // Gate on platform super-admin (platform_admins), not the legacy companies.is_admin.
 async function requireAdmin() {
@@ -11,11 +15,16 @@ async function requireAdmin() {
   return createServiceClient();
 }
 
+// Give a company EVERYTHING for free: top tier, active status, and every IR-OS
+// feature flag on. Used for promo / strategic comp accounts.
+async function grantEverythingFree(svc: ReturnType<typeof createServiceClient>, companyId: string) {
+  await svc.from("companies").update({ subscription_status: "active", tier: "pro" }).eq("id", companyId);
+  for (const f of IROS_FEATURES) await setCompanyFeature(companyId, f.key, true);
+}
+
 // POST — admin actions for manual customer management.
 // action: create_customer | send_subscription_invoice | charge_setup_fee | cancel_sub | comp
 export async function POST(req: Request) {
-  const stripe = getStripe();
-  if (!stripe) return NextResponse.json({ error: "Billing not configured." }, { status: 503 });
   const svc = await requireAdmin();
   if (!svc) return NextResponse.json({ error: "Admin only" }, { status: 403 });
 
@@ -23,6 +32,61 @@ export async function POST(req: Request) {
   const action = String(b.action ?? "");
 
   try {
+    // ── Promo actions (no Stripe needed) ──
+
+    // Comp an EXISTING company fully — everything free.
+    if (action === "comp_full") {
+      if (!b.companyId) return NextResponse.json({ error: "companyId required." }, { status: 422 });
+      await grantEverythingFree(svc, String(b.companyId));
+      return NextResponse.json({ ok: true });
+    }
+
+    // Invite a PROMO company by email: create a company shell, comp it fully, and
+    // email an invite link. They sign up with this email and land on onboarding.
+    if (action === "promo_invite") {
+      const email = String(b.email ?? "").trim().toLowerCase();
+      const name = String(b.name ?? "").trim();
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return NextResponse.json({ error: "Enter a valid email." }, { status: 422 });
+
+      // Create the company shell (owner_id null until they sign up & claim).
+      const { data: company, error: cErr } = await svc
+        .from("companies")
+        .insert({ name, ticker: "", tier: "pro", subscription_status: "active" })
+        .select("id")
+        .single();
+      if (cErr || !company) return NextResponse.json({ error: cErr?.message ?? "Couldn't create the promo company." }, { status: 500 });
+      await grantEverythingFree(svc, company.id);
+
+      // Record the promo membership invite (so the signer-up gets linked + an admin).
+      const token = randomUUID();
+      await svc.from("company_users").insert({
+        company_id: company.id, user_id: null, role: "admin", status: "invited",
+        invited_email: email, invited_at: new Date().toISOString(), invite_token: token,
+      });
+
+      const link = `${SITE}/accept-invite?token=${token}`;
+      try {
+        await sendEmail({
+          to: email,
+          subject: `You've got free access to PubcoZone${name ? ` for ${name}` : ""}`,
+          html:
+            `<div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;max-width:560px;margin:0 auto;padding:28px;color:#0f172a">
+              <p style="font-size:20px;font-weight:800;margin:0 0 16px"><span>Pubco</span><span style="color:#059669">Zone.</span></p>
+              <p>You've been given <strong>free, full access</strong> to PubcoZone${name ? ` for <strong>${name}</strong>` : ""} — every feature, no charge.</p>
+              <p>Click below to set up your account with this email and connect your ticker.</p>
+              <p style="margin:22px 0"><a href="${link}" style="display:inline-block;background:#059669;color:#fff;font-weight:700;text-decoration:none;padding:11px 22px;border-radius:9px">Activate free access →</a></p>
+              <p style="font-size:12px;color:#64748b">Or paste this link: ${link}</p>
+            </div>`,
+        });
+      } catch (e) {
+        console.error("[promo_invite] email failed:", e);
+      }
+      return NextResponse.json({ ok: true, companyId: company.id, link });
+    }
+
+    // ── Stripe-backed actions below ──
+    const stripe = getStripe();
+    if (!stripe) return NextResponse.json({ error: "Billing not configured." }, { status: 503 });
     // 1) Create or find a Stripe customer, and (optionally) attach to a company row.
     if (action === "create_customer") {
       const email = String(b.email ?? "").trim();
