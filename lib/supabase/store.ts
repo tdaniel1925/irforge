@@ -51,37 +51,58 @@ function companyToRow(c: Partial<Company>): Record<string, unknown> {
 
 // Returns the logged-in user's company id + profile, or null if not authed.
 // Self-heals: if the user has no company row yet (trigger didn't fire), create one.
+// The company the current user works in. Resolves via TEAM MEMBERSHIP first
+// (so invited members reach the shared company), then falls back to a company
+// they own directly. Self-heals a brand-new company account into a company.
 export async function getMyCompany(): Promise<{ id: string; company: Company } | null> {
   const supabase = await createServerSupabase();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
+  // 1) Active team membership (admin or member). RLS lets a user read their own rows.
+  const { data: membership } = await supabase
+    .from("company_users")
+    .select("company_id")
+    .eq("user_id", user.id)
+    .eq("status", "active")
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (membership?.company_id) {
+    const { data: c } = await supabase.from("companies").select("*").eq("id", membership.company_id).maybeSingle();
+    if (c) return { id: c.id as string, company: rowToCompany(c) };
+  }
+
+  // 2) Back-compat: a company they own directly.
   const { data } = await supabase.from("companies").select("*").eq("owner_id", user.id).maybeSingle();
   if (data) return { id: data.id as string, company: rowToCompany(data) };
 
-  // Member accounts must NOT get a phantom company minted when they touch a
-  // company-scoped path. Only self-heal for company accounts (default when the
-  // metadata is absent, preserving the existing flow).
+  // Member (investor) accounts must NOT get a phantom company minted.
   if (user.user_metadata?.account_type === "member") return null;
 
-  // No row — create one for this user (RLS allows insert where owner_id = auth.uid()).
+  // 3) Brand-new company account with no row yet — mint one + an admin membership.
   const { data: created } = await supabase
     .from("companies")
     .insert({ owner_id: user.id, name: "", ticker: "" })
     .select("*")
     .single();
   if (!created) return null;
+  await supabase
+    .from("company_users")
+    .insert({ company_id: created.id, user_id: user.id, role: "admin", status: "active" });
   return { id: created.id as string, company: rowToCompany(created) };
 }
 
 export async function updateMyCompany(patch: Partial<Company>): Promise<Company | null> {
   const supabase = await createServerSupabase();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
+  const mine = await getMyCompany();
+  if (!mine) return null;
+  // Scope the update to the user's resolved company (works for members + owners);
+  // RLS still enforces they may only write a company they belong to.
   const { data, error } = await supabase
     .from("companies")
     .update(companyToRow(patch))
-    .eq("owner_id", user.id)
+    .eq("id", mine.id)
     .select("*")
     .single();
   if (error || !data) return null;
