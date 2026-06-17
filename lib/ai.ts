@@ -718,6 +718,47 @@ export async function generateReplyDraft(
   };
 }
 
+// Writes the outreach note + fit summary + submission guidance for a REAL fund
+// found in SEC 13F data. Does NOT invent contact details — those come from SEC.
+export async function draftFundOutreach(
+  company: Company,
+  fund: { fund: string; peersHeld: string[] }
+): Promise<{ positionNote: string; submissionCriteria: string; outreachDraft: string; engine: "claude" | "template" }> {
+  const sector = company.sector || "its sector";
+  const held = fund.peersHeld.length ? fund.peersHeld.map((p) => "$" + p).join(", ") : "comparable small-caps";
+  const ai = await claude(
+    `You help a small public company approach a REAL institutional investor that, per its SEC 13F filing, holds peer companies. ` +
+      `Write three things, professional and compliant — the company sends the note ITSELF, you do not solicit. ` +
+      `NO promises of returns, NO price predictions, NO investment advice. ` +
+      `Return ONLY JSON: {"positionNote":"1 sentence on why they may be a fit, grounded in their reported peer holdings","submissionCriteria":"1-2 sentences on how a fund like this typically prefers to be approached (e.g. via IR contact, brief deck, no cold mass-email) — general best practice, not a claim about this specific fund","outreachDraft":"a 3-4 sentence intro note the company can personalize"}.`,
+    `Company: ${company.name} ($${company.ticker}), sector: ${sector}. Fund: ${fund.fund}. It reported holding: ${held}.`
+  );
+  if (ai) {
+    try {
+      const m = ai.match(/\{[\s\S]*\}/);
+      if (m) {
+        const v = JSON.parse(m[0]);
+        if (v.outreachDraft) {
+          return {
+            positionNote: String(v.positionNote ?? "").slice(0, 300),
+            submissionCriteria: String(v.submissionCriteria ?? "").slice(0, 300),
+            outreachDraft: String(v.outreachDraft).slice(0, 800),
+            engine: "claude",
+          };
+        }
+      }
+    } catch {
+      /* fall through */
+    }
+  }
+  return {
+    positionNote: `Reported holding ${held} in its latest 13F — a fund already comfortable with companies like ${company.name}.`,
+    submissionCriteria: `Confirm the firm's preferred contact and process before reaching out (check their website / Form ADV). Funds like this usually prefer a brief, factual intro from the company's IR contact over a cold mass-email.`,
+    outreachDraft: `Hello — I'm reaching out on behalf of ${company.name} ($${company.ticker}), a public company in ${sector}. We noticed your firm holds peer companies (${held}) and thought our story may be relevant. Our latest filings are on SEC EDGAR; I'd welcome the chance to share a brief overview at your convenience. Thank you for your time.`,
+    engine: "template",
+  };
+}
+
 // ── Fund Finder ──
 // Suggests institutional-investor TARGETS for a company to research and approach,
 // based on the kinds of funds that hold its peers, and drafts a compliant intro

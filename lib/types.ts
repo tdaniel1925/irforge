@@ -150,6 +150,7 @@ export interface Company {
   onboarded: boolean;
   tier: "free" | "starter" | "growth" | "pro";
   onboarding_complete: boolean;
+  ayrshareProfileKey?: string; // this company's Ayrshare user profile (their own linked socials)
 }
 
 export interface Filing {
@@ -205,6 +206,15 @@ export interface InvestorTarget {
   positionNote: string;
   stage: InvestorStage;
   outreachDraft: string;
+  // Real SEC-sourced contact research (Fund Finder). Optional so older rows still load.
+  cik?: string;
+  address?: string;      // real business address from SEC submissions
+  phone?: string;        // real phone from SEC submissions (may be blank)
+  edgarUrl?: string;     // EDGAR filer page (13F history)
+  advSearchUrl?: string; // SEC IAPD/ADV search prefilled with the firm name
+  lastFiling?: string;   // most recent filing date on record
+  submissionCriteria?: string; // how funds like this typically want to be approached
+  source?: "sec_13f" | "ai_research"; // where this target came from
 }
 
 export interface Mention {

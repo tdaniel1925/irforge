@@ -28,7 +28,7 @@ export async function POST(req: Request) {
   const channels = Array.isArray(body.channels) && body.channels.length ? body.channels : post.channels;
   if (!channels.length) return NextResponse.json({ error: "Pick at least one channel." }, { status: 422 });
 
-  const result = await publishToChannels(post.title ? `${post.title}\n\n${post.body}` : post.body, channels);
+  const result = await publishToChannels(post.title ? `${post.title}\n\n${post.body}` : post.body, channels, mine.company.ayrshareProfileKey);
   if (!result.ok) {
     await writeAudit({ companyId: mine.id, action: "post.publish_failed", entityType: "post", entityId: post.id, payload: { error: result.error, channels } });
     return NextResponse.json({ error: result.error ?? "Publish failed." }, { status: 502 });

@@ -118,8 +118,10 @@ export default function SettingsPage() {
 
       <AddDisclosure onDone={(msg) => setNotice({ text: msg, tone: "success" })} />
 
+      <SocialConnections />
+
       <Card className="mb-6">
-        <h2 className="mb-2 font-semibold text-app">Connections</h2>
+        <h2 className="mb-2 font-semibold text-app">Integration status</h2>
         <div className="space-y-2 text-sm text-muted">
           <p>
             <span className={`mr-2 rounded px-1.5 py-0.5 text-xs font-semibold ${db.hasAyrshare ? "bg-emerald-500/15 text-emerald-300" : "bg-surface-2 text-faint"}`}>
@@ -247,5 +249,118 @@ function Field({ label, value, onChange }: { label: string; value: string; onCha
         className="w-full rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:border-emerald-500 focus:outline-none"
       />
     </div>
+  );
+}
+
+// All networks PubcoZone can publish to (via Ayrshare). Labels for the status grid.
+const SOCIAL_NETWORKS: { key: string; label: string; icon: string }[] = [
+  { key: "twitter", label: "X (Twitter)", icon: "𝕏" },
+  { key: "linkedin", label: "LinkedIn", icon: "in" },
+  { key: "facebook", label: "Facebook", icon: "f" },
+  { key: "instagram", label: "Instagram", icon: "◎" },
+  { key: "youtube", label: "YouTube", icon: "▶" },
+  { key: "tiktok", label: "TikTok", icon: "♪" },
+  { key: "telegram", label: "Telegram", icon: "✈" },
+  { key: "reddit", label: "Reddit", icon: "r/" },
+];
+
+function SocialConnections() {
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const [status, setStatus] = useState<{ configured: boolean; multiTenant: boolean; hasProfile?: boolean; accounts: string[] }>({
+    configured: false,
+    multiTenant: false,
+    accounts: [],
+  });
+
+  const load = async () => {
+    try {
+      const res = await fetch("/api/social/connect");
+      const d = await res.json();
+      setStatus(d);
+    } catch {
+      /* leave defaults */
+    } finally {
+      setLoading(false);
+    }
+  };
+  useEffect(() => {
+    load();
+  }, []);
+
+  const connect = async () => {
+    setBusy(true);
+    setErr("");
+    try {
+      const res = await fetch("/api/social/connect", { method: "POST" });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error ?? "Couldn't open the connect page.");
+      if (d.url) window.open(d.url, "_blank", "noopener");
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Failed.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const connected = new Set((status.accounts ?? []).map((a) => a.toLowerCase()));
+
+  return (
+    <Card className="mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="font-semibold text-app">Your social accounts</h2>
+          <p className="mt-1 text-sm text-muted">
+            Connect the accounts you want approved posts to publish to. Posts only go out after you approve them — and your
+            disclosures are always attached.
+          </p>
+        </div>
+        {status.multiTenant && (
+          <Button onClick={connect} disabled={busy}>
+            {busy ? "Opening…" : connected.size > 0 ? "Manage connections" : "Connect accounts"}
+          </Button>
+        )}
+      </div>
+
+      {err && <p className="mt-3 text-sm text-red-500">{err}</p>}
+
+      {!status.configured ? (
+        <p className="mt-4 rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-muted">
+          Publishing isn&apos;t configured on this deployment yet. Posts you approve are marked as posted but not sent to a
+          live network.
+        </p>
+      ) : !status.multiTenant ? (
+        <p className="mt-4 rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-muted">
+          Posting is live on a shared account. Per-company account linking will appear here once enabled.
+        </p>
+      ) : (
+        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {SOCIAL_NETWORKS.map((n) => {
+            const on = connected.has(n.key);
+            return (
+              <div
+                key={n.key}
+                className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${on ? "border-emerald-500/40 bg-emerald-500/5" : "border-app bg-surface-2/40"}`}
+              >
+                <span className="flex h-6 w-6 items-center justify-center rounded bg-app-hover text-xs font-bold text-app">{n.icon}</span>
+                <span className="flex-1 text-app">{n.label}</span>
+                {loading ? (
+                  <span className="text-xs text-faint">…</span>
+                ) : on ? (
+                  <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">✓</span>
+                ) : (
+                  <span className="text-xs text-faint">—</span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {status.multiTenant && !loading && connected.size === 0 && (
+        <p className="mt-3 text-xs text-faint">No accounts connected yet. Tap &ldquo;Connect accounts&rdquo; to link X, LinkedIn, and more.</p>
+      )}
+    </Card>
   );
 }

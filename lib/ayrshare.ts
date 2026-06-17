@@ -13,6 +13,79 @@ export function ayrshareConfigured(): boolean {
   return Boolean(process.env.AYRSHARE_API_KEY);
 }
 
+// Multi-tenant: each company links its OWN socials via an Ayrshare "User Profile"
+// (Business Plan). Requires both the API key and the private key (JWT SSO).
+export function ayrshareMultiTenant(): boolean {
+  return Boolean(process.env.AYRSHARE_API_KEY && process.env.AYRSHARE_PRIVATE_KEY);
+}
+
+// Create an Ayrshare user profile for a company. Returns its profileKey, which we
+// store on the company and pass on every post so it goes to THAT company's socials.
+export async function createAyrshareProfile(title: string): Promise<{ ok: boolean; profileKey?: string; error?: string }> {
+  const key = process.env.AYRSHARE_API_KEY;
+  if (!key) return { ok: false, error: "Ayrshare not configured." };
+  try {
+    const res = await fetch("https://api.ayrshare.com/api/profiles", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(20000),
+      body: JSON.stringify({ title: title.slice(0, 100) }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.profileKey) {
+      return { ok: false, error: data?.message ?? `Ayrshare profile error (HTTP ${res.status})` };
+    }
+    return { ok: true, profileKey: data.profileKey };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Ayrshare unreachable" };
+  }
+}
+
+// Generate a single-use SSO URL to Ayrshare's hosted "connect your socials" page,
+// scoped to one company's profile. The company clicks it and links X/LinkedIn/etc.
+export async function generateAyrshareLinkUrl(profileKey: string): Promise<{ ok: boolean; url?: string; error?: string }> {
+  const key = process.env.AYRSHARE_API_KEY;
+  const privateKey = process.env.AYRSHARE_PRIVATE_KEY;
+  const domain = process.env.AYRSHARE_DOMAIN; // optional: your Ayrshare domain (Business Plan)
+  if (!key || !privateKey) return { ok: false, error: "Ayrshare multi-account is not configured (missing private key)." };
+  try {
+    const res = await fetch("https://api.ayrshare.com/api/profiles/generateJWT", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(20000),
+      body: JSON.stringify({
+        domain: domain || "id",
+        privateKey,
+        profileKey,
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.url) {
+      return { ok: false, error: data?.message ?? `Ayrshare JWT error (HTTP ${res.status})` };
+    }
+    return { ok: true, url: data.url };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Ayrshare unreachable" };
+  }
+}
+
+// Which social networks a company has actually linked (so the UI can show status).
+export async function getLinkedAccounts(profileKey?: string): Promise<string[]> {
+  const key = process.env.AYRSHARE_API_KEY;
+  if (!key) return [];
+  try {
+    const res = await fetch("https://api.ayrshare.com/api/user", {
+      headers: { Authorization: `Bearer ${key}`, ...(profileKey ? { "Profile-Key": profileKey } : {}) },
+      signal: AbortSignal.timeout(15000),
+    });
+    const data = await res.json().catch(() => ({}));
+    const accounts: string[] = data?.activeSocialAccounts ?? [];
+    return Array.isArray(accounts) ? accounts : [];
+  } catch {
+    return [];
+  }
+}
+
 // Channels Ayrshare supports (one integration, many networks). Used by the
 // publishing UI so companies just tick the boxes.
 export const AYRSHARE_CHANNELS = [
@@ -27,7 +100,7 @@ export const AYRSHARE_CHANNELS = [
 ] as const;
 
 // Generic publish: one post text out to any set of Ayrshare channels.
-export async function publishToChannels(text: string, channels: string[]): Promise<PostResult> {
+export async function publishToChannels(text: string, channels: string[], profileKey?: string): Promise<PostResult> {
   const key = process.env.AYRSHARE_API_KEY;
   const platforms = channels.filter((c) => AYRSHARE_CHANNELS.some((a) => a.key === c));
   if (platforms.length === 0) return { ok: false, posted: false, error: "No channels selected." };
@@ -36,7 +109,7 @@ export async function publishToChannels(text: string, channels: string[]): Promi
   try {
     const res = await fetch("https://api.ayrshare.com/api/post", {
       method: "POST",
-      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", ...(profileKey ? { "Profile-Key": profileKey } : {}) },
       signal: AbortSignal.timeout(30000),
       body: JSON.stringify({ post: text, platforms }),
     });
@@ -52,7 +125,7 @@ export async function publishToChannels(text: string, channels: string[]): Promi
   }
 }
 
-export async function postThreadToX(tweets: string[]): Promise<PostResult> {
+export async function postThreadToX(tweets: string[], profileKey?: string): Promise<PostResult> {
   const key = process.env.AYRSHARE_API_KEY;
   if (!key) return { ok: true, posted: false }; // simulate
 
@@ -62,6 +135,7 @@ export async function postThreadToX(tweets: string[]): Promise<PostResult> {
       headers: {
         Authorization: `Bearer ${key}`,
         "Content-Type": "application/json",
+        ...(profileKey ? { "Profile-Key": profileKey } : {}),
       },
       signal: AbortSignal.timeout(30000),
       body: JSON.stringify({

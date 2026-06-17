@@ -63,29 +63,55 @@ const NAV: NavGroup[] = [
     ],
   },
   {
-    section: "Account",
+    section: "Settings & account",
     items: [
-      { href: "/learn", label: "Public Company 101", icon: "📚", hint: "Plain-English IR & filing guides", detail: "A plain-English library on being a public company — IR best practices, what each SEC filing means, disclosure rules, and how to engage investors compliantly. No jargon, written for busy operators." },
+      { href: "/settings", label: "Settings", icon: "⚙", hint: "Company profile, social accounts, disclosures", detail: "The single source of truth for your company: profile (name, ticker, sector, approver), connect your social accounts for publishing, and your disclosure + forward-looking-statement language. Everything about your account lives here." },
       { href: "/billing", label: "Billing & Plan", icon: "💳", hint: "Your subscription and plan", detail: "Manage your subscription and plan. Upgrade, see what each tier includes, and open the secure Stripe portal to update payment details or cancel anytime." },
-      { href: "/settings", label: "Settings", icon: "⚙", hint: "Company details, connect X", detail: "Your company profile (name, ticker, sector, approver), and where you connect your social accounts for publishing. Set your disclosure and forward-looking-statement language here too." },
+      { href: "/learn", label: "Public Company 101", icon: "📚", hint: "Plain-English IR & filing guides", detail: "A plain-English library on being a public company — IR best practices, what each SEC filing means, disclosure rules, and how to engage investors compliantly. No jargon, written for busy operators." },
     ],
   },
   {
     section: "Admin",
     items: [
       { href: "/admin", label: "Back Office", icon: "🛠", hint: "All companies, revenue, claims (admins only)", detail: "Admin-only operations console: every company on the platform, your revenue and subscriptions, the claim-request queue, per-company feature toggles, and the full audit log." },
-      { href: "/onboarding", label: "New Company Setup", icon: "✦", hint: "The wizard a new company fills out", detail: "The guided setup wizard a new company fills out — look up their ticker on EDGAR, confirm the profile, and the system pulls their real filings and drafts their first posts automatically." },
     ],
   },
 ];
 
+const COLLAPSE_KEY = "pz-sidebar-collapsed";
+
 export default function Sidebar() {
   const pathname = usePathname();
   const [info, setInfo] = useState<NavItem | null>(null);
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
+  // Restore collapsed-section state across navigations/sessions.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(COLLAPSE_KEY);
+      if (raw) setCollapsed(JSON.parse(raw));
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const toggle = (section: string) => {
+    setCollapsed((prev) => {
+      const next = { ...prev, [section]: !prev[section] };
+      try {
+        localStorage.setItem(COLLAPSE_KEY, JSON.stringify(next));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  };
+
+  // The whole aside is fixed full-height; only the nav list scrolls, so links out
+  // of view are reachable without scrolling the page content.
   return (
-    <aside className="flex w-56 shrink-0 flex-col border-r border-app bg-app p-4">
-      <div className="mb-8 flex items-center justify-between px-2">
+    <aside className="sticky top-0 flex h-screen w-56 shrink-0 flex-col border-r border-app bg-app">
+      <div className="flex items-center justify-between px-4 py-4">
         <Link href="/app" className="flex items-baseline gap-1">
           <span className="text-xl font-bold text-app">Pubco</span>
           <span className="text-xl font-bold text-emerald-400">Zone</span>
@@ -93,48 +119,65 @@ export default function Sidebar() {
         </Link>
         <ThemeToggle />
       </div>
-      <nav className="flex-1 space-y-4 overflow-y-auto">
-        {NAV.map((group) => (
-          <div key={group.section}>
-            <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-faint">
-              {group.section}
-            </p>
-            <div className="space-y-0.5">
-              {group.items.map((item) => {
-                const active = pathname === item.href;
-                return (
-                  <div key={item.href} className="group flex items-center">
-                    <Link
-                      href={item.href}
-                      title={item.hint}
-                      className={`flex flex-1 items-center gap-3 rounded-lg px-3 py-1.5 text-sm transition ${
-                        active
-                          ? "bg-emerald-500/10 font-medium text-emerald-600 dark:text-emerald-300"
-                          : "text-muted hover:bg-app-hover hover:text-app"
-                      }`}
-                    >
-                      <span className="w-4 text-center">{item.icon}</span>
-                      {item.label}
-                    </Link>
-                    {item.detail && (
-                      <button
-                        type="button"
-                        onClick={() => setInfo(item)}
-                        title={`What is ${item.label}?`}
-                        aria-label={`What is ${item.label}?`}
-                        className="ml-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs text-faint opacity-0 transition hover:bg-app-hover hover:text-emerald-500 focus:opacity-100 group-hover:opacity-100"
-                      >
-                        ⓘ
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
+
+      <nav className="min-h-0 flex-1 space-y-2 overflow-y-auto px-4 pb-4">
+        {NAV.map((group) => {
+          const isCollapsed = collapsed[group.section];
+          // A section containing the current page stays open even if collapsed in storage,
+          // so the active link is never hidden.
+          const hasActive = group.items.some((i) => i.href === pathname);
+          const open = !isCollapsed || hasActive;
+          return (
+            <div key={group.section}>
+              <button
+                type="button"
+                onClick={() => toggle(group.section)}
+                className="flex w-full items-center justify-between rounded px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-faint transition hover:text-app"
+                aria-expanded={open}
+              >
+                <span>{group.section}</span>
+                <span className={`transition-transform ${open ? "" : "-rotate-90"}`}>⌄</span>
+              </button>
+              {open && (
+                <div className="mt-0.5 space-y-0.5">
+                  {group.items.map((item) => {
+                    const active = pathname === item.href;
+                    return (
+                      <div key={item.href} className="group flex items-center">
+                        <Link
+                          href={item.href}
+                          title={item.hint}
+                          className={`flex flex-1 items-center gap-3 rounded-lg px-3 py-1.5 text-sm transition ${
+                            active
+                              ? "bg-emerald-500/10 font-medium text-emerald-600 dark:text-emerald-300"
+                              : "text-muted hover:bg-app-hover hover:text-app"
+                          }`}
+                        >
+                          <span className="w-4 text-center">{item.icon}</span>
+                          {item.label}
+                        </Link>
+                        {item.detail && (
+                          <button
+                            type="button"
+                            onClick={() => setInfo(item)}
+                            title={`What is ${item.label}?`}
+                            aria-label={`What is ${item.label}?`}
+                            className="ml-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs text-faint opacity-0 transition hover:bg-app-hover hover:text-emerald-500 focus:opacity-100 group-hover:opacity-100"
+                          >
+                            ⓘ
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </nav>
-      <div className="mt-auto px-2 pt-6 text-[11px] leading-relaxed text-faint">
+
+      <div className="shrink-0 border-t border-app px-4 py-3 text-[11px] leading-relaxed text-faint">
         AI-powered IR for public companies.
         <br />
         Nothing posts without human approval.

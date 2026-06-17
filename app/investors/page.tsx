@@ -104,7 +104,33 @@ export default function InvestorsPage() {
                   ))}
                 </select>
               </div>
+              {inv.source && (
+                <span className={`mt-2 inline-block rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${inv.source === "sec_13f" ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300" : "bg-amber-500/15 text-amber-700 dark:text-amber-300"}`}>
+                  {inv.source === "sec_13f" ? "✓ Real SEC 13F filer" : "AI-suggested — verify"}
+                </span>
+              )}
               <p className="mt-3 text-sm text-muted">{inv.positionNote}</p>
+
+              {/* Real contact details + verification paths */}
+              {(inv.address || inv.phone || inv.edgarUrl || inv.advSearchUrl) && (
+                <div className="mt-3 grid gap-2 rounded-lg border border-app bg-surface p-3 text-sm sm:grid-cols-2">
+                  {inv.address && <div><span className="text-xs font-semibold text-faint">Address</span><p className="text-app">{inv.address}</p></div>}
+                  {inv.phone && <div><span className="text-xs font-semibold text-faint">Phone</span><p className="text-app">{inv.phone}</p></div>}
+                  <div className="sm:col-span-2 flex flex-wrap gap-3 pt-1">
+                    {inv.edgarUrl && <a href={inv.edgarUrl} target="_blank" rel="noreferrer" className="text-xs font-medium text-emerald-600 hover:underline dark:text-emerald-400">SEC 13F filings ↗</a>}
+                    {inv.advSearchUrl && <a href={inv.advSearchUrl} target="_blank" rel="noreferrer" className="text-xs font-medium text-emerald-600 hover:underline dark:text-emerald-400">Find contact (SEC IAPD / Form ADV) ↗</a>}
+                  </div>
+                  <p className="sm:col-span-2 text-[11px] text-faint">Email isn&apos;t in SEC data — use the firm&apos;s ADV / website to confirm the right contact before reaching out.</p>
+                </div>
+              )}
+
+              {inv.submissionCriteria && (
+                <div className="mt-3 rounded-lg border border-app bg-surface-2/50 p-3">
+                  <p className="mb-1 text-xs font-semibold text-faint">HOW TO APPROACH</p>
+                  <p className="text-sm leading-relaxed text-muted">{inv.submissionCriteria}</p>
+                </div>
+              )}
+
               <div className="mt-3 rounded-lg border border-app bg-surface-2/70 p-3">
                 <p className="mb-1 text-xs font-semibold text-faint">READY-TO-SEND INTRO NOTE (copy, personalize, and send from your own email)</p>
                 <p className="text-sm leading-relaxed text-app">{inv.outreachDraft}</p>

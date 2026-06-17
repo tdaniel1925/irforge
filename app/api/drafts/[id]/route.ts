@@ -81,7 +81,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
         return NextResponse.json({ error: gate.reason }, { status: 422 });
       }
       const finalThread = buildPublishedThread(draft.tweets, db.company);
-      const result = await postThreadToX(finalThread);
+      const result = await postThreadToX(finalThread, db.company.ayrshareProfileKey);
       if (!result.ok) {
         logAudit(db, "system", "PUBLISH_FAILED", `${draft.id}: ${result.error}`);
         await save();
