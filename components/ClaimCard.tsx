@@ -34,8 +34,8 @@ export default function ClaimCard({ ticker }: { ticker: string }) {
   if (state === "done") {
     return (
       <div className="mt-8 rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-6 text-center">
-        <p className="text-lg font-semibold text-emerald-300">Request received.</p>
-        <p className="mt-1 text-sm text-slate-300">
+        <p className="text-lg font-semibold text-emerald-700 dark:text-emerald-300">Request received.</p>
+        <p className="mt-1 text-sm text-muted">
           We&apos;ll verify you&apos;re with the company and reach out within one business day to activate your page.
         </p>
       </div>
@@ -46,9 +46,9 @@ export default function ClaimCard({ ticker }: { ticker: string }) {
     <div className="mt-8 rounded-xl border border-amber-500/40 bg-amber-500/5 p-6">
       <div className="flex flex-wrap items-start justify-between gap-6">
         <div className="min-w-0 max-w-md">
-          <p className="text-xs font-bold tracking-wider text-amber-400">UNCLAIMED PAGE</p>
-          <h2 className="mt-1 text-lg font-semibold text-white">Is this your company? Everything on this page is happening without you.</h2>
-          <ul className="mt-3 space-y-1.5 text-sm text-slate-300">
+          <p className="text-xs font-bold tracking-wider text-amber-600 dark:text-amber-400">UNCLAIMED PAGE</p>
+          <h2 className="mt-1 text-lg font-semibold text-app">Is this your company? Everything on this page is happening without you.</h2>
+          <ul className="mt-3 space-y-1.5 text-sm text-muted">
             <li>✓ Verified company badge — investors know it&apos;s really you</li>
             <li>✓ Answer the questions on this page, compliance-checked, from your public record</li>
             <li>✓ Publish updates the moment you file — with disclosures handled automatically</li>
@@ -60,30 +60,30 @@ export default function ClaimCard({ ticker }: { ticker: string }) {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Your name"
-            className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 focus:border-amber-500 focus:outline-none"
+            className="w-full rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:border-amber-500 focus:outline-none"
           />
           <input
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Work email"
             type="email"
-            className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 focus:border-amber-500 focus:outline-none"
+            className="w-full rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:border-amber-500 focus:outline-none"
           />
           <input
             value={role}
             onChange={(e) => setRole(e.target.value)}
             placeholder="Role (CEO, CFO, IR…)"
-            className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 focus:border-amber-500 focus:outline-none"
+            className="w-full rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:border-amber-500 focus:outline-none"
           />
-          {error && <p className="text-xs text-red-400">{error}</p>}
+          {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
           <button
             onClick={submit}
             disabled={state === "busy"}
-            className="w-full rounded-lg bg-amber-400 px-4 py-2.5 text-sm font-bold text-slate-950 transition hover:bg-amber-300 disabled:opacity-50"
+            className="w-full rounded-lg bg-amber-500 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-amber-400 disabled:opacity-50"
           >
             {state === "busy" ? "Sending…" : `Claim $${ticker} →`}
           </button>
-          <p className="text-center text-[11px] text-slate-600">Free to claim. Verification required.</p>
+          <p className="text-center text-[11px] text-faint">Free to claim. Verification required.</p>
         </div>
       </div>
     </div>

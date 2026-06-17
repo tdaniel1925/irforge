@@ -80,20 +80,20 @@ export default function FilingsPage() {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="rounded bg-slate-800 px-2 py-0.5 text-xs font-semibold text-slate-300">{f.form}</span>
-                    <span className="text-xs text-slate-500">
+                    <span className="rounded bg-surface-2 px-2 py-0.5 text-xs font-semibold text-muted">{f.form}</span>
+                    <span className="text-xs text-faint">
                       filed {timeAgo(f.filedAt)} · {f.source === "edgar" ? "live EDGAR" : "demo data"}
                     </span>
                   </div>
-                  <h3 className="mt-2 font-medium text-white">{f.title}</h3>
-                  <p className="mt-1 text-sm text-slate-400">{f.summary}</p>
-                  <a href={f.url} target="_blank" rel="noreferrer" className="mt-2 inline-block text-xs text-emerald-400 hover:underline">
+                  <h3 className="mt-2 font-medium text-app">{f.title}</h3>
+                  <p className="mt-1 text-sm text-muted">{f.summary}</p>
+                  <a href={f.url} target="_blank" rel="noreferrer" className="mt-2 inline-block text-xs text-emerald-600 hover:underline dark:text-emerald-400">
                     Open filing on sec.gov ↗
                   </a>
                 </div>
                 <div className="shrink-0">
                   {f.draftId ? (
-                    <Link href="/approvals" className="text-xs text-emerald-400 hover:underline">
+                    <Link href="/approvals" className="text-xs text-emerald-600 hover:underline dark:text-emerald-400">
                       Post drafted ✓ → read & approve
                     </Link>
                   ) : (

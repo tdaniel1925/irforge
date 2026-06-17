@@ -76,9 +76,15 @@ export default function CrmImportExport() {
   };
 
   const doExport = async () => {
-    const res = await fetch("/api/crm?entity=contacts");
-    const d = await res.json();
+    setError("");
+    let d: { contacts?: Record<string, string>[] };
+    try {
+      const res = await fetch("/api/crm?entity=contacts");
+      d = await res.json();
+      if (!res.ok) throw new Error((d as { error?: string }).error ?? "Export failed.");
+    } catch (e) { setError(e instanceof Error ? e.message : "Couldn't export contacts."); return; }
     const contacts = d.contacts ?? [];
+    if (contacts.length === 0) { setError("No contacts to export yet."); return; }
     const cols = ["fullName", "title", "email", "phone", "category", "stage", "aum", "notes"];
     const esc = (v: string) => `"${String(v ?? "").replace(/"/g, '""')}"`;
     const csv = [cols.join(","), ...contacts.map((c: Record<string, string>) => cols.map((k) => esc(c[k])).join(","))].join("\n");

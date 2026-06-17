@@ -6,9 +6,11 @@ import { useState } from "react";
 export default function WatchlistItem({ ticker, since }: { ticker: string; since: string }) {
   const [removed, setRemoved] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(false);
 
   const remove = async () => {
     setBusy(true);
+    setError(false);
     try {
       const res = await fetch("/api/watch", {
         method: "DELETE",
@@ -16,6 +18,9 @@ export default function WatchlistItem({ ticker, since }: { ticker: string; since
         body: JSON.stringify({ ticker }),
       });
       if (res.ok) setRemoved(true);
+      else setError(true);
+    } catch {
+      setError(true);
     } finally {
       setBusy(false);
     }
@@ -28,6 +33,7 @@ export default function WatchlistItem({ ticker, since }: { ticker: string; since
     <div className="flex items-center justify-between rounded-xl border border-app bg-surface px-4 py-3">
       <Link href={`/t/${ticker}`} className="font-semibold text-emerald-600 hover:underline dark:text-emerald-400">${ticker}</Link>
       <div className="flex items-center gap-4">
+        {error && <span className="text-xs text-red-500">Couldn&apos;t remove — try again</span>}
         {date && <span className="text-xs text-faint">watching since {date}</span>}
         <button onClick={remove} disabled={busy} className="text-xs text-muted transition hover:text-red-500 disabled:opacity-50">
           {busy ? "…" : "Remove"}

@@ -35,7 +35,7 @@ const SOURCE_STYLE: Record<string, string> = {
   Reddit: "bg-orange-500/15 text-orange-600 dark:text-orange-300",
   EDGAR: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300",
   Volume: "bg-violet-500/15 text-violet-600 dark:text-violet-300",
-  iHub: "bg-slate-500/15 text-slate-500 dark:text-slate-300",
+  iHub: "bg-app-hover text-muted",
 };
 
 interface MarketRow {
@@ -119,7 +119,7 @@ export default function DiscoverTabs(props: Record<EngagementTab, Row[]> & { tot
   const rows = engagementTabs.includes(tab as EngagementTab) ? (props[tab as EngagementTab] ?? []) : [];
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-2 sm:p-4">
+    <div className="rounded-xl border border-app bg-surface p-2 sm:p-4">
       {/* Tabs */}
       <div className="mb-3 flex flex-wrap gap-1.5">
         {TABS.map((t) => (
@@ -128,17 +128,17 @@ export default function DiscoverTabs(props: Record<EngagementTab, Row[]> & { tot
             onClick={() => setTab(t.key)}
             className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition ${
               tab === t.key
-                ? "bg-emerald-500 text-white"
-                : "border border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+                ? "bg-emerald-600 text-white"
+                : "border border-app text-muted hover:bg-app-hover hover:text-app"
             }`}
           >
             {t.label}
           </button>
         ))}
-        <span className="ml-auto self-center pr-1 text-xs text-slate-500">{props.totalTickers} companies tracked</span>
+        <span className="ml-auto self-center pr-1 text-xs text-faint">{props.totalTickers} companies tracked</span>
       </div>
 
-      <p className="mb-3 px-1 text-xs text-slate-500">{active.blurb}</p>
+      <p className="mb-3 px-1 text-xs text-faint">{active.blurb}</p>
 
       {tab === "market" ? (
         <MarketTable rows={market} loading={marketLoading} sources={marketSources} />
@@ -150,18 +150,18 @@ export default function DiscoverTabs(props: Record<EngagementTab, Row[]> & { tot
         <RiskView data={risk} loading={extraLoading} />
       ) : rows.length === 0 ? (
         <div className="px-1 py-10 text-center">
-          <p className="text-sm font-medium text-slate-300">These rankings are just getting started.</p>
-          <p className="mx-auto mt-1 max-w-sm text-xs text-slate-500">
+          <p className="text-sm font-medium text-app">These rankings are just getting started.</p>
+          <p className="mx-auto mt-1 max-w-sm text-xs text-faint">
             This tab fills in as investors view pages and post to boards. Meanwhile, check{" "}
-            <button onClick={() => setTab("market")} className="text-emerald-400 hover:underline">Market Trending</button>{" "}
-            or <Link href="/t" className="text-emerald-400 hover:underline">look up any ticker</Link>.
+            <button onClick={() => setTab("market")} className="text-emerald-600 hover:underline dark:text-emerald-400">Market Trending</button>{" "}
+            or <Link href="/t" className="text-emerald-600 hover:underline dark:text-emerald-400">look up any ticker</Link>.
           </p>
         </div>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-800 text-left text-[11px] uppercase tracking-wide text-slate-500">
+              <tr className="border-b border-app text-left text-[11px] uppercase tracking-wide text-faint">
                 <th className="px-2 py-2 font-semibold">#</th>
                 <th className="px-2 py-2 font-semibold">Company</th>
                 <th className="px-2 py-2 text-right font-semibold">Last</th>
@@ -176,29 +176,29 @@ export default function DiscoverTabs(props: Record<EngagementTab, Row[]> & { tot
               {rows.map((r, i) => {
                 const up = (r.changePct ?? 0) >= 0;
                 return (
-                  <tr key={r.ticker} className="border-b border-slate-800/60 transition hover:bg-slate-800/40">
-                    <td className="px-2 py-2.5 text-slate-500">{i + 1}</td>
+                  <tr key={r.ticker} className="border-b border-app transition hover:bg-app-hover">
+                    <td className="px-2 py-2.5 text-faint">{i + 1}</td>
                     <td className="px-2 py-2.5">
-                      <Link href={`/t/${r.ticker}`} className="font-semibold text-emerald-400 hover:underline">
+                      <Link href={`/t/${r.ticker}`} className="font-semibold text-emerald-600 hover:underline dark:text-emerald-400">
                         ${r.ticker}
                       </Link>
                     </td>
-                    <td className="px-2 py-2.5 text-right text-slate-200">
+                    <td className="px-2 py-2.5 text-right text-app">
                       {r.price != null ? `${r.currency === "USD" ? "$" : ""}${r.price.toFixed(r.price < 1 ? 4 : 2)}` : "—"}
                     </td>
-                    <td className={`px-2 py-2.5 text-right font-medium ${r.changePct == null ? "text-slate-500" : up ? "text-emerald-400" : "text-red-400"}`}>
+                    <td className={`px-2 py-2.5 text-right font-medium ${r.changePct == null ? "text-faint" : up ? "text-emerald-600 dark:text-emerald-400" : "text-red-500 dark:text-red-400"}`}>
                       {r.changePct != null ? `${up ? "+" : ""}${r.changePct.toFixed(1)}%` : "—"}
                     </td>
-                    <td className="hidden px-2 py-2.5 text-right text-slate-400 sm:table-cell">{vol(r.volume)}</td>
-                    <td className="px-2 py-2.5 text-right text-slate-300">{r.views.toLocaleString()}</td>
+                    <td className="hidden px-2 py-2.5 text-right text-muted sm:table-cell">{vol(r.volume)}</td>
+                    <td className="px-2 py-2.5 text-right text-muted">{r.views.toLocaleString()}</td>
                     <td className="px-2 py-2.5 text-right">
                       {r.posts24h > 0 ? (
-                        <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-xs font-semibold text-emerald-300">{r.posts24h}</span>
+                        <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-300">{r.posts24h}</span>
                       ) : (
-                        <span className="text-slate-500">0</span>
+                        <span className="text-faint">0</span>
                       )}
                     </td>
-                    <td className="hidden px-2 py-2.5 text-right text-slate-500 sm:table-cell">{ago(r.lastActivity)}</td>
+                    <td className="hidden px-2 py-2.5 text-right text-faint sm:table-cell">{ago(r.lastActivity)}</td>
                   </tr>
                 );
               })}
@@ -213,29 +213,29 @@ export default function DiscoverTabs(props: Record<EngagementTab, Row[]> & { tot
 function MarketTable({ rows, loading, sources }: { rows: MarketRow[] | null; loading: boolean; sources: string[] }) {
   if (loading || rows === null) {
     return (
-      <div className="flex items-center justify-center py-12 text-sm text-slate-500">
-        <span className="mr-2 inline-block h-3 w-3 animate-spin rounded-full border-2 border-slate-600 border-t-emerald-400" />
+      <div className="flex items-center justify-center py-12 text-sm text-faint">
+        <span className="mr-2 inline-block h-3 w-3 animate-spin rounded-full border-2 border-app border-t-emerald-500" />
         Scanning the market…
       </div>
     );
   }
   if (rows.length === 0) {
-    return <p className="px-1 py-8 text-center text-sm text-slate-500">Market data is taking a breather — check back shortly.</p>;
+    return <p className="px-1 py-8 text-center text-sm text-faint">Market data is taking a breather — check back shortly.</p>;
   }
   return (
     <div>
       {sources.length > 0 && (
-        <p className="mb-2 px-1 text-[11px] text-slate-500">
+        <p className="mb-2 px-1 text-[11px] text-faint">
           Live sources:{" "}
           {sources.map((s) => (
-            <span key={s} className={`ml-1 rounded px-1.5 py-0.5 text-[10px] font-semibold ${SOURCE_STYLE[s] ?? "bg-slate-500/15 text-slate-400"}`}>{s}</span>
+            <span key={s} className={`ml-1 rounded px-1.5 py-0.5 text-[10px] font-semibold ${SOURCE_STYLE[s] ?? "bg-app-hover text-muted"}`}>{s}</span>
           ))}
         </p>
       )}
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-slate-800 text-left text-[11px] uppercase tracking-wide text-slate-500">
+            <tr className="border-b border-app text-left text-[11px] uppercase tracking-wide text-faint">
               <th className="px-2 py-2 font-semibold">#</th>
               <th className="px-2 py-2 font-semibold">Ticker</th>
               <th className="px-2 py-2 text-right font-semibold">Last</th>
@@ -248,22 +248,22 @@ function MarketTable({ rows, loading, sources }: { rows: MarketRow[] | null; loa
             {rows.map((r, i) => {
               const up = (r.changePct ?? 0) >= 0;
               return (
-                <tr key={r.ticker} className="border-b border-slate-800/60 transition hover:bg-slate-800/40">
-                  <td className="px-2 py-2.5 text-slate-500">{i + 1}</td>
+                <tr key={r.ticker} className="border-b border-app transition hover:bg-app-hover">
+                  <td className="px-2 py-2.5 text-faint">{i + 1}</td>
                   <td className="px-2 py-2.5">
-                    <Link href={`/t/${r.ticker}`} className="font-semibold text-emerald-400 hover:underline">${r.ticker}</Link>
+                    <Link href={`/t/${r.ticker}`} className="font-semibold text-emerald-600 hover:underline dark:text-emerald-400">${r.ticker}</Link>
                   </td>
-                  <td className="px-2 py-2.5 text-right text-slate-200">
+                  <td className="px-2 py-2.5 text-right text-app">
                     {r.price != null ? `${r.currency === "USD" ? "$" : ""}${r.price.toFixed(r.price < 1 ? 4 : 2)}` : "—"}
                   </td>
-                  <td className={`px-2 py-2.5 text-right font-medium ${r.changePct == null ? "text-slate-500" : up ? "text-emerald-400" : "text-red-400"}`}>
+                  <td className={`px-2 py-2.5 text-right font-medium ${r.changePct == null ? "text-faint" : up ? "text-emerald-600 dark:text-emerald-400" : "text-red-500 dark:text-red-400"}`}>
                     {r.changePct != null ? `${up ? "+" : ""}${r.changePct.toFixed(1)}%` : "—"}
                   </td>
-                  <td className="hidden px-2 py-2.5 text-right text-slate-400 sm:table-cell">{vol(r.volume)}</td>
+                  <td className="hidden px-2 py-2.5 text-right text-muted sm:table-cell">{vol(r.volume)}</td>
                   <td className="px-2 py-2.5">
                     <div className="flex flex-wrap gap-1">
                       {r.sources.map((s) => (
-                        <span key={s} className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${SOURCE_STYLE[s] ?? "bg-slate-500/15 text-slate-400"}`}>{s}</span>
+                        <span key={s} className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${SOURCE_STYLE[s] ?? "bg-app-hover text-muted"}`}>{s}</span>
                       ))}
                     </div>
                   </td>
@@ -279,8 +279,8 @@ function MarketTable({ rows, loading, sources }: { rows: MarketRow[] | null; loa
 
 function Spinner({ label }: { label: string }) {
   return (
-    <div className="flex items-center justify-center py-12 text-sm text-slate-500">
-      <span className="mr-2 inline-block h-3 w-3 animate-spin rounded-full border-2 border-slate-600 border-t-emerald-400" />
+    <div className="flex items-center justify-center py-12 text-sm text-faint">
+      <span className="mr-2 inline-block h-3 w-3 animate-spin rounded-full border-2 border-app border-t-emerald-500" />
       {label}
     </div>
   );
@@ -291,17 +291,17 @@ function MoverList({ title, rows, color }: { title: string; rows: Mover[]; color
     <div>
       <p className={`mb-2 text-xs font-bold uppercase tracking-wide ${color}`}>{title}</p>
       {rows.length === 0 ? (
-        <p className="text-xs text-slate-600">—</p>
+        <p className="text-xs text-faint">—</p>
       ) : (
         <div className="space-y-1">
           {rows.map((m) => {
             const up = (m.changePct ?? 0) >= 0;
             return (
-              <Link key={m.ticker} href={`/t/${m.ticker}`} className="flex items-baseline justify-between rounded-md px-2 py-1.5 text-sm transition hover:bg-slate-800/40">
-                <span className="font-semibold text-emerald-400">${m.ticker}</span>
+              <Link key={m.ticker} href={`/t/${m.ticker}`} className="flex items-baseline justify-between rounded-md px-2 py-1.5 text-sm transition hover:bg-app-hover">
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400">${m.ticker}</span>
                 <span className="flex items-baseline gap-3">
-                  <span className="text-slate-300">{m.price != null ? `$${m.price.toFixed(m.price < 1 ? 4 : 2)}` : "—"}</span>
-                  <span className={`w-16 text-right font-medium ${m.changePct == null ? "text-slate-500" : up ? "text-emerald-400" : "text-red-400"}`}>
+                  <span className="text-muted">{m.price != null ? `$${m.price.toFixed(m.price < 1 ? 4 : 2)}` : "—"}</span>
+                  <span className={`w-16 text-right font-medium ${m.changePct == null ? "text-faint" : up ? "text-emerald-600 dark:text-emerald-400" : "text-red-500 dark:text-red-400"}`}>
                     {m.changePct != null ? `${up ? "+" : ""}${m.changePct.toFixed(1)}%` : "—"}
                   </span>
                 </span>
@@ -317,7 +317,7 @@ function MoverList({ title, rows, color }: { title: string; rows: Mover[]; color
 function MoversView({ data, loading }: { data: MoversData | null; loading: boolean }) {
   if (loading || data === null) return <Spinner label="Loading movers…" />;
   const empty = !(data.gainers?.length || data.losers?.length || data.actives?.length);
-  if (empty) return <p className="px-1 py-8 text-center text-sm text-slate-500">Market data is taking a breather — check back shortly.</p>;
+  if (empty) return <p className="px-1 py-8 text-center text-sm text-faint">Market data is taking a breather — check back shortly.</p>;
   return (
     <div className="grid gap-6 sm:grid-cols-3">
       <MoverList title="▲ Top gainers" rows={data.gainers ?? []} color="text-emerald-500 dark:text-emerald-400" />
@@ -329,7 +329,7 @@ function MoversView({ data, loading }: { data: MoversData | null; loading: boole
 
 function BuzzView({ words, loading }: { words: BuzzWord[] | null; loading: boolean }) {
   if (loading || words === null) return <Spinner label="Listening to the crowd…" />;
-  if (words.length === 0) return <p className="px-1 py-8 text-center text-sm text-slate-500">It&apos;s quiet out there right now — check back shortly.</p>;
+  if (words.length === 0) return <p className="px-1 py-8 text-center text-sm text-faint">It&apos;s quiet out there right now — check back shortly.</p>;
   const max = Math.max(...words.map((w) => w.weight), 1);
   return (
     <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 px-2 py-6">
@@ -342,7 +342,7 @@ function BuzzView({ words, loading }: { words: BuzzWord[] | null; loading: boole
             key={w.ticker}
             href={`/t/${w.ticker}`}
             title={`${w.weight} mentions`}
-            className="font-bold leading-none text-emerald-400 transition hover:text-emerald-300 hover:underline"
+            className="font-bold leading-none text-emerald-600 transition hover:underline dark:text-emerald-400 dark:hover:text-emerald-300"
             style={{ fontSize: `${size}px`, opacity }}
           >
             ${w.ticker}
@@ -356,7 +356,7 @@ function BuzzView({ words, loading }: { words: BuzzWord[] | null; loading: boole
 function RiskView({ data, loading }: { data: RiskData | null; loading: boolean }) {
   if (loading || data === null) return <Spinner label="Scanning for risk signals…" />;
   const empty = !(data.halts?.length || data.shorts?.length);
-  if (empty) return <p className="px-1 py-8 text-center text-sm text-slate-500">No halts or extreme short readings right now. Quiet is good.</p>;
+  if (empty) return <p className="px-1 py-8 text-center text-sm text-faint">No halts or extreme short readings right now. Quiet is good.</p>;
   return (
     <div className="grid gap-6 sm:grid-cols-2">
       <div>
@@ -365,13 +365,13 @@ function RiskView({ data, loading }: { data: RiskData | null; loading: boolean }
           <div className="space-y-1">
             {data.halts.map((r) => (
               <Link key={r.ticker} href={`/t/${r.ticker}`} className="flex items-baseline justify-between rounded-md border border-red-500/20 bg-red-500/[0.04] px-2.5 py-1.5 text-sm transition hover:bg-red-500/10">
-                <span className="font-semibold text-emerald-400">${r.ticker}</span>
-                <span className="text-xs text-slate-400">{r.detail}</span>
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400">${r.ticker}</span>
+                <span className="text-xs text-muted">{r.detail}</span>
               </Link>
             ))}
           </div>
         ) : (
-          <p className="text-xs text-slate-600">No recent halts.</p>
+          <p className="text-xs text-faint">No recent halts.</p>
         )}
       </div>
       <div>
@@ -380,15 +380,15 @@ function RiskView({ data, loading }: { data: RiskData | null; loading: boolean }
           <div className="space-y-1">
             {data.shorts.map((r) => (
               <Link key={r.ticker} href={`/t/${r.ticker}`} className="flex items-baseline justify-between rounded-md border border-orange-500/20 bg-orange-500/[0.04] px-2.5 py-1.5 text-sm transition hover:bg-orange-500/10">
-                <span className="font-semibold text-emerald-400">${r.ticker}</span>
-                <span className="text-xs text-slate-400">{r.detail}</span>
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400">${r.ticker}</span>
+                <span className="text-xs text-muted">{r.detail}</span>
               </Link>
             ))}
           </div>
         ) : (
-          <p className="text-xs text-slate-600">Short-volume file unavailable right now.</p>
+          <p className="text-xs text-faint">Short-volume file unavailable right now.</p>
         )}
-        <p className="mt-2 text-[10px] text-slate-600">Short volume includes market-making, not just bets against the stock. Source: FINRA RegSHO daily.</p>
+        <p className="mt-2 text-[10px] text-faint">Short volume includes market-making, not just bets against the stock. Source: FINRA RegSHO daily.</p>
       </div>
     </div>
   );

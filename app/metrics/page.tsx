@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useAppState } from "@/components/useAppState";
 import { Card, ErrorBanner, LoadingState, PageHeader } from "@/components/ui";
 import type { WeeklyMetric } from "@/lib/types";
@@ -15,7 +16,22 @@ export default function MetricsPage() {
     return (
       <div>
         <PageHeader title="Results" subtitle="Your numbers, updated weekly — forward this to the board as proof the IR budget is working." />
-        <Card><p className="text-sm text-muted">No results yet. Your weekly metrics will appear here once your page has activity to measure.</p></Card>
+        <Card className="border-dashed">
+          <div className="py-8 text-center">
+            <p className="text-lg font-medium text-app">No results yet</p>
+            <p className="mx-auto mt-1 max-w-md text-sm text-muted">
+              Your weekly metrics appear here once your page has activity to measure. Publish your first post to start the clock.
+            </p>
+            <div className="mt-4 flex justify-center">
+              <Link
+                href="/calendar-os"
+                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700"
+              >
+                Go to Content Pipeline
+              </Link>
+            </div>
+          </div>
+        </Card>
       </div>
     );
   }
@@ -46,11 +62,11 @@ export default function MetricsPage() {
       </div>
 
       <Card className="mt-6">
-        <h2 className="mb-3 font-semibold text-white">Weekly detail</h2>
+        <h2 className="mb-3 font-semibold text-app">Weekly detail</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-800 text-left text-xs text-slate-500">
+              <tr className="border-b border-app text-left text-xs text-faint">
                 <th className="py-2 pr-4 font-medium">Week of</th>
                 <th className="py-2 pr-4 font-medium">Followers</th>
                 <th className="py-2 pr-4 font-medium">Impressions</th>
@@ -61,7 +77,7 @@ export default function MetricsPage() {
             </thead>
             <tbody>
               {[...m].reverse().map((w) => (
-                <tr key={w.weekStart} className="border-b border-slate-900 text-slate-300">
+                <tr key={w.weekStart} className="border-b border-app text-muted">
                   <td className="py-2 pr-4">{w.weekStart}</td>
                   <td className="py-2 pr-4">{w.followers.toLocaleString()}</td>
                   <td className="py-2 pr-4">{w.impressions.toLocaleString()}</td>
@@ -81,9 +97,9 @@ export default function MetricsPage() {
 function Big({ label, value, sub }: { label: string; value: string | number; sub: string }) {
   return (
     <Card>
-      <p className="text-xs text-slate-500">{label}</p>
-      <p className="mt-1 text-2xl font-semibold text-white">{value}</p>
-      <p className="mt-1 text-xs text-slate-500">{sub}</p>
+      <p className="text-xs text-faint">{label}</p>
+      <p className="mt-1 text-2xl font-semibold text-app">{value}</p>
+      <p className="mt-1 text-xs text-faint">{sub}</p>
     </Card>
   );
 }
@@ -109,7 +125,8 @@ function ChartCard({
   const H = 140;
   const pad = 8;
   const pts = values.map((v, i) => {
-    const x = pad + (i / (values.length - 1)) * (W - pad * 2);
+    const denom = values.length - 1 || 1;
+    const x = pad + (i / denom) * (W - pad * 2);
     const y = H - pad - ((v - min) / range) * (H - pad * 2);
     return { x, y };
   });
@@ -119,8 +136,8 @@ function ChartCard({
   return (
     <Card>
       <div className="mb-2 flex items-baseline justify-between">
-        <h2 className="font-semibold text-white">{title}</h2>
-        <span className="text-xs text-slate-500">
+        <h2 className="font-semibold text-app">{title}</h2>
+        <span className="text-xs text-faint">
           {min.toFixed(decimals)} – {max.toFixed(decimals)}
         </span>
       </div>

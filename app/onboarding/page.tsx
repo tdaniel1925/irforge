@@ -31,6 +31,7 @@ export default function Onboarding() {
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
   const runLookup = async () => {
+    if (!tickerInput.trim()) { setError("Enter your ticker to continue."); return; }
     setBusy(true); setError("");
     try {
       const res = await fetch(`/api/onboard/lookup?ticker=${encodeURIComponent(tickerInput)}`);
@@ -63,7 +64,8 @@ export default function Onboarding() {
         body: JSON.stringify({ ...form, peers: form.peers.split(",").map((p) => p.trim()).filter(Boolean) }),
       });
       if (!res.ok) { const d = await res.json(); setError(d.error ?? "Failed."); return; }
-      router.push("/company");
+      // Land on the approvals inbox (/app) — the home the "Activate my dashboard" button promises.
+      router.push("/app");
     } catch {
       setError("Network error.");
     } finally {
@@ -118,7 +120,7 @@ export default function Onboarding() {
           <Field label="Sector" value={form.sector} onChange={(v) => set("sector", v)} />
           <TextField label="One-line description (investors and AI read this)" value={form.description} onChange={(v) => set("description", v)} />
           <Field label="Peer tickers for comparison (comma-separated)" value={form.peers} onChange={(v) => set("peers", v.toUpperCase())} />
-          <Back onClick={() => setStep(0)} /><Next onClick={() => setStep(2)} label="Next →" />
+          <Back onClick={() => setStep(0)} /><Next onClick={() => setStep(2)} label="Next →" disabled={!form.name || !form.ticker} />
         </Panel>
       )}
 
@@ -165,7 +167,7 @@ export default function Onboarding() {
             ))}
           </div>
           <Back onClick={() => setStep(3)} />
-          <Next onClick={finish} busy={busy} label="Activate my Command Center →" />
+          <Next onClick={finish} busy={busy} label="Activate my dashboard →" />
         </Panel>
       )}
     </div>

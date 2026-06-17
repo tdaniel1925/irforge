@@ -89,7 +89,7 @@ export default function StockChart({
             className={`rounded-md px-2.5 py-1 text-xs font-semibold transition ${
               range === r
                 ? "bg-emerald-500 text-white"
-                : "border border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+                : "border border-app text-muted hover:bg-app-hover hover:text-app"
             }`}
           >
             {LABEL[r]}
@@ -104,14 +104,14 @@ export default function StockChart({
 
       <div className="relative">
         {loading && !geo && (
-          <div className="flex h-[220px] items-center justify-center text-sm text-slate-500">
-            <span className="mr-2 inline-block h-3 w-3 animate-spin rounded-full border-2 border-slate-600 border-t-emerald-400" />
+          <div className="flex h-[220px] items-center justify-center text-sm text-faint">
+            <span className="mr-2 inline-block h-3 w-3 animate-spin rounded-full border-2 border-app border-t-emerald-400" />
             loading {LABEL[range]}…
           </div>
         )}
 
         {!loading && !geo && (
-          <div className="flex h-[220px] items-center justify-center text-sm text-slate-500">
+          <div className="flex h-[220px] items-center justify-center text-sm text-faint">
             No price history for this range.
           </div>
         )}
@@ -119,7 +119,7 @@ export default function StockChart({
         {geo && (
           <>
             {loading && (
-              <span className="absolute right-0 top-0 z-10 inline-block h-3 w-3 animate-spin rounded-full border-2 border-slate-600 border-t-emerald-400" />
+              <span className="absolute right-0 top-0 z-10 inline-block h-3 w-3 animate-spin rounded-full border-2 border-app border-t-emerald-400" />
             )}
             <svg
               viewBox={`0 0 ${geo.W} ${geo.H}`}
@@ -151,21 +151,21 @@ export default function StockChart({
             </svg>
 
             {/* hover readout */}
-            <div className="mt-1 h-5 text-center text-xs text-slate-400">
+            <div className="mt-1 h-5 text-center text-xs text-muted">
               {hoverPoint ? (
                 <>
-                  <span className="font-semibold text-slate-200">
+                  <span className="font-semibold text-app">
                     {currency === "USD" ? "$" : ""}
                     {hoverPoint.c.toFixed(hoverPoint.c < 1 ? 4 : 2)}
                     {currency !== "USD" ? ` ${currency}` : ""}
                   </span>
                   {hoverPoint.v > 0 && <span className="ml-3">vol {(hoverPoint.v / 1e6).toFixed(2)}M</span>}
                   {hoverPoint.t > 1e6 && (
-                    <span className="ml-3 text-slate-500">{new Date(hoverPoint.t * 1000).toLocaleDateString()}</span>
+                    <span className="ml-3 text-faint">{new Date(hoverPoint.t * 1000).toLocaleDateString()}</span>
                   )}
                 </>
               ) : (
-                <span className="text-slate-600">hover the chart for price &amp; volume</span>
+                <span className="text-faint">hover the chart for price &amp; volume</span>
               )}
             </div>
           </>

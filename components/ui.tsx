@@ -3,15 +3,15 @@
 import type { ComplianceFlag, DraftStatus } from "@/lib/types";
 
 export function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <div className={`rounded-xl border border-slate-800 bg-slate-900/60 p-5 ${className}`}>{children}</div>;
+  return <div className={`rounded-xl border border-app bg-surface p-5 ${className}`}>{children}</div>;
 }
 
 export function PageHeader({ title, subtitle, children }: { title: string; subtitle?: string; children?: React.ReactNode }) {
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div>
-        <h1 className="text-2xl font-semibold text-white">{title}</h1>
-        {subtitle && <p className="mt-1 text-sm text-slate-400">{subtitle}</p>}
+        <h1 className="text-2xl font-semibold text-app">{title}</h1>
+        {subtitle && <p className="mt-1 text-sm text-muted">{subtitle}</p>}
       </div>
       {children && <div className="flex gap-2">{children}</div>}
     </div>
@@ -19,11 +19,11 @@ export function PageHeader({ title, subtitle, children }: { title: string; subti
 }
 
 const STATUS_STYLES: Record<DraftStatus, string> = {
-  pending: "bg-amber-500/15 text-amber-300 border-amber-500/30",
-  approved: "bg-sky-500/15 text-sky-300 border-sky-500/30",
-  posted: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
-  rejected: "bg-slate-500/15 text-slate-400 border-slate-500/30",
-  blocked: "bg-red-500/15 text-red-300 border-red-500/30",
+  pending: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30",
+  approved: "bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30",
+  posted: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30",
+  rejected: "bg-slate-500/15 text-faint border-slate-500/30",
+  blocked: "bg-red-500/15 text-red-700 dark:text-red-300 border-red-500/30",
 };
 
 export function StatusPill({ status }: { status: DraftStatus }) {
@@ -48,10 +48,10 @@ export function Button({
   title?: string;
 }) {
   const styles = {
-    primary: "bg-emerald-500 text-slate-950 hover:bg-emerald-400 font-semibold",
-    secondary: "bg-slate-800 text-slate-200 hover:bg-slate-700 border border-slate-700",
-    danger: "bg-red-500/10 text-red-300 hover:bg-red-500/20 border border-red-500/30",
-    ghost: "text-slate-300 hover:bg-slate-800",
+    primary: "bg-emerald-600 text-white hover:bg-emerald-500 font-semibold",
+    secondary: "bg-surface-2 text-app hover:bg-app-hover border border-app",
+    danger: "bg-red-500/10 text-red-600 dark:text-red-300 hover:bg-red-500/20 border border-red-500/30",
+    ghost: "text-muted hover:bg-app-hover hover:text-app",
   }[variant];
   return (
     <button
@@ -74,8 +74,8 @@ export function FlagList({ flags }: { flags: ComplianceFlag[] }) {
           key={i}
           className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs ${
             f.severity === "block"
-              ? "border-red-500/30 bg-red-500/10 text-red-300"
-              : "border-amber-500/30 bg-amber-500/10 text-amber-300"
+              ? "border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300"
+              : "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300"
           }`}
         >
           <span className="font-semibold">{f.severity === "block" ? "BLOCKED" : "WARNING"}</span>
@@ -113,18 +113,19 @@ export function Thread({ tweets, handle }: { tweets: string[]; handle: string })
   );
 }
 
-export function EmptyState({ message }: { message: string }) {
+export function EmptyState({ message, action }: { message: string; action?: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-dashed border-slate-800 p-10 text-center text-sm text-slate-500">
-      {message}
+    <div className="rounded-xl border border-dashed border-app p-10 text-center text-sm text-faint">
+      <p>{message}</p>
+      {action && <div className="mt-4 flex justify-center">{action}</div>}
     </div>
   );
 }
 
 export function LoadingState() {
   return (
-    <div className="flex items-center gap-3 p-10 text-sm text-slate-500">
-      <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
+    <div className="flex items-center gap-3 p-10 text-sm text-faint">
+      <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
       Loading PubcoZone…
     </div>
   );
@@ -140,9 +141,9 @@ export function Banner({
   onDismiss?: () => void;
 }) {
   const styles = {
-    error: "border-red-500/30 bg-red-500/10 text-red-300",
-    success: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
-    info: "border-sky-500/30 bg-sky-500/10 text-sky-300",
+    error: "border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300",
+    success: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+    info: "border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300",
   }[tone];
   const icon = { error: "✕", success: "✓", info: "ℹ" }[tone];
   return (

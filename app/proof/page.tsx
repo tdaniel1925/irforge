@@ -30,11 +30,11 @@ export default function ProofPage() {
         subtitle="Proof that this is working — your score over time, every post we sent, and a complete record of who approved what (the part your lawyers will want). Screenshot any of it for your board."
       />
 
-      <div className="mb-5 flex gap-1 rounded-lg border border-slate-800 bg-slate-900/60 p-1 text-sm">
-        <button onClick={() => setTab("results")} className={`rounded-md px-3.5 py-1.5 transition ${tab === "results" ? "bg-slate-800 font-medium text-white" : "text-slate-400 hover:text-slate-200"}`}>
+      <div className="mb-5 flex gap-1 rounded-lg border border-app bg-surface-2 p-1 text-sm">
+        <button onClick={() => setTab("results")} className={`rounded-md px-3.5 py-1.5 transition ${tab === "results" ? "bg-app-hover font-medium text-app" : "text-muted hover:text-app"}`}>
           Results
         </button>
-        <button onClick={() => setTab("record")} className={`rounded-md px-3.5 py-1.5 transition ${tab === "record" ? "bg-slate-800 font-medium text-white" : "text-slate-400 hover:text-slate-200"}`}>
+        <button onClick={() => setTab("record")} className={`rounded-md px-3.5 py-1.5 transition ${tab === "record" ? "bg-app-hover font-medium text-app" : "text-muted hover:text-app"}`}>
           Compliance record ({db.audit.length})
         </button>
       </div>
@@ -50,27 +50,27 @@ export default function ProofPage() {
 
           {history.length > 1 && (
             <Card>
-              <h2 className="mb-2 font-semibold text-white">Score over time</h2>
+              <h2 className="mb-2 font-semibold text-app">Score over time</h2>
               <BigTrend points={history.map((h) => h.score)} labels={history.map((h) => h.ts.slice(5, 10))} />
             </Card>
           )}
 
           <Card>
-            <h2 className="mb-3 font-semibold text-white">Published posts</h2>
+            <h2 className="mb-3 font-semibold text-app">Published posts</h2>
             {posted.length === 0 ? (
-              <p className="py-4 text-sm text-slate-500">Nothing published yet — work the Do queue.</p>
+              <p className="py-4 text-sm text-faint">Nothing published yet — work the Do queue.</p>
             ) : (
               <ul className="space-y-2">
                 {posted.map((d) => (
-                  <li key={d.id} className="flex items-center justify-between gap-3 rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2.5">
+                  <li key={d.id} className="flex items-center justify-between gap-3 rounded-lg border border-app bg-surface-2 px-3 py-2.5">
                     <div className="min-w-0">
-                      <p className="truncate text-sm text-slate-200">{d.title}</p>
-                      <p className="text-xs text-slate-500">
+                      <p className="truncate text-sm text-app">{d.title}</p>
+                      <p className="text-xs text-faint">
                         posted {d.postedAt ? timeAgo(d.postedAt) : ""} · approved by {d.decidedBy ?? "—"}
                         {d.postUrl && (
                           <>
                             {" · "}
-                            <a href={d.postUrl} target="_blank" rel="noreferrer" className="text-emerald-400 hover:underline">view on X ↗</a>
+                            <a href={d.postUrl} target="_blank" rel="noreferrer" className="text-emerald-600 hover:underline dark:text-emerald-400">view on X ↗</a>
                           </>
                         )}
                       </p>
@@ -82,11 +82,11 @@ export default function ProofPage() {
           </Card>
 
           <Card>
-            <h2 className="mb-3 font-semibold text-white">Weekly numbers</h2>
+            <h2 className="mb-3 font-semibold text-app">Weekly numbers</h2>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-800 text-left text-xs text-slate-500">
+                  <tr className="border-b border-app text-left text-xs text-faint">
                     <th className="py-2 pr-4 font-medium">Week of</th>
                     <th className="py-2 pr-4 font-medium">Followers</th>
                     <th className="py-2 pr-4 font-medium">Impressions</th>
@@ -96,7 +96,7 @@ export default function ProofPage() {
                 </thead>
                 <tbody>
                   {[...db.metrics].reverse().slice(0, 8).map((w) => (
-                    <tr key={w.weekStart} className="border-b border-slate-900 text-slate-300">
+                    <tr key={w.weekStart} className="border-b border-app text-muted">
                       <td className="py-2 pr-4">{w.weekStart}</td>
                       <td className="py-2 pr-4">{w.followers.toLocaleString()}</td>
                       <td className="py-2 pr-4">{w.impressions.toLocaleString()}</td>
@@ -111,7 +111,7 @@ export default function ProofPage() {
         </div>
       ) : (
         <Card>
-          <p className="mb-3 text-xs text-slate-500">
+          <p className="mb-3 text-xs text-faint">
             Append-only. Every draft, decision, publish, block, and setting change — this is the report you hand a regulator or exchange.
           </p>
           {db.audit.length === 0 ? (
@@ -119,7 +119,7 @@ export default function ProofPage() {
           ) : (
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-800 text-left text-xs text-slate-500">
+                <tr className="border-b border-app text-left text-xs text-faint">
                   <th className="py-2 pr-4 font-medium">Timestamp (UTC)</th>
                   <th className="py-2 pr-4 font-medium">Actor</th>
                   <th className="py-2 pr-4 font-medium">Action</th>
@@ -128,15 +128,15 @@ export default function ProofPage() {
               </thead>
               <tbody>
                 {db.audit.map((e) => (
-                  <tr key={e.id} className="border-b border-slate-900 align-top">
-                    <td className="whitespace-nowrap py-2.5 pr-4 text-xs text-slate-500">{e.ts.replace("T", " ").slice(0, 19)}</td>
-                    <td className="whitespace-nowrap py-2.5 pr-4 text-slate-300">{e.actor}</td>
+                  <tr key={e.id} className="border-b border-app align-top">
+                    <td className="whitespace-nowrap py-2.5 pr-4 text-xs text-faint">{e.ts.replace("T", " ").slice(0, 19)}</td>
+                    <td className="whitespace-nowrap py-2.5 pr-4 text-muted">{e.actor}</td>
                     <td className="py-2.5 pr-4">
-                      <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${e.action.includes("BLOCKED") || e.action.includes("REFUSED") || e.action.includes("FAILED") ? "bg-red-500/15 text-red-300" : e.action === "PUBLISHED" ? "bg-emerald-500/15 text-emerald-300" : "bg-slate-800 text-slate-400"}`}>
+                      <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${e.action.includes("BLOCKED") || e.action.includes("REFUSED") || e.action.includes("FAILED") ? "bg-red-500/15 text-red-600 dark:text-red-300" : e.action === "PUBLISHED" ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300" : "bg-app-hover text-muted"}`}>
                         {e.action}
                       </span>
                     </td>
-                    <td className="py-2.5 text-slate-400">{e.detail}</td>
+                    <td className="py-2.5 text-muted">{e.detail}</td>
                   </tr>
                 ))}
               </tbody>
@@ -151,9 +151,9 @@ export default function ProofPage() {
 function Big({ label, value, sub }: { label: string; value: string | number; sub: string }) {
   return (
     <Card>
-      <p className="text-xs text-slate-500">{label}</p>
-      <p className="mt-1 text-2xl font-semibold text-white">{value}</p>
-      <p className="mt-1 text-xs text-slate-500">{sub}</p>
+      <p className="text-xs text-faint">{label}</p>
+      <p className="mt-1 text-2xl font-semibold text-app">{value}</p>
+      <p className="mt-1 text-xs text-faint">{sub}</p>
     </Card>
   );
 }

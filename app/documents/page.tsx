@@ -30,10 +30,12 @@ export default function Documents() {
 
   const add = async () => {
     setNotice(null);
-    const res = await fetch("/api/documents", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, category: active }) });
-    const data = await res.json();
-    if (!res.ok) setNotice({ text: data.error ?? "Failed.", tone: "error" });
-    else { setNotice({ text: `Added "${form.name}".`, tone: "success" }); setForm({ name: "", category: active, url: "", note: "" }); setAdding(false); await refresh(); }
+    try {
+      const res = await fetch("/api/documents", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, category: active }) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { setNotice({ text: data.error ?? "Failed.", tone: "error" }); return; }
+      setNotice({ text: `Added "${form.name}".`, tone: "success" }); setForm({ name: "", category: active, url: "", note: "" }); setAdding(false); await refresh();
+    } catch { setNotice({ text: "Network error.", tone: "error" }); }
   };
 
   const importFilings = async () => {

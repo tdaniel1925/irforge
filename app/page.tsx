@@ -115,7 +115,7 @@ function TickerLookup() {
 function HeroMock() {
   return (
     <div className="relative">
-      <div className="rounded-2xl border border-app bg-surface p-5 shadow-xl shadow-slate-900/5">
+      <div className="rounded-2xl border border-app bg-surface p-5 shadow-xl shadow-black/5">
         <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-faint">About your latest SEC filing</p>
         <p className="mb-3 text-sm font-medium text-app">We want to post this to X:</p>
         <div className="space-y-2">

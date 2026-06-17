@@ -16,6 +16,7 @@ export default function AdminFeatures() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [toggleError, setToggleError] = useState<string | null>(null);
 
   const load = async () => {
     try {
@@ -30,6 +31,7 @@ export default function AdminFeatures() {
   const toggle = async (companyId: string, feature: string, next: boolean) => {
     const id = `${companyId}:${feature}`;
     setSaving(id);
+    setToggleError(null);
     // optimistic
     setCompanies((cs) => cs.map((c) => c.id === companyId ? { ...c, features: { ...c.features, [feature]: next } } : c));
     try {
@@ -39,8 +41,9 @@ export default function AdminFeatures() {
       });
       if (!res.ok) throw new Error();
     } catch {
-      // revert on failure
+      // revert on failure + tell the admin it didn't save
       setCompanies((cs) => cs.map((c) => c.id === companyId ? { ...c, features: { ...c.features, [feature]: !next } } : c));
+      setToggleError("Could not save that change — it has been reverted. Try again.");
     } finally { setSaving(null); }
   };
 
@@ -61,6 +64,8 @@ export default function AdminFeatures() {
       <PageHeader title="Feature Access" subtitle="Turn each IR-OS tool on or off per company. One click.">
         <Link href="/admin" className="rounded-lg border border-app px-4 py-2 text-sm font-medium text-app hover:bg-app-hover">← Admin console</Link>
       </PageHeader>
+
+      {toggleError && <Banner message={toggleError} tone="error" onDismiss={() => setToggleError(null)} />}
 
       <input
         value={query}
@@ -99,7 +104,7 @@ export default function AdminFeatures() {
                           onClick={() => toggle(c.id, f.key, !on)}
                           disabled={busy}
                           aria-label={`${on ? "Disable" : "Enable"} ${f.label} for ${c.name}`}
-                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${on ? "bg-emerald-500" : "bg-slate-400/40"} ${busy ? "opacity-50" : ""}`}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${on ? "bg-emerald-500" : "bg-app-hover border border-app"} ${busy ? "opacity-50" : ""}`}
                         >
                           <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition ${on ? "translate-x-6" : "translate-x-1"}`} />
                         </button>

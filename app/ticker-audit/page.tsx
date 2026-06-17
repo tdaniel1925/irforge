@@ -6,11 +6,11 @@ import { Banner, Button, Card, PageHeader } from "@/components/ui";
 import type { TickerAudit } from "@/lib/audit";
 
 const GRADE_COLOR: Record<string, string> = {
-  A: "text-emerald-400 border-emerald-500/40",
-  B: "text-sky-400 border-sky-500/40",
-  C: "text-amber-400 border-amber-500/40",
-  D: "text-orange-400 border-orange-500/40",
-  F: "text-red-400 border-red-500/40",
+  A: "text-emerald-600 dark:text-emerald-400 border-emerald-500/40",
+  B: "text-sky-600 dark:text-sky-400 border-sky-500/40",
+  C: "text-amber-600 dark:text-amber-400 border-amber-500/40",
+  D: "text-orange-600 dark:text-orange-400 border-orange-500/40",
+  F: "text-red-600 dark:text-red-400 border-red-500/40",
 };
 
 export default function TickerAuditPage() {
@@ -61,23 +61,23 @@ export default function TickerAuditPage() {
       <Card className="mb-6">
         <div className="flex flex-wrap items-end gap-3">
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-400">Ticker</label>
+            <label className="mb-1 block text-xs font-medium text-muted">Ticker</label>
             <input
               value={ticker}
               onChange={(e) => setTicker(e.target.value.toUpperCase())}
               onKeyDown={(e) => e.key === "Enter" && run()}
               placeholder="e.g. LAC"
-              className="w-36 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm uppercase text-slate-200 focus:border-emerald-500 focus:outline-none"
+              className="w-36 rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm uppercase text-app focus:border-emerald-500 focus:outline-none"
             />
           </div>
           <div className="flex-1">
-            <label className="mb-1 block text-xs font-medium text-slate-400">Peer tickers to compare (optional, comma-separated)</label>
+            <label className="mb-1 block text-xs font-medium text-muted">Peer tickers to compare (optional, comma-separated)</label>
             <input
               value={peers}
               onChange={(e) => setPeers(e.target.value.toUpperCase())}
               onKeyDown={(e) => e.key === "Enter" && run()}
               placeholder="e.g. SGML, LAC, ALB"
-              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm uppercase text-slate-200 focus:border-emerald-500 focus:outline-none"
+              className="w-full rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm uppercase text-app focus:border-emerald-500 focus:outline-none"
             />
           </div>
           <Button onClick={() => run()} disabled={running}>
@@ -88,7 +88,7 @@ export default function TickerAuditPage() {
           </Button>
         </div>
         {running && (
-          <p className="mt-3 flex items-center gap-2 text-xs text-slate-500">
+          <p className="mt-3 flex items-center gap-2 text-xs text-faint">
             <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
             Checking SEC EDGAR, StockTwits, and Reddit in parallel — usually under 15 seconds…
           </p>
@@ -105,12 +105,12 @@ export default function TickerAuditPage() {
                 {report.grade}
               </div>
               <div className="min-w-0 flex-1">
-                <h2 className="text-xl font-semibold text-white">
+                <h2 className="text-xl font-semibold text-app">
                   ${report.ticker}
-                  {report.companyName && <span className="ml-2 text-base font-normal text-slate-400">{report.companyName}</span>}
+                  {report.companyName && <span className="ml-2 text-base font-normal text-muted">{report.companyName}</span>}
                 </h2>
-                <p className="mt-1 text-sm text-slate-400">
-                  Investor-visibility score: <span className="font-semibold text-white">{report.score}/100</span> · generated{" "}
+                <p className="mt-1 text-sm text-muted">
+                  Investor-visibility score: <span className="font-semibold text-app">{report.score}/100</span> · generated{" "}
                   {new Date(report.generatedAt).toLocaleTimeString()} from live public data
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2">
@@ -119,7 +119,7 @@ export default function TickerAuditPage() {
                       key={s.name}
                       title={s.note}
                       className={`rounded-full border px-2 py-0.5 text-[11px] ${
-                        s.ok ? "border-emerald-500/30 text-emerald-300" : "border-red-500/30 text-red-300"
+                        s.ok ? "border-emerald-500/30 text-emerald-600 dark:text-emerald-300" : "border-red-500/30 text-red-600 dark:text-red-300"
                       }`}
                     >
                       {s.ok ? "✓" : "✕"} {s.name}
@@ -132,7 +132,7 @@ export default function TickerAuditPage() {
                 href={`/t/${report.ticker}${peers.trim() ? `?peers=${encodeURIComponent(peers.replace(/\s/g, ""))}` : ""}`}
                 target="_blank"
                 rel="noreferrer"
-                className="shrink-0 rounded-lg border border-slate-700 px-3.5 py-2 text-sm text-slate-200 transition hover:bg-slate-800"
+                className="shrink-0 rounded-lg border border-app px-3.5 py-2 text-sm text-app transition hover:bg-app-hover"
                 title="Opens the shareable public version of this report"
               >
                 ↗ Open public page
@@ -184,37 +184,37 @@ export default function TickerAuditPage() {
           </div>
 
           <Card>
-            <h3 className="mb-3 font-semibold text-white">What we found</h3>
+            <h3 className="mb-3 font-semibold text-app">What we found</h3>
             <ul className="space-y-2">
               {report.findings.map((f, i) => (
-                <li key={i} className="flex gap-2 text-sm text-slate-300">
-                  <span className="text-emerald-400">▸</span>
+                <li key={i} className="flex gap-2 text-sm text-muted">
+                  <span className="text-emerald-500">▸</span>
                   {f}
                 </li>
               ))}
-              {report.findings.length === 0 && <li className="text-sm text-slate-500">Not enough data returned to draw conclusions — try again in a minute (sources rate-limit).</li>}
+              {report.findings.length === 0 && <li className="text-sm text-faint">Not enough data returned to draw conclusions — try again in a minute (sources rate-limit).</li>}
             </ul>
           </Card>
 
           {report.peers.length > 0 && (
             <Card>
-              <h3 className="mb-3 font-semibold text-white">vs. peers</h3>
+              <h3 className="mb-3 font-semibold text-app">vs. peers</h3>
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-800 text-left text-xs text-slate-500">
+                  <tr className="border-b border-app text-left text-xs text-faint">
                     <th className="py-2 pr-4 font-medium">Ticker</th>
                     <th className="py-2 pr-4 font-medium">Watchers</th>
                     <th className="py-2 font-medium">Messages/day</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr className="border-b border-slate-900 bg-emerald-500/5 font-medium text-white">
+                  <tr className="border-b border-app bg-emerald-500/5 font-medium text-app">
                     <td className="py-2 pr-4">${report.ticker} (you)</td>
                     <td className="py-2 pr-4">{report.social.watchers?.toLocaleString() ?? "—"}</td>
                     <td className="py-2">{report.social.msgsPerDay?.toFixed(1) ?? "—"}</td>
                   </tr>
                   {report.peers.map((p) => (
-                    <tr key={p.ticker} className="border-b border-slate-900 text-slate-300">
+                    <tr key={p.ticker} className="border-b border-app text-muted">
                       <td className="py-2 pr-4">${p.ticker}</td>
                       <td className="py-2 pr-4">{p.error ? "—" : p.watchers?.toLocaleString() ?? "—"}</td>
                       <td className="py-2">{p.error ? "—" : p.msgsPerDay?.toFixed(1) ?? "—"}</td>
@@ -227,13 +227,13 @@ export default function TickerAuditPage() {
 
           {report.social.topAccounts.length > 0 && (
             <Card>
-              <h3 className="mb-1 font-semibold text-white">Influencer leads — accounts already talking about ${report.ticker}</h3>
-              <p className="mb-3 text-xs text-slate-500">
+              <h3 className="mb-1 font-semibold text-app">Influencer leads — accounts already talking about ${report.ticker}</h3>
+              <p className="mb-3 text-xs text-faint">
                 Sorted by audience size. These are the warmest outreach targets: they already cover this ticker. Your team reaches out — PubcoZone never contacts anyone on your behalf.
               </p>
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-800 text-left text-xs text-slate-500">
+                  <tr className="border-b border-app text-left text-xs text-faint">
                     <th className="py-2 pr-4 font-medium">Account</th>
                     <th className="py-2 pr-4 font-medium">Followers</th>
                     <th className="py-2 pr-4 font-medium">Posts in feed</th>
@@ -242,11 +242,11 @@ export default function TickerAuditPage() {
                 </thead>
                 <tbody>
                   {report.social.topAccounts.map((a) => (
-                    <tr key={a.username} className="border-b border-slate-900 align-top text-slate-300">
-                      <td className="whitespace-nowrap py-2 pr-4 font-medium text-white">@{a.username}</td>
+                    <tr key={a.username} className="border-b border-app align-top text-muted">
+                      <td className="whitespace-nowrap py-2 pr-4 font-medium text-app">@{a.username}</td>
                       <td className="py-2 pr-4">{a.followers.toLocaleString()}</td>
                       <td className="py-2 pr-4">{a.ideas}</td>
-                      <td className="py-2 text-xs text-slate-400">{a.lastMessage}</td>
+                      <td className="py-2 text-xs text-muted">{a.lastMessage}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -256,13 +256,13 @@ export default function TickerAuditPage() {
 
           {report.news.samples.length > 0 && (
             <Card>
-              <h3 className="mb-3 font-semibold text-white">Recent news coverage</h3>
+              <h3 className="mb-3 font-semibold text-app">Recent news coverage</h3>
               <ul className="space-y-2">
                 {report.news.samples.map((n, i) => (
                   <li key={i} className="flex items-baseline gap-3 text-sm">
-                    <span className="shrink-0 text-xs text-slate-500">{n.date}</span>
-                    <span className="text-slate-300">{n.title}</span>
-                    <span className="shrink-0 text-xs text-slate-500">{n.outlet}</span>
+                    <span className="shrink-0 text-xs text-faint">{n.date}</span>
+                    <span className="text-muted">{n.title}</span>
+                    <span className="shrink-0 text-xs text-faint">{n.outlet}</span>
                   </li>
                 ))}
               </ul>
@@ -270,22 +270,22 @@ export default function TickerAuditPage() {
           )}
 
           <Card>
-            <h3 className="mb-3 font-semibold text-white">Reddit footprint</h3>
+            <h3 className="mb-3 font-semibold text-app">Reddit footprint</h3>
             {!report.sources.find((s) => s.name === "Reddit")?.ok ? (
-              <p className="text-sm text-slate-500">Reddit couldn&apos;t be reached just now (it rate-limits aggressively) — run the audit again in a minute.</p>
+              <p className="text-sm text-faint">Reddit couldn&apos;t be reached just now (it rate-limits aggressively) — run the audit again in a minute.</p>
             ) : report.reddit.postsFound === 0 ? (
-              <p className="text-sm text-slate-500">No Reddit posts found mentioning ${report.ticker} in the past year — an untouched channel.</p>
+              <p className="text-sm text-faint">No Reddit posts found mentioning ${report.ticker} in the past year — an untouched channel.</p>
             ) : (
               <>
-                <p className="mb-3 text-sm text-slate-400">
+                <p className="mb-3 text-sm text-muted">
                   {report.reddit.postsFound} posts in the past year · most active: {report.reddit.topSubreddits.join(", ")}
                 </p>
                 <ul className="space-y-2">
                   {report.reddit.samples.map((p, i) => (
                     <li key={i} className="flex items-baseline gap-3 text-sm">
-                      <span className="shrink-0 text-xs text-slate-500">▲ {p.ups}</span>
-                      <span className="text-slate-300">{p.title}</span>
-                      <span className="shrink-0 text-xs text-slate-500">{p.subreddit}</span>
+                      <span className="shrink-0 text-xs text-faint">▲ {p.ups}</span>
+                      <span className="text-muted">{p.title}</span>
+                      <span className="shrink-0 text-xs text-faint">{p.subreddit}</span>
                     </li>
                   ))}
                 </ul>
@@ -297,9 +297,9 @@ export default function TickerAuditPage() {
 
       {!report && !running && (
         <Card className="border-dashed">
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted">
             The sales move: ask a prospect for their ticker, run this in front of them, and let the grade do the talking.
-            Try it now with a real ticker — for example <button onClick={() => { setTicker("LAC"); setPeers("SGML, ALB, SQM"); run("LAC"); }} className="text-emerald-400 hover:underline">run $LAC vs. its lithium peers</button>.
+            Try it now with a real ticker — for example <button onClick={() => { setTicker("LAC"); setPeers("SGML, ALB, SQM"); run("LAC"); }} className="text-emerald-600 hover:underline dark:text-emerald-400">run $LAC vs. its lithium peers</button>.
           </p>
         </Card>
       )}
@@ -310,9 +310,9 @@ export default function TickerAuditPage() {
 function Metric({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
     <Card>
-      <p className="text-xs text-slate-500">{label}</p>
-      <p className="mt-1 text-2xl font-semibold text-white">{value}</p>
-      {sub && <p className="mt-1 text-xs text-slate-500">{sub}</p>}
+      <p className="text-xs text-faint">{label}</p>
+      <p className="mt-1 text-2xl font-semibold text-app">{value}</p>
+      {sub && <p className="mt-1 text-xs text-faint">{sub}</p>}
     </Card>
   );
 }

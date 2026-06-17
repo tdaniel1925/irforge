@@ -14,6 +14,8 @@ export default function Admin() {
   const [data, setData] = useState<AdminData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [notice, setNotice] = useState<{ text: string; tone: "success" | "error" } | null>(null);
+  const [busyClaim, setBusyClaim] = useState<string | null>(null);
 
   const load = async () => {
     try {
@@ -26,8 +28,17 @@ export default function Admin() {
   useEffect(() => { load(); }, []);
 
   const claim = async (id: string, status: string) => {
-    await fetch("/api/admin", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, status }) });
-    await load();
+    setBusyClaim(id + status);
+    setNotice(null);
+    try {
+      const res = await fetch("/api/admin", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, status }) });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) { setNotice({ text: d.error ?? "Could not update the claim. Try again.", tone: "error" }); return; }
+      setNotice({ text: status === "verified" ? "Claim verified." : "Claim rejected.", tone: "success" });
+      await load();
+    } catch {
+      setNotice({ text: "Network error. Try again.", tone: "error" });
+    } finally { setBusyClaim(null); }
   };
 
   if (loading) return <LoadingState />;
@@ -51,6 +62,8 @@ export default function Admin() {
         </div>
       </PageHeader>
 
+      {notice && <Banner message={notice.text} tone={notice.tone} onDismiss={() => setNotice(null)} />}
+
       <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-5">
         <Stat label="Companies" value={data.stats.total} />
         <Stat label="Active subs" value={data.stats.active} />
@@ -69,8 +82,8 @@ export default function Admin() {
                   <span className="font-medium text-app">${c.ticker}</span> — {c.name} ({c.role || "role n/a"}) · <span className="text-muted">{c.email}</span>
                 </div>
                 <div className="flex gap-2">
-                  <Button onClick={() => claim(c.id, "verified")}>Verify</Button>
-                  <Button variant="danger" onClick={() => claim(c.id, "rejected")}>Reject</Button>
+                  <Button onClick={() => claim(c.id, "verified")} disabled={busyClaim === c.id + "verified"}>{busyClaim === c.id + "verified" ? "…" : "Verify"}</Button>
+                  <Button variant="danger" onClick={() => claim(c.id, "rejected")} disabled={busyClaim === c.id + "rejected"}>{busyClaim === c.id + "rejected" ? "…" : "Reject"}</Button>
                 </div>
               </div>
             ))}
@@ -89,10 +102,13 @@ export default function Admin() {
                   <td className="py-2 pr-4 text-app">{c.name || <span className="text-faint">(not onboarded)</span>}</td>
                   <td className="py-2 pr-4 text-muted">{c.ticker ? "$" + c.ticker : "—"}</td>
                   <td className="py-2 pr-4 text-muted">{c.tier}</td>
-                  <td className="py-2 pr-4"><span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${c.subscription_status === "active" ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300" : c.subscription_status === "past_due" ? "bg-red-500/15 text-red-500" : "bg-slate-500/15 text-faint"}`}>{c.subscription_status}</span></td>
+                  <td className="py-2 pr-4"><span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${c.subscription_status === "active" ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300" : c.subscription_status === "past_due" ? "bg-red-500/15 text-red-500" : "bg-app-hover text-faint"}`}>{c.subscription_status || "—"}</span></td>
                   <td className="py-2 text-faint">{c.created_at?.slice(0, 10)}</td>
                 </tr>
               ))}
+              {data.companies.length === 0 && (
+                <tr><td colSpan={5} className="py-8 text-center text-faint">No companies yet.</td></tr>
+              )}
             </tbody>
           </table>
         </div>

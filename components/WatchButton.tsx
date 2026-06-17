@@ -40,7 +40,7 @@ export default function WatchButton({ ticker }: { ticker: string }) {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 px-3 py-2 text-sm font-semibold text-slate-200 transition hover:border-emerald-500/60 hover:bg-emerald-500/10 hover:text-emerald-300"
+        className="inline-flex items-center gap-1.5 rounded-lg border border-app px-3 py-2 text-sm font-semibold text-app transition hover:border-emerald-500/60 hover:bg-emerald-500/10 hover:text-emerald-300"
       >
         🔔 Watch ${ticker}
       </button>
@@ -57,7 +57,7 @@ export default function WatchButton({ ticker }: { ticker: string }) {
           onChange={(e) => setEmail(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && email && submit()}
           placeholder="you@email.com"
-          className="w-52 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 focus:border-emerald-500 focus:outline-none"
+          className="w-52 rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:border-emerald-500 focus:outline-none"
         />
         <button
           onClick={submit}
@@ -67,7 +67,7 @@ export default function WatchButton({ ticker }: { ticker: string }) {
           {state === "busy" ? "…" : "Notify me"}
         </button>
       </div>
-      <p className="text-[11px] text-slate-500">
+      <p className="text-[11px] text-faint">
         Alerts on new filings, insider trades, halts &amp; grade changes. No spam, unsubscribe anytime.
       </p>
       {error && <p className="text-xs text-red-400">{error}</p>}

@@ -30,7 +30,7 @@ export default function SettingsPage() {
     setNotice(null);
     const next = !db.company.quietMode;
     const err = await act("/api/company", "PUT", { quietMode: next });
-    setForm({ ...form, quietMode: next });
+    if (!err) setForm({ ...form, quietMode: next });
     setNotice(
       err
         ? { text: err, tone: "error" }

@@ -28,7 +28,7 @@ export default async function MemberHome() {
 
       <div className="mt-8 grid gap-4 sm:grid-cols-3">
         <Card label="Watching" value={watches.length} href="/member/watchlist" />
-        <Card label="Posts" value={posts.length >= 5 ? "5+" : posts.length} href="/member/activity" />
+        <Card label="Recent posts" value={posts.length >= 5 ? "5+" : posts.length} href="/member/activity" />
         <Card label="Plan" value={me.member.plan === "member_plus" ? "Investor+" : "Free"} href="/member/billing" />
       </div>
 

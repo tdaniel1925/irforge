@@ -54,19 +54,19 @@ export default async function DiscoverPage() {
   return (
     <div className="mx-auto max-w-5xl pb-16">
       <div className="pt-2">
-        <Link href="/" className="text-sm text-slate-400 transition hover:text-slate-200">← Home</Link>
+        <Link href="/" className="text-sm text-muted transition hover:text-app">← Home</Link>
       </div>
       <div className="mb-6 mt-3 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-white">Discover</h1>
-          <p className="mt-1 text-sm text-slate-400">
+          <h1 className="text-3xl font-bold text-app">Discover</h1>
+          <p className="mt-1 text-sm text-muted">
             The most-read, most-active, and trending company pages on PubcoZone — live data, moderated discussion,{" "}
-            <span className="text-emerald-400">no pump-and-dump.</span>
+            <span className="text-emerald-600 dark:text-emerald-400">no pump-and-dump.</span>
           </p>
         </div>
         <Link
           href="/t"
-          className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-slate-800"
+          className="rounded-lg border border-app px-4 py-2 text-sm font-medium text-app transition hover:bg-app-hover"
         >
           🔍 Look up any ticker
         </Link>
@@ -84,7 +84,7 @@ export default async function DiscoverPage() {
         totalTickers={discovery?.totalTickers ?? 0}
       />
 
-      <p className="mt-10 text-xs leading-relaxed text-slate-600">
+      <p className="mt-10 text-xs leading-relaxed text-faint">
         Rankings reflect engagement on PubcoZone (page views and board activity) plus live market data from public
         sources, refreshed continuously. Not investment advice. High activity is not an endorsement — it just means
         people are talking. Read the data and the company&apos;s own answers before deciding anything.

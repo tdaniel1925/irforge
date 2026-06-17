@@ -64,13 +64,13 @@ export default function ApprovalsPage() {
         />
       )}
 
-      <div className="mb-5 flex gap-1 rounded-lg border border-slate-800 bg-slate-900/60 p-1 text-sm">
+      <div className="mb-5 flex gap-1 rounded-lg border border-app bg-surface p-1 text-sm">
         {TABS.map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
             className={`rounded-md px-3.5 py-1.5 capitalize transition ${
-              tab === t ? "bg-slate-800 font-medium text-white" : "text-slate-400 hover:text-slate-200"
+              tab === t ? "bg-surface-2 font-medium text-app" : "text-muted hover:text-app"
             }`}
           >
             {t} ({byTab[t].length})
@@ -87,17 +87,17 @@ export default function ApprovalsPage() {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2.5">
-                    <h3 className="font-medium text-white">{d.title}</h3>
+                    <h3 className="font-medium text-app">{d.title}</h3>
                     <StatusPill status={d.status} />
                   </div>
-                  <p className="mt-1 text-xs text-slate-500">
+                  <p className="mt-1 text-xs text-faint">
                     {d.kind.replace("_", " ")} · drafted {timeAgo(d.createdAt)} via {d.aiEngine}
                     {d.decidedBy && ` · decided by ${d.decidedBy}`}
                     {d.postedAt && ` · posted ${timeAgo(d.postedAt)}`}
                     {d.postUrl && (
                       <>
                         {" · "}
-                        <a href={d.postUrl} target="_blank" rel="noreferrer" className="text-emerald-400 hover:underline">
+                        <a href={d.postUrl} target="_blank" rel="noreferrer" className="text-emerald-600 hover:underline dark:text-emerald-400">
                           view on X ↗
                         </a>
                       </>
@@ -148,9 +148,9 @@ export default function ApprovalsPage() {
                     value={editText}
                     onChange={(e) => setEditText(e.target.value)}
                     rows={Math.max(6, editText.split("\n").length + 2)}
-                    className="w-full rounded-lg border border-slate-700 bg-slate-950 p-3 text-sm text-slate-200 focus:border-emerald-500 focus:outline-none"
+                    className="w-full rounded-lg border border-app bg-surface-2 p-3 text-sm text-app focus:border-emerald-500 focus:outline-none"
                   />
-                  <p className="mt-1 text-xs text-slate-500">Separate tweets with a blank line. Compliance re-runs on save.</p>
+                  <p className="mt-1 text-xs text-faint">Separate tweets with a blank line. Compliance re-runs on save.</p>
                   <div className="mt-2 flex gap-2">
                     <Button onClick={() => saveEdit(d.id)} disabled={busy}>
                       Save & re-check
@@ -165,10 +165,10 @@ export default function ApprovalsPage() {
               )}
 
               {d.status !== "posted" && (
-                <p className="mt-3 text-xs text-slate-600">
+                <p className="mt-3 text-xs text-faint">
                   On publish, the forward-looking-statements notice and the 17(b) disclosure are appended automatically — this cannot be disabled.
                   {db.hasAyrshare && d.status === "approved" && (
-                    <span className="ml-1 font-medium text-amber-400/80">Ayrshare is connected: publishing posts to your real X account.</span>
+                    <span className="ml-1 font-medium text-amber-600 dark:text-amber-400/80">Ayrshare is connected: publishing posts to your real X account.</span>
                   )}
                 </p>
               )}

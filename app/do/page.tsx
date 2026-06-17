@@ -60,7 +60,7 @@ export default function DoPage() {
 
       {total === 0 && (
         <Card className="border-dashed">
-          <p className="py-6 text-center text-sm text-slate-500">
+          <p className="py-6 text-center text-sm text-muted">
             Queue&apos;s empty — you&apos;re done. New filings, questions, and drafts land here automatically.
           </p>
         </Card>
@@ -144,9 +144,9 @@ export default function DoPage() {
             }
           >
             <Thread tweets={d.tweets} handle={db.company.xHandle} />
-            <p className="mt-2 text-xs text-slate-600">
+            <p className="mt-2 text-xs text-faint">
               Disclosures are appended on publish — can&apos;t be skipped.
-              {db.hasAyrshare && <span className="ml-1 text-amber-400/80">Ayrshare connected: this posts for real.</span>}
+              {db.hasAyrshare && <span className="ml-1 text-amber-600 dark:text-amber-400/80">Ayrshare connected: this posts for real.</span>}
             </p>
           </QueueItem>
         ))}
@@ -214,7 +214,7 @@ const TONES: Record<string, string> = {
   amber: "border-amber-500/30",
   sky: "border-sky-500/30",
   emerald: "border-emerald-500/20",
-  slate: "border-slate-800",
+  slate: "border-app",
 };
 
 function QueueItem({
@@ -242,15 +242,15 @@ function QueueItem({
     <Card className={TONES[tone]}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-semibold tracking-wide text-slate-500">{kicker}</p>
-          <p className="mt-0.5 truncate text-sm font-medium text-slate-200">{title}</p>
-          <p className="mt-0.5 text-xs text-slate-500">
-            {meta} · <span className="text-emerald-400/80">{chip}</span>
+          <p className="text-[11px] font-semibold tracking-wide text-faint">{kicker}</p>
+          <p className="mt-0.5 truncate text-sm font-medium text-app">{title}</p>
+          <p className="mt-0.5 text-xs text-muted">
+            {meta} · <span className="text-emerald-600 dark:text-emerald-400/80">{chip}</span>
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {onToggle && (
-            <button onClick={onToggle} className="text-xs text-slate-400 hover:text-slate-200">
+            <button onClick={onToggle} className="text-xs text-muted hover:text-app">
               {expanded ? "Hide" : "Read"}
             </button>
           )}
@@ -269,9 +269,9 @@ function EditBox({ value, onChange, onSave, onCancel, busy }: { value: string; o
         value={value}
         onChange={(e) => onChange(e.target.value)}
         rows={Math.max(6, value.split("\n").length + 2)}
-        className="w-full rounded-lg border border-slate-700 bg-slate-950 p-3 text-sm text-slate-200 focus:border-emerald-500 focus:outline-none"
+        className="w-full rounded-lg border border-app bg-surface-2 p-3 text-sm text-app focus:border-emerald-500 focus:outline-none"
       />
-      <p className="mt-1 text-xs text-slate-500">Separate tweets with a blank line. Compliance re-runs on save.</p>
+      <p className="mt-1 text-xs text-faint">Separate tweets with a blank line. Compliance re-runs on save.</p>
       <div className="mt-2 flex gap-2">
         <Button onClick={onSave} disabled={busy}>Save & re-check</Button>
         <Button variant="ghost" onClick={onCancel}>Cancel</Button>

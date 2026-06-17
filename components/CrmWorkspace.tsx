@@ -120,7 +120,7 @@ function Contacts({ contacts, setContacts, companies }: { contacts: Contact[]; s
       const d = await api({ entity: "contact", action: "save", data: editing });
       setContacts((cs) => { const ex = cs.some((c) => c.id === d.contact.id); return ex ? cs.map((c) => c.id === d.contact.id ? d.contact : c) : [d.contact, ...cs]; });
       setEditing(null);
-    } finally { setBusy(false); }
+    } catch (e) { alert(e instanceof Error ? e.message : "Couldn't save that contact."); } finally { setBusy(false); }
   };
   const del = async (id: string) => {
     if (!confirm("Delete this contact? This can't be undone.")) return;
@@ -184,7 +184,7 @@ function Companies({ companies, setCompanies }: { companies: Company[]; setCompa
   const save = async () => {
     if (!editing?.name?.trim()) return;
     setBusy(true);
-    try { const d = await api({ entity: "company", action: "save", data: editing }); setCompanies((cs) => { const ex = cs.some((c) => c.id === d.company.id); return ex ? cs.map((c) => c.id === d.company.id ? d.company : c) : [d.company, ...cs]; }); setEditing(null); } finally { setBusy(false); }
+    try { const d = await api({ entity: "company", action: "save", data: editing }); setCompanies((cs) => { const ex = cs.some((c) => c.id === d.company.id); return ex ? cs.map((c) => c.id === d.company.id ? d.company : c) : [d.company, ...cs]; }); setEditing(null); } catch (e) { alert(e instanceof Error ? e.message : "Couldn't save that company."); } finally { setBusy(false); }
   };
   const del = async (id: string) => {
     if (!confirm("Delete this company? This can't be undone.")) return;
@@ -229,7 +229,7 @@ function Deals({ deals, setDeals, contacts }: { deals: Deal[]; setDeals: (f: (d:
   const save = async () => {
     if (!editing?.title?.trim()) return;
     setBusy(true);
-    try { const d = await api({ entity: "deal", action: "save", data: { ...editing, value: Number(editing.value) || 0 } }); setDeals((ds) => { const ex = ds.some((x) => x.id === d.deal.id); return ex ? ds.map((x) => x.id === d.deal.id ? d.deal : x) : [d.deal, ...ds]; }); setEditing(null); } finally { setBusy(false); }
+    try { const d = await api({ entity: "deal", action: "save", data: { ...editing, value: Number(editing.value) || 0 } }); setDeals((ds) => { const ex = ds.some((x) => x.id === d.deal.id); return ex ? ds.map((x) => x.id === d.deal.id ? d.deal : x) : [d.deal, ...ds]; }); setEditing(null); } catch (e) { alert(e instanceof Error ? e.message : "Couldn't save that deal."); } finally { setBusy(false); }
   };
   const move = async (id: string, stage: string) => {
     try { await api({ entity: "deal", action: "move", id, stage }); setDeals((ds) => ds.map((d) => d.id === id ? { ...d, stage, status: stage === "won" ? "won" : stage === "lost" ? "lost" : "open" } : d)); }
@@ -289,9 +289,9 @@ function Tasks({ tasks, setTasks, contacts }: { tasks: Task[]; setTasks: (f: (t:
   const add = async () => {
     if (!title.trim()) return;
     setBusy(true);
-    try { const d = await api({ entity: "task", action: "save", data: { title, dueDate: due || null } }); setTasks((ts) => [...ts, d.task]); setTitle(""); setDue(""); } finally { setBusy(false); }
+    try { const d = await api({ entity: "task", action: "save", data: { title, dueDate: due || null } }); setTasks((ts) => [...ts, d.task]); setTitle(""); setDue(""); } catch (e) { alert(e instanceof Error ? e.message : "Couldn't add that task."); } finally { setBusy(false); }
   };
-  const toggle = async (t: Task) => { const d = await api({ entity: "task", action: "save", data: { ...t, done: !t.done } }); setTasks((ts) => ts.map((x) => x.id === t.id ? d.task : x)); };
+  const toggle = async (t: Task) => { try { const d = await api({ entity: "task", action: "save", data: { ...t, done: !t.done } }); setTasks((ts) => ts.map((x) => x.id === t.id ? d.task : x)); } catch (e) { alert(e instanceof Error ? e.message : "Couldn't update that task."); } };
   const del = async (id: string) => {
     if (!confirm("Delete this task?")) return;
     try { await api({ entity: "task", action: "delete", id }); setTasks((ts) => ts.filter((t) => t.id !== id)); }

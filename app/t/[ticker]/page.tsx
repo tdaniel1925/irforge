@@ -48,18 +48,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 const GRADE_COLOR: Record<string, string> = {
-  A: "text-emerald-400 border-emerald-500/40",
-  B: "text-sky-400 border-sky-500/40",
-  C: "text-amber-400 border-amber-500/40",
-  D: "text-orange-400 border-orange-500/40",
-  F: "text-red-400 border-red-500/40",
+  A: "text-emerald-600 dark:text-emerald-400 border-emerald-500/40",
+  B: "text-sky-600 dark:text-sky-400 border-sky-500/40",
+  C: "text-amber-600 dark:text-amber-400 border-amber-500/40",
+  D: "text-orange-600 dark:text-orange-400 border-orange-500/40",
+  F: "text-red-600 dark:text-red-400 border-red-500/40",
 };
 
 const FLAG_STYLE: Record<string, string> = {
   good: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200",
   warn: "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-200",
   bad: "border-red-500/40 bg-red-500/10 text-red-700 dark:text-red-200",
-  info: "border-slate-700 bg-slate-950/40 text-slate-700 dark:text-slate-300",
+  info: "border-app bg-surface-2 text-muted",
 };
 const FLAG_ICON: Record<string, string> = { good: "✅", warn: "⚠️", bad: "🚨", info: "ℹ️" };
 
@@ -166,17 +166,17 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
     <PageShell>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       {/* Hero */}
-      <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-6">
+      <div className="rounded-xl border border-app bg-surface p-6">
         <div className="flex flex-wrap items-center gap-6">
           <div className={`flex h-24 w-24 shrink-0 flex-col items-center justify-center rounded-2xl border-2 ${GRADE_COLOR[audit.grade]}`}>
             <span className="text-4xl font-bold">{audit.grade}</span>
-            <span className="text-[11px] text-slate-400">{audit.score}/100</span>
+            <span className="text-[11px] text-muted">{audit.score}/100</span>
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-3">
-              <h1 className="text-2xl font-semibold text-white">
+              <h1 className="text-2xl font-semibold text-app">
                 ${audit.ticker}
-                {audit.companyName && <span className="ml-3 text-lg font-normal text-slate-400">{audit.companyName}</span>}
+                {audit.companyName && <span className="ml-3 text-lg font-normal text-muted">{audit.companyName}</span>}
               </h1>
               {claimed ? (
                 <span className="rounded-full border border-emerald-500/50 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-bold tracking-wide text-emerald-400">
@@ -189,13 +189,13 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
               )}
               <WatchButton ticker={audit.ticker} />
             </div>
-            <p className="mt-1 text-sm text-slate-400">
+            <p className="mt-1 text-sm text-muted">
               Investor Visibility Report · generated {new Date(audit.generatedAt).toLocaleString()} from live public sources ·{" "}
-              <span className="text-slate-300">viewed {viewCount.toLocaleString()} time{viewCount === 1 ? "" : "s"}</span>
+              <span className="text-app">viewed {viewCount.toLocaleString()} time{viewCount === 1 ? "" : "s"}</span>
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
               {audit.sources.map((s) => (
-                <span key={s.name} className={`rounded-full border px-2 py-0.5 text-[11px] ${s.ok ? "border-emerald-500/30 text-emerald-300" : "border-slate-700 text-slate-500"}`}>
+                <span key={s.name} className={`rounded-full border px-2 py-0.5 text-[11px] ${s.ok ? "border-emerald-500/30 text-emerald-300" : "border-app text-faint"}`}>
                   {s.ok ? "✓" : "—"} {s.name}
                 </span>
               ))}
@@ -205,7 +205,7 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
           {audit.market.priceSeries && audit.market.priceSeries.length > 2 && (
             <div className="hidden shrink-0 flex-col items-end sm:flex">
               <Sparkline series={audit.market.priceSeries} up={(audit.market.changePct3mo ?? 0) >= 0} />
-              <span className="mt-1 flex items-center gap-1.5 text-[11px] text-slate-500">
+              <span className="mt-1 flex items-center gap-1.5 text-[11px] text-faint">
                 <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
                 live · 3-month trend
               </span>
@@ -216,10 +216,10 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
 
       {/* Plain-English signals — the buried stuff, said simply, up top where it lands */}
       {plainFlags.length > 0 && (
-        <div className="mt-6 rounded-xl border border-slate-800 bg-slate-900/60 p-5">
+        <div className="mt-6 rounded-xl border border-app bg-surface p-5">
           <div className="mb-3 flex items-baseline gap-3">
-            <h2 className="font-semibold text-white">The quick read</h2>
-            <span className="text-[11px] text-slate-500">auto-generated from the data · plain English · not advice</span>
+            <h2 className="font-semibold text-app">The quick read</h2>
+            <span className="text-[11px] text-faint">auto-generated from the data · plain English · not advice</span>
           </div>
           <div className="grid gap-2.5 sm:grid-cols-2">
             {plainFlags.map((fl, i) => (
@@ -256,7 +256,7 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
         {typeof audit.market.price === "number" && (
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <p className="text-3xl font-bold text-white">
+              <p className="text-3xl font-bold text-app">
                 {audit.market.currency === "USD" || !audit.market.currency ? "$" : ""}{audit.market.price.toFixed(2)}
                 {audit.market.currency && audit.market.currency !== "USD" ? ` ${audit.market.currency}` : ""}
               </p>
@@ -267,9 +267,9 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
               )}
             </div>
             <div className="flex gap-6 text-sm">
-              {typeof audit.market.high52 === "number" && <div><p className="text-xs text-slate-500">52-wk high</p><p className="font-medium text-slate-200">{audit.market.high52.toFixed(2)}</p></div>}
-              {typeof audit.market.low52 === "number" && <div><p className="text-xs text-slate-500">52-wk low</p><p className="font-medium text-slate-200">{audit.market.low52.toFixed(2)}</p></div>}
-              {typeof audit.market.lastVolume === "number" && <div><p className="text-xs text-slate-500">Volume</p><p className="font-medium text-slate-200">{(audit.market.lastVolume / 1e6).toFixed(2)}M</p></div>}
+              {typeof audit.market.high52 === "number" && <div><p className="text-xs text-faint">52-wk high</p><p className="font-medium text-app">{audit.market.high52.toFixed(2)}</p></div>}
+              {typeof audit.market.low52 === "number" && <div><p className="text-xs text-faint">52-wk low</p><p className="font-medium text-app">{audit.market.low52.toFixed(2)}</p></div>}
+              {typeof audit.market.lastVolume === "number" && <div><p className="text-xs text-faint">Volume</p><p className="font-medium text-app">{(audit.market.lastVolume / 1e6).toFixed(2)}M</p></div>}
             </div>
           </div>
         )}
@@ -278,29 +278,29 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
 
       {/* AI overview */}
       <Section title="Overview" badge={explainer.engine === "claude" ? "AI-written from observed facts" : "generated from observed facts"}>
-        <p className="text-sm leading-relaxed text-slate-300">{explainer.text}</p>
+        <p className="text-sm leading-relaxed text-app">{explainer.text}</p>
       </Section>
 
       {/* Both Sides — the AI Research Panel: labeled lenses, never fake people */}
       {panel.lenses.length > 0 && (
         <Section title="Both Sides" badge="🤖 AI research panel · transparent perspectives, not real investors · not investment advice">
-          <p className="mb-4 text-sm text-slate-400">
+          <p className="mb-4 text-sm text-muted">
             Instead of anonymous pumpers and bashers, here&apos;s a fair, multi-angle read on ${audit.ticker} — each one a
-            clearly-labeled AI lens, grounded in the public filings. <span className="text-slate-300">You can&apos;t pay for a good rating.</span>
+            clearly-labeled AI lens, grounded in the public filings. <span className="text-app">You can&apos;t pay for a good rating.</span>
           </p>
           <div className="grid gap-3 sm:grid-cols-2">
             {panel.lenses.map((l) => (
-              <div key={l.key} className="rounded-lg border border-slate-800 bg-slate-950/40 p-4">
+              <div key={l.key} className="rounded-lg border border-app bg-surface-2 p-4">
                 <div className="mb-1.5 flex items-center gap-2">
                   <span className="text-base">{l.icon}</span>
-                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-300">{l.name}</span>
-                  <span className="ml-auto rounded bg-slate-800 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-slate-400">🤖 AI</span>
+                  <span className="text-xs font-semibold uppercase tracking-wide text-app">{l.name}</span>
+                  <span className="ml-auto rounded bg-app-hover px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-muted">🤖 AI</span>
                 </div>
-                <p className="text-sm leading-relaxed text-slate-300">{l.take}</p>
+                <p className="text-sm leading-relaxed text-app">{l.take}</p>
               </div>
             ))}
           </div>
-          <p className="mt-3 text-[11px] text-slate-600">
+          <p className="mt-3 text-[11px] text-faint">
             These are AI-generated analytical perspectives drawn from public data — not real investors, not the company&apos;s view,
             and not investment advice. Verify everything against the company&apos;s SEC filings.
           </p>
@@ -315,7 +315,7 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
               Sample — example of the product
             </p>
           )}
-          <h3 className="mb-3 text-base font-bold text-white">{b.title}</h3>
+          <h3 className="mb-3 text-base font-bold text-app">{b.title}</h3>
           <BriefReader markdown={b.markdown} />
           <p className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] leading-relaxed text-amber-300">{b.disclosure}</p>
         </Section>
@@ -327,27 +327,27 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="rounded-lg border border-emerald-500/25 bg-emerald-500/5 p-4">
             <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-emerald-400">The bull case</p>
-            <p className="text-sm leading-relaxed text-slate-300">{analyst.bull}</p>
+            <p className="text-sm leading-relaxed text-app">{analyst.bull}</p>
           </div>
           <div className="rounded-lg border border-orange-500/25 bg-orange-500/5 p-4">
             <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-orange-400">The bear case</p>
-            <p className="text-sm leading-relaxed text-slate-300">{analyst.bear}</p>
+            <p className="text-sm leading-relaxed text-app">{analyst.bear}</p>
           </div>
         </div>
         {analyst.faq.length > 0 && (
           <div className="mt-4">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Common questions</p>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-faint">Common questions</p>
             <div className="space-y-3">
               {analyst.faq.map((f, i) => (
-                <div key={i} className="rounded-lg border border-slate-800 bg-slate-950/60 p-3">
-                  <p className="text-sm font-medium text-slate-200">{f.q}</p>
-                  <p className="mt-1 text-sm text-slate-400">{f.a}</p>
+                <div key={i} className="rounded-lg border border-app bg-surface-2 p-3">
+                  <p className="text-sm font-medium text-app">{f.q}</p>
+                  <p className="mt-1 text-sm text-muted">{f.a}</p>
                 </div>
               ))}
             </div>
           </div>
         )}
-        <p className="mt-3 text-[11px] text-slate-600">
+        <p className="mt-3 text-[11px] text-faint">
           This analysis is generated by AI from public data (SEC filings, market data) and is clearly labeled as such. It is not the
           view of the company and is not investment advice. If this is your company, claim this page to add your verified voice.
         </p>
@@ -395,8 +395,8 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
           <ul className="space-y-2">
             {audit.otc.recentReports.map((r, i) => (
               <li key={i} className="flex items-baseline gap-3 text-sm">
-                <span className="shrink-0 text-xs text-slate-500">{r.date}</span>
-                <span className="text-slate-300">{r.title}</span>
+                <span className="shrink-0 text-xs text-faint">{r.date}</span>
+                <span className="text-app">{r.title}</span>
               </li>
             ))}
           </ul>
@@ -409,12 +409,12 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
           <ul className="space-y-2">
             {companyFilings.map((f) => (
               <li key={f.id} className="flex items-baseline gap-3 text-sm">
-                <span className="shrink-0 text-xs text-slate-500">{f.filedAt.slice(0, 10)}</span>
-                <span className="shrink-0 rounded bg-slate-800 px-1.5 py-0.5 text-[11px] font-semibold text-slate-300">{f.form}</span>
+                <span className="shrink-0 text-xs text-faint">{f.filedAt.slice(0, 10)}</span>
+                <span className="shrink-0 rounded bg-app-hover px-1.5 py-0.5 text-[11px] font-semibold text-app">{f.form}</span>
                 {f.url ? (
-                  <a href={f.url} target="_blank" rel="noreferrer" className="truncate text-slate-300 hover:text-emerald-400 hover:underline">{f.title}</a>
+                  <a href={f.url} target="_blank" rel="noreferrer" className="truncate text-app hover:text-emerald-400 hover:underline">{f.title}</a>
                 ) : (
-                  <span className="truncate text-slate-300">{f.title}</span>
+                  <span className="truncate text-app">{f.title}</span>
                 )}
               </li>
             ))}
@@ -429,8 +429,8 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
             {audit.filingMentions.map((m, i) => (
               <li key={i} className="flex items-baseline gap-3 text-sm">
                 <span className="shrink-0 text-xs text-faint">{m.date}</span>
-                <span className="shrink-0 rounded bg-slate-800 px-1.5 py-0.5 text-[11px] font-semibold text-slate-300">{m.form}</span>
-                <span className="text-slate-300">{m.byCompany}</span>
+                <span className="shrink-0 rounded bg-app-hover px-1.5 py-0.5 text-[11px] font-semibold text-app">{m.form}</span>
+                <span className="text-app">{m.byCompany}</span>
               </li>
             ))}
           </ul>
@@ -445,7 +445,7 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
               <li key={i} className="flex items-baseline gap-3 text-sm">
                 <span className="shrink-0 text-xs text-faint">{r.date}</span>
                 <span className="shrink-0 rounded bg-orange-500/15 px-1.5 py-0.5 text-[11px] font-semibold text-orange-600 dark:text-orange-300">{r.type}</span>
-                <span className="text-slate-300">{r.title}</span>
+                <span className="text-app">{r.title}</span>
               </li>
             ))}
           </ul>
@@ -458,9 +458,9 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
           <ul className="space-y-2">
             {audit.recentFilings.map((f, i) => (
               <li key={i} className="flex items-baseline gap-3 text-sm">
-                <span className="shrink-0 text-xs text-slate-500">{f.date}</span>
-                <span className="shrink-0 rounded bg-slate-800 px-1.5 py-0.5 text-[11px] font-semibold text-slate-300">{f.form}</span>
-                <a href={f.url} target="_blank" rel="noreferrer" className="truncate text-slate-300 hover:text-emerald-400 hover:underline">
+                <span className="shrink-0 text-xs text-faint">{f.date}</span>
+                <span className="shrink-0 rounded bg-app-hover px-1.5 py-0.5 text-[11px] font-semibold text-app">{f.form}</span>
+                <a href={f.url} target="_blank" rel="noreferrer" className="truncate text-app hover:text-emerald-400 hover:underline">
                   {f.title}
                 </a>
               </li>
@@ -477,11 +477,11 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
         >
           {rated > 0 && (
             <div className="mb-4">
-              <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-slate-800">
+              <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-app-hover">
                 <div className="bg-emerald-400" style={{ width: `${(audit.social.bullish / rated) * 100}%` }} />
                 <div className="bg-red-400" style={{ width: `${(audit.social.bearish / rated) * 100}%` }} />
               </div>
-              <p className="mt-1.5 text-xs text-slate-500">
+              <p className="mt-1.5 text-xs text-faint">
                 <span className="text-emerald-400">{audit.social.bullish} bullish</span> ·{" "}
                 <span className="text-red-400">{audit.social.bearish} bearish</span> · {audit.social.unrated} unrated, from the latest messages
               </p>
@@ -489,17 +489,17 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
           )}
           <div className="space-y-2.5">
             {audit.social.recentMessages.map((m, i) => (
-              <div key={i} className={`rounded-lg border p-3 ${m.sentiment === "Bearish" ? "border-red-500/20 bg-red-500/5" : m.sentiment === "Bullish" ? "border-emerald-500/20 bg-emerald-500/5" : "border-slate-800 bg-slate-950/60"}`}>
+              <div key={i} className={`rounded-lg border p-3 ${m.sentiment === "Bearish" ? "border-red-500/20 bg-red-500/5" : m.sentiment === "Bullish" ? "border-emerald-500/20 bg-emerald-500/5" : "border-app bg-surface-2"}`}>
                 <div className="mb-1 flex items-center gap-2 text-xs">
-                  <span className="font-medium text-slate-300">@{m.author}</span>
-                  <span className="text-slate-600">{m.followers.toLocaleString()} followers</span>
+                  <span className="font-medium text-app">@{m.author}</span>
+                  <span className="text-faint">{m.followers.toLocaleString()} followers</span>
                   {m.sentiment && (
                     <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${m.sentiment === "Bullish" ? "bg-emerald-500/15 text-emerald-300" : "bg-red-500/15 text-red-300"}`}>
                       {m.sentiment.toUpperCase()}
                     </span>
                   )}
                 </div>
-                <p className="text-sm leading-relaxed text-slate-300">{m.body}</p>
+                <p className="text-sm leading-relaxed text-app">{m.body}</p>
               </div>
             ))}
           </div>
@@ -518,25 +518,25 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-800 text-left text-xs text-slate-500">
+                <tr className="border-b border-app text-left text-xs text-faint">
                   <th className="py-2 pr-4 font-medium">Ticker</th>
                   <th className="py-2 pr-4 font-medium">Watchers</th>
                   <th className="py-2 font-medium">Msgs/day</th>
                 </tr>
               </thead>
               <tbody>
-                <tr className="border-b border-slate-800/60">
+                <tr className="border-b border-app/60">
                   <td className="py-2 pr-4 font-semibold text-emerald-400">${audit.ticker} (this)</td>
-                  <td className="py-2 pr-4 text-slate-200">{audit.social.watchers?.toLocaleString() ?? "—"}</td>
-                  <td className="py-2 text-slate-200">{audit.social.msgsPerDay !== undefined ? audit.social.msgsPerDay.toFixed(1) : "—"}</td>
+                  <td className="py-2 pr-4 text-app">{audit.social.watchers?.toLocaleString() ?? "—"}</td>
+                  <td className="py-2 text-app">{audit.social.msgsPerDay !== undefined ? audit.social.msgsPerDay.toFixed(1) : "—"}</td>
                 </tr>
                 {audit.peers.map((p) => (
-                  <tr key={p.ticker} className="border-b border-slate-800/60">
+                  <tr key={p.ticker} className="border-b border-app/60">
                     <td className="py-2 pr-4">
-                      <a href={`/t/${p.ticker}`} className="font-medium text-slate-300 hover:text-emerald-400 hover:underline">${p.ticker}</a>
+                      <a href={`/t/${p.ticker}`} className="font-medium text-app hover:text-emerald-400 hover:underline">${p.ticker}</a>
                     </td>
-                    <td className="py-2 pr-4 text-slate-400">{p.error ? "—" : (p.watchers?.toLocaleString() ?? "—")}</td>
-                    <td className="py-2 text-slate-400">{p.error ? <span className="text-xs text-slate-600">{p.error}</span> : (p.msgsPerDay !== undefined ? p.msgsPerDay.toFixed(1) : "—")}</td>
+                    <td className="py-2 pr-4 text-muted">{p.error ? "—" : (p.watchers?.toLocaleString() ?? "—")}</td>
+                    <td className="py-2 text-muted">{p.error ? <span className="text-xs text-faint">{p.error}</span> : (p.msgsPerDay !== undefined ? p.msgsPerDay.toFixed(1) : "—")}</td>
                   </tr>
                 ))}
               </tbody>
@@ -591,12 +591,12 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
         <Section title="Catalyst pipeline">
           {audit.catalysts.trials && (
             <div className="mb-3">
-              <p className="text-sm text-slate-300">
+              <p className="text-sm text-app">
                 {audit.catalysts.trials.total} registered clinical trial{audit.catalysts.trials.total > 1 ? "s" : ""} (ClinicalTrials.gov)
               </p>
               <ul className="mt-2 space-y-1">
                 {audit.catalysts.trials.samples.map((t, i) => (
-                  <li key={i} className="text-xs text-slate-400">
+                  <li key={i} className="text-xs text-muted">
                     {t.phase} · {t.status} — {t.title}
                   </li>
                 ))}
@@ -605,10 +605,10 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
           )}
           {audit.catalysts.contracts && (
             <div>
-              <p className="text-sm text-slate-300">{money(audit.catalysts.contracts.totalAmount)} in federal contract awards since 2023 (USAspending.gov)</p>
+              <p className="text-sm text-app">{money(audit.catalysts.contracts.totalAmount)} in federal contract awards since 2023 (USAspending.gov)</p>
               <ul className="mt-2 space-y-1">
                 {audit.catalysts.contracts.samples.map((c, i) => (
-                  <li key={i} className="text-xs text-slate-400">
+                  <li key={i} className="text-xs text-muted">
                     {money(c.amount)} — {c.description}
                   </li>
                 ))}
@@ -637,7 +637,7 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
         <Section title="What the live scan found">
           <ul className="space-y-2">
             {audit.findings.map((f, i) => (
-              <li key={i} className="flex gap-2 text-sm text-slate-300">
+              <li key={i} className="flex gap-2 text-sm text-app">
                 <span className="text-emerald-400">▸</span>
                 {f}
               </li>
@@ -652,9 +652,9 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
           <ul className="space-y-2">
             {audit.news.samples.map((n, i) => (
               <li key={i} className="flex items-baseline gap-3 text-sm">
-                <span className="shrink-0 text-xs text-slate-500">{n.date}</span>
-                <span className="text-slate-300">{n.title}</span>
-                <span className="shrink-0 text-xs text-slate-500">{n.outlet}</span>
+                <span className="shrink-0 text-xs text-faint">{n.date}</span>
+                <span className="text-app">{n.title}</span>
+                <span className="shrink-0 text-xs text-faint">{n.outlet}</span>
               </li>
             ))}
           </ul>
@@ -667,9 +667,9 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
           <ul className="space-y-2">
             {audit.social.topAccounts.slice(0, 5).map((a) => (
               <li key={a.username} className="flex items-baseline gap-3 text-sm">
-                <span className="shrink-0 font-medium text-white">@{a.username}</span>
-                <span className="shrink-0 text-xs text-slate-500">{a.followers.toLocaleString()} followers</span>
-                <span className="truncate text-xs text-slate-400">{a.lastMessage}</span>
+                <span className="shrink-0 font-medium text-app">@{a.username}</span>
+                <span className="shrink-0 text-xs text-faint">{a.followers.toLocaleString()} followers</span>
+                <span className="truncate text-xs text-muted">{a.lastMessage}</span>
               </li>
             ))}
           </ul>
@@ -684,11 +684,11 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
         {/* The ask box is a fixed bottom bar (rendered once near the page root). */}
         <div className="space-y-3">
           {tickerQuestions.map((q) => (
-            <div key={q.id} className="rounded-lg border border-slate-800 bg-slate-950/60 p-3">
-              <p className="text-xs text-slate-500">
+            <div key={q.id} className="rounded-lg border border-app bg-surface-2 p-3">
+              <p className="text-xs text-faint">
                 {q.author} asked {new Date(q.ts).toLocaleDateString()}
               </p>
-              <p className="mt-1 text-sm font-medium text-slate-200">{q.question}</p>
+              <p className="mt-1 text-sm font-medium text-app">{q.question}</p>
               {q.status === "answered" && q.answerText ? (
                 <div className="mt-2 rounded-lg border border-emerald-500/25 bg-emerald-500/5 p-3">
                   <p className="text-xs font-semibold text-emerald-400">
@@ -699,7 +699,7 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
                       </a>
                     )}
                   </p>
-                  <p className="mt-1 text-sm text-slate-300">{q.answerText}</p>
+                  <p className="mt-1 text-sm text-app">{q.answerText}</p>
                 </div>
               ) : (
                 <p className="mt-2 text-xs text-amber-400/80">
@@ -716,14 +716,14 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
         <Section title={`What $${audit.ticker} could be doing on this page`} badge="🔒 unlocks when the company claims it">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {LOCKED_FEATURES.map((lf) => (
-              <div key={lf.title} className="relative overflow-hidden rounded-lg border border-slate-800 bg-slate-950/60 p-4">
+              <div key={lf.title} className="relative overflow-hidden rounded-lg border border-app bg-surface-2 p-4">
                 <div className="pointer-events-none select-none blur-[1.5px]" aria-hidden>
                   <p className="text-2xl">{lf.icon}</p>
-                  <p className="mt-2 text-sm font-semibold text-slate-300">{lf.title}</p>
-                  <p className="mt-1 text-xs text-slate-500">{lf.desc}</p>
+                  <p className="mt-2 text-sm font-semibold text-app">{lf.title}</p>
+                  <p className="mt-1 text-xs text-faint">{lf.desc}</p>
                 </div>
-                <div className="absolute inset-0 flex items-center justify-center bg-slate-950/40">
-                  <span className="rounded-full border border-amber-500/40 bg-slate-900/80 px-3 py-1 text-xs font-semibold text-amber-300">🔒 Locked</span>
+                <div className="absolute inset-0 flex items-center justify-center bg-surface-2">
+                  <span className="rounded-full border border-amber-500/40 bg-surface/90 px-3 py-1 text-xs font-semibold text-amber-300">🔒 Locked</span>
                 </div>
               </div>
             ))}
@@ -751,7 +751,7 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
       <BadgeEmbed ticker={audit.ticker} grade={audit.grade} score={audit.score} />
 
       {/* Disclosure */}
-      <p className="mt-8 text-xs leading-relaxed text-slate-600">
+      <p className="mt-8 text-xs leading-relaxed text-faint">
         Not investment advice. This report aggregates publicly available data (SEC EDGAR, StockTwits, Reddit, Yahoo Finance,
         GDELT) at generation time and may be incomplete or delayed. Verify all figures against official SEC filings at sec.gov
         before making any decision. PubcoZone is a compensated service provider to companies that claim their pages; claimed
@@ -770,14 +770,14 @@ function PageShell({ children }: { children: React.ReactNode }) {
     <div className="mx-auto max-w-4xl pb-28">
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Link href="/t" className="text-sm text-slate-400 hover:text-slate-200">
+          <Link href="/t" className="text-sm text-muted hover:text-app">
             ← Look up a ticker
           </Link>
           <Link href="/discover" className="text-sm text-emerald-400 hover:underline">
             🔥 Discover
           </Link>
         </div>
-        <span className="text-xs text-slate-600">PubcoZone · live public-data intelligence</span>
+        <span className="text-xs text-faint">PubcoZone · live public-data intelligence</span>
       </div>
       {children}
     </div>
@@ -786,10 +786,10 @@ function PageShell({ children }: { children: React.ReactNode }) {
 
 function Section({ title, badge, children }: { title: string; badge?: string; children: React.ReactNode }) {
   return (
-    <div className="mt-6 rounded-xl border border-slate-800 bg-slate-900/60 p-5">
+    <div className="mt-6 rounded-xl border border-app bg-surface p-5">
       <div className="mb-3 flex items-baseline gap-3">
-        <h2 className="font-semibold text-white">{title}</h2>
-        {badge && <span className="text-[11px] text-slate-500">{badge}</span>}
+        <h2 className="font-semibold text-app">{title}</h2>
+        {badge && <span className="text-[11px] text-faint">{badge}</span>}
       </div>
       {children}
     </div>
@@ -799,8 +799,8 @@ function Section({ title, badge, children }: { title: string; badge?: string; ch
 function Fact({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-xs text-slate-500">{label}</p>
-      <p className="mt-0.5 font-medium text-slate-200">{value}</p>
+      <p className="text-xs text-faint">{label}</p>
+      <p className="mt-0.5 font-medium text-app">{value}</p>
     </div>
   );
 }
@@ -829,10 +829,10 @@ function money(n: number): string {
 
 function Metric({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
-      <p className="text-xs text-slate-500">{label}</p>
-      <p className="mt-1 text-xl font-semibold text-white">{value}</p>
-      {sub && <p className="mt-0.5 text-xs text-slate-500">{sub}</p>}
+    <div className="rounded-xl border border-app bg-surface p-4">
+      <p className="text-xs text-faint">{label}</p>
+      <p className="mt-1 text-xl font-semibold text-app">{value}</p>
+      {sub && <p className="mt-0.5 text-xs text-faint">{sub}</p>}
     </div>
   );
 }

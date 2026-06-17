@@ -15,14 +15,26 @@ export default function BriefManager({ initial }: { initial: Brief[] }) {
       const res = await fetch("/api/brief/checkout", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
       const d = await res.json();
       if (!res.ok) throw new Error(d.error ?? "Couldn't start checkout.");
-      if (d.url) window.location.href = d.url;
+      if (d.url) { window.location.href = d.url; return; }
+      throw new Error("Checkout didn't return a payment link — try again.");
     } catch (e) { setError(e instanceof Error ? e.message : "Failed."); setBusy(false); }
   };
 
   const togglePublish = async (b: Brief) => {
     const next = !b.published;
+    setError("");
     setBriefs((bs) => bs.map((x) => x.id === b.id ? { ...x, published: next } : x));
-    await fetch("/api/brief/publish", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: b.id, published: next }) });
+    try {
+      const res = await fetch("/api/brief/publish", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: b.id, published: next }) });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setBriefs((bs) => bs.map((x) => x.id === b.id ? { ...x, published: b.published } : x));
+        setError(d.error ?? `Couldn't ${next ? "publish" : "unpublish"} that brief — try again.`);
+      }
+    } catch {
+      setBriefs((bs) => bs.map((x) => x.id === b.id ? { ...x, published: b.published } : x));
+      setError("Network error — please try again.");
+    }
   };
 
   return (

@@ -103,17 +103,22 @@ function People({ people, setPeople }: { people: Stakeholder[]; setPeople: (f: (
   const [editing, setEditing] = useState<Stakeholder | null>(null);
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
 
   const save = async () => {
     if (!editing) return;
-    setBusy(true);
+    setBusy(true); setError("");
     try {
       const res = await fetch("/api/iros/stakeholders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "save", stakeholder: editing }) });
-      const d = await res.json();
+      const d = await res.json().catch(() => ({}));
       if (res.ok) {
         setPeople((ps) => { const ex = ps.some((p) => p.id === d.stakeholder.id); return ex ? ps.map((p) => p.id === d.stakeholder.id ? d.stakeholder : p) : [...ps, d.stakeholder]; });
         setEditing(null);
+      } else {
+        setError(d.error ?? "Couldn't save. Try again.");
       }
+    } catch {
+      setError("Network error — couldn't save.");
     } finally { setBusy(false); }
   };
 
@@ -130,6 +135,7 @@ function People({ people, setPeople }: { people: Stakeholder[]; setPeople: (f: (
           <input value={editing.email} onChange={(e) => setEditing({ ...editing, email: e.target.value })} placeholder="Email" className="rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:border-emerald-500 focus:outline-none sm:col-span-2" />
         </div>
         <textarea value={editing.notes} onChange={(e) => setEditing({ ...editing, notes: e.target.value })} rows={2} placeholder="Notes" className="w-full resize-none rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:border-emerald-500 focus:outline-none" />
+        {error && <p className="text-sm text-red-500">{error}</p>}
         <div className="flex gap-2">
           <button onClick={save} disabled={busy || !editing.fullName.trim()} className="rounded-lg bg-emerald-600 px-5 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50">{busy ? "Saving…" : "Save"}</button>
           <button onClick={() => setEditing(null)} className="rounded-lg border border-app px-5 py-2 text-sm text-app hover:bg-app-hover">Cancel</button>
