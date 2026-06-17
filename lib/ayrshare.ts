@@ -13,10 +13,26 @@ export function ayrshareConfigured(): boolean {
   return Boolean(process.env.AYRSHARE_API_KEY);
 }
 
+// The Ayrshare private key (PEM). Stored base64 in AYRSHARE_PRIVATE_KEY_B64 to
+// avoid multiline-env mangling on hosts; falls back to the raw AYRSHARE_PRIVATE_KEY.
+function ayrsharePrivateKey(): string {
+  const b64 = process.env.AYRSHARE_PRIVATE_KEY_B64;
+  if (b64) {
+    try {
+      return Buffer.from(b64, "base64").toString("utf8");
+    } catch {
+      /* fall through */
+    }
+  }
+  const raw = process.env.AYRSHARE_PRIVATE_KEY ?? "";
+  // If a host flattened the PEM's newlines into literal "\n", restore them.
+  return raw.includes("\\n") && !raw.includes("\n") ? raw.replace(/\\n/g, "\n") : raw;
+}
+
 // Multi-tenant: each company links its OWN socials via an Ayrshare "User Profile"
 // (Business Plan). Requires both the API key and the private key (JWT SSO).
 export function ayrshareMultiTenant(): boolean {
-  return Boolean(process.env.AYRSHARE_API_KEY && process.env.AYRSHARE_PRIVATE_KEY);
+  return Boolean(process.env.AYRSHARE_API_KEY && ayrsharePrivateKey());
 }
 
 // Create an Ayrshare user profile for a company. Returns its profileKey, which we
@@ -45,7 +61,7 @@ export async function createAyrshareProfile(title: string): Promise<{ ok: boolea
 // scoped to one company's profile. The company clicks it and links X/LinkedIn/etc.
 export async function generateAyrshareLinkUrl(profileKey: string): Promise<{ ok: boolean; url?: string; error?: string }> {
   const key = process.env.AYRSHARE_API_KEY;
-  const privateKey = process.env.AYRSHARE_PRIVATE_KEY;
+  const privateKey = ayrsharePrivateKey();
   // Ayrshare's Business Plan assigns a domain ID (e.g. "id-1MW7j"); it's the prefix
   // on your private-key filename in the integration package.
   const domain = process.env.AYRSHARE_DOMAIN || "id-1MW7j";
