@@ -46,7 +46,7 @@ export default function Admin() {
     <div className="max-w-2xl">
       <PageHeader title="Admin" subtitle="BotMakers operations console." />
       <Banner tone="error" message={error === "Admin only" ? "This area is for PubcoZone administrators only." : error} />
-      <p className="mt-3 text-xs text-faint">To grant admin: run the SQL in supabase/schema-billing.sql setting is_admin = true for your user, then sign in.</p>
+      <p className="mt-3 text-xs text-faint">To grant admin: add your user to the <code>platform_admins</code> table with <code>super_admin = true</code> (insert user_id + email), then reload. Make sure you&apos;re signed in with the right account.</p>
     </div>
   );
   if (!data) return null;
