@@ -76,9 +76,13 @@ export async function upsertContact(input: Partial<CrmContact> & { id?: string }
     company_id: t.cid, crm_company_id: input.crmCompanyId ?? null, full_name: input.fullName ?? "", title: input.title ?? "",
     email: input.email ?? "", phone: input.phone ?? "", category: input.category ?? "investor", stage: input.stage ?? "new",
     linkedin_url: input.linkedinUrl ?? "", x_handle: input.xHandle ?? "", topics: input.topics ?? [], aum: input.aum ?? "",
-    peers_held: input.peersHeld ?? [], notes: input.notes ?? "", owner_email: input.ownerEmail ?? "",
+    peers_held: input.peersHeld ?? [], notes: input.notes ?? "",
     next_followup: input.nextFollowup ?? null, updated_at: new Date().toISOString(),
   };
+  // Stamp the creator as owner on NEW records; preserve the existing owner on edit
+  // unless explicitly reassigned.
+  if (input.id) { if (input.ownerEmail !== undefined) row.owner_email = input.ownerEmail; }
+  else row.owner_email = input.ownerEmail || t.email;
   let data;
   if (input.id) ({ data } = await sb.from("crm_contacts").update(row).eq("id", input.id).select("*").single());
   else ({ data } = await sb.from("crm_contacts").insert(row).select("*").single());
@@ -103,8 +107,10 @@ export async function upsertCompany(input: Partial<CrmCompany> & { id?: string }
   const row: Record<string, unknown> = {
     company_id: t.cid, name: input.name ?? "", domain: input.domain ?? "", type: input.type ?? "other",
     industry: input.industry ?? "", city: input.city ?? "", state: input.state ?? "", website: input.website ?? "",
-    notes: input.notes ?? "", owner_email: input.ownerEmail ?? "", updated_at: new Date().toISOString(),
+    notes: input.notes ?? "", updated_at: new Date().toISOString(),
   };
+  if (input.id) { if (input.ownerEmail !== undefined) row.owner_email = input.ownerEmail; }
+  else row.owner_email = input.ownerEmail || t.email;
   let data;
   if (input.id) ({ data } = await sb.from("crm_companies").update(row).eq("id", input.id).select("*").single());
   else ({ data } = await sb.from("crm_companies").insert(row).select("*").single());
@@ -129,9 +135,11 @@ export async function upsertDeal(input: Partial<CrmDeal> & { id?: string }): Pro
   const row: Record<string, unknown> = {
     company_id: t.cid, title: input.title ?? "", stage: input.stage ?? "lead", value: input.value ?? 0,
     currency: input.currency ?? "USD", contact_id: input.contactId ?? null, crm_company_id: input.crmCompanyId ?? null,
-    close_date: input.closeDate ?? null, status, notes: input.notes ?? "", owner_email: input.ownerEmail ?? "",
+    close_date: input.closeDate ?? null, status, notes: input.notes ?? "",
     updated_at: new Date().toISOString(),
   };
+  if (input.id) { if (input.ownerEmail !== undefined) row.owner_email = input.ownerEmail; }
+  else row.owner_email = input.ownerEmail || t.email;
   let data;
   if (input.id) ({ data } = await sb.from("crm_deals").update(row).eq("id", input.id).select("*").single());
   else ({ data } = await sb.from("crm_deals").insert(row).select("*").single());

@@ -3,10 +3,10 @@
 import { useState } from "react";
 
 // ── shared types (mirror lib/crm.ts) ──
-interface Contact { id: string; crmCompanyId: string | null; fullName: string; title: string; email: string; phone: string; category: string; stage: string; topics: string[]; aum: string; peersHeld: string[]; notes: string; nextFollowup: string | null; lastTouchAt: string | null }
-interface Company { id: string; name: string; type: string; industry: string; website: string; notes: string }
-interface Deal { id: string; title: string; stage: string; value: number; currency: string; contactId: string | null; crmCompanyId: string | null; closeDate: string | null; status: string; notes: string }
-interface Task { id: string; title: string; dueDate: string | null; done: boolean; contactId: string | null }
+interface Contact { id: string; crmCompanyId: string | null; fullName: string; title: string; email: string; phone: string; category: string; stage: string; topics: string[]; aum: string; peersHeld: string[]; notes: string; nextFollowup: string | null; lastTouchAt: string | null; ownerEmail?: string }
+interface Company { id: string; name: string; type: string; industry: string; website: string; notes: string; ownerEmail?: string }
+interface Deal { id: string; title: string; stage: string; value: number; currency: string; contactId: string | null; crmCompanyId: string | null; closeDate: string | null; status: string; notes: string; ownerEmail?: string }
+interface Task { id: string; title: string; dueDate: string | null; done: boolean; contactId: string | null; ownerEmail?: string }
 interface Metrics { contacts: number; openDeals: number; pipelineValue: number; wonValue: number; wonCount: number; lostCount: number; activities7d: number; tasksDue: number; dealsByStage: Record<string, { count: number; value: number }> }
 
 const DEAL_STAGES = ["lead", "qualified", "meeting", "proposal", "won", "lost"];
@@ -20,10 +20,11 @@ async function api(body: object) {
   return res.json();
 }
 
-export default function CrmWorkspace({ initialContacts, initialCompanies, initialDeals, initialTasks, metrics }: {
-  initialContacts: Contact[]; initialCompanies: Company[]; initialDeals: Deal[]; initialTasks: Task[]; metrics: Metrics;
+export default function CrmWorkspace({ initialContacts, initialCompanies, initialDeals, initialTasks, metrics, currentUserEmail = "" }: {
+  initialContacts: Contact[]; initialCompanies: Company[]; initialDeals: Deal[]; initialTasks: Task[]; metrics: Metrics; currentUserEmail?: string;
 }) {
   const [tab, setTab] = useState("dashboard");
+  const [scope, setScope] = useState<"team" | "mine">("team");
   const [contacts, setContacts] = useState(initialContacts);
   const [companies, setCompanies] = useState(initialCompanies);
   const [deals, setDeals] = useState(initialDeals);
@@ -43,14 +44,28 @@ export default function CrmWorkspace({ initialContacts, initialCompanies, initia
         {TABS.map((t) => (
           <button key={t.k} onClick={() => setTab(t.k)} className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition ${tab === t.k ? "bg-emerald-600 text-white" : "border border-app text-muted hover:text-app"}`}>{t.label}</button>
         ))}
-        <a href="/crm/import" className="ml-auto rounded-lg border border-app px-3 py-1.5 text-sm font-medium text-app hover:bg-app-hover">⤓ Import / Export</a>
+        {currentUserEmail && tab !== "dashboard" && (
+          <div className="ml-auto flex overflow-hidden rounded-lg border border-app text-xs font-semibold">
+            <button onClick={() => setScope("team")} className={`px-3 py-1.5 transition ${scope === "team" ? "bg-emerald-600 text-white" : "text-muted hover:text-app"}`}>Team</button>
+            <button onClick={() => setScope("mine")} className={`px-3 py-1.5 transition ${scope === "mine" ? "bg-emerald-600 text-white" : "text-muted hover:text-app"}`}>Mine</button>
+          </div>
+        )}
+        <a href="/crm/import" className={`rounded-lg border border-app px-3 py-1.5 text-sm font-medium text-app hover:bg-app-hover ${currentUserEmail && tab !== "dashboard" ? "" : "ml-auto"}`}>⤓ Import / Export</a>
       </div>
 
-      {tab === "dashboard" && <Dashboard metrics={metrics} deals={deals} tasks={tasks} />}
-      {tab === "contacts" && <Contacts contacts={contacts} setContacts={setContacts} companies={companies} />}
-      {tab === "companies" && <Companies companies={companies} setCompanies={setCompanies} />}
-      {tab === "deals" && <Deals deals={deals} setDeals={setDeals} contacts={contacts} />}
-      {tab === "tasks" && <Tasks tasks={tasks} setTasks={setTasks} contacts={contacts} />}
+      {(() => {
+        const me = currentUserEmail.toLowerCase();
+        const mine = <T extends { ownerEmail?: string }>(arr: T[]) => scope === "mine" && me ? arr.filter((x) => (x.ownerEmail ?? "").toLowerCase() === me) : arr;
+        return (
+          <>
+            {tab === "dashboard" && <Dashboard metrics={metrics} deals={deals} tasks={tasks} />}
+            {tab === "contacts" && <Contacts contacts={mine(contacts)} setContacts={setContacts} companies={companies} />}
+            {tab === "companies" && <Companies companies={mine(companies)} setCompanies={setCompanies} />}
+            {tab === "deals" && <Deals deals={mine(deals)} setDeals={setDeals} contacts={contacts} />}
+            {tab === "tasks" && <Tasks tasks={mine(tasks)} setTasks={setTasks} contacts={contacts} />}
+          </>
+        );
+      })()}
     </div>
   );
 }
