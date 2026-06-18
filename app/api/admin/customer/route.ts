@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { getStripe, TIERS, type Tier } from "@/lib/billing";
 import { createServiceClient } from "@/lib/supabase/server";
-import { isSuperAdmin, setCompanyFeature, IROS_FEATURES } from "@/lib/platform";
+import { isSuperAdmin, setCompanyFeature, IROS_FEATURES, getCurrentUser } from "@/lib/platform";
 import { sendPromoInviteEmail } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
@@ -65,8 +65,9 @@ export async function POST(req: Request) {
       });
 
       const link = `${SITE}/accept-invite?token=${token}`;
+      const inviter = (await getCurrentUser())?.email || undefined;
       try {
-        await sendPromoInviteEmail(email, link, name);
+        await sendPromoInviteEmail(email, link, name, inviter);
       } catch (e) {
         console.error("[promo_invite] email failed:", e);
       }

@@ -80,10 +80,14 @@ export async function sendWatchConfirmation(to: string, ticker: string): Promise
 
 // Promo / free-access invite emailed by an admin to a company. Branded shell, with
 // a one-line "what this is" so cold recipients aren't confused.
-export async function sendPromoInviteEmail(to: string, link: string, companyName?: string): Promise<boolean> {
+export async function sendPromoInviteEmail(to: string, link: string, companyName?: string, invitedBy?: string): Promise<boolean> {
   const who = companyName ? ` for <strong style="color:#fff">${companyName}</strong>` : "";
+  const fromLine = invitedBy
+    ? `<p style="font-size:13px;color:#94a3b8;margin:0 0 14px">${invitedBy} invited you to PubcoZone.</p>`
+    : "";
   const inner = `
     <h1 style="font-size:21px;color:#ffffff;margin:0 0 8px">You've been given free access to PubcoZone 🎁</h1>
+    ${fromLine}
     <p style="font-size:14px;line-height:1.6;color:#cbd5e1;margin:0 0 14px">
       PubcoZone is an AI investor-relations platform for public companies — turn your SEC filings into compliant updates
       you approve, answer investors on the record, and reach the funds that hold your peers. Nothing ever posts without
