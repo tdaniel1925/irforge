@@ -78,6 +78,30 @@ export async function sendWatchConfirmation(to: string, ticker: string): Promise
   return sendEmail({ to, subject: `You're now watching $${ticker} on PubcoZone`, html: shell(inner) });
 }
 
+// Promo / free-access invite emailed by an admin to a company. Branded shell, with
+// a one-line "what this is" so cold recipients aren't confused.
+export async function sendPromoInviteEmail(to: string, link: string, companyName?: string): Promise<boolean> {
+  const who = companyName ? ` for <strong style="color:#fff">${companyName}</strong>` : "";
+  const inner = `
+    <h1 style="font-size:21px;color:#ffffff;margin:0 0 8px">You've been given free access to PubcoZone 🎁</h1>
+    <p style="font-size:14px;line-height:1.6;color:#cbd5e1;margin:0 0 14px">
+      PubcoZone is an AI investor-relations platform for public companies — turn your SEC filings into compliant updates
+      you approve, answer investors on the record, and reach the funds that hold your peers. Nothing ever posts without
+      your approval.
+    </p>
+    <p style="font-size:14px;line-height:1.6;color:#cbd5e1;margin:0 0 18px">
+      You've been set up with <strong style="color:#fff">full, free access</strong>${who} — every feature, no charge and no card required.
+      Click below to activate your account with this email and connect your ticker.
+    </p>
+    <a href="${link}" style="display:inline-block;background:#10b981;color:#fff;font-weight:700;font-size:14px;text-decoration:none;padding:11px 22px;border-radius:9px">
+      Activate free access →
+    </a>
+    <p style="font-size:12px;color:#64748b;margin:18px 0 0">
+      Or paste this link into your browser:<br/><span style="color:#94a3b8">${link}</span>
+    </p>`;
+  return sendEmail({ to, subject: `Your free access to PubcoZone${companyName ? ` — ${companyName}` : ""}`, html: shell(inner) });
+}
+
 // Welcome / setup guide emailed to a new (or comped) company so they know exactly
 // how to get set up. The full version lives in-app at /help/setup.
 export async function sendCompanyWelcomeGuide(to: string, companyName?: string): Promise<boolean> {

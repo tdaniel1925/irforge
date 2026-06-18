@@ -3,7 +3,7 @@ import { randomUUID } from "crypto";
 import { getStripe, TIERS, type Tier } from "@/lib/billing";
 import { createServiceClient } from "@/lib/supabase/server";
 import { isSuperAdmin, setCompanyFeature, IROS_FEATURES } from "@/lib/platform";
-import { sendEmail } from "@/lib/email";
+import { sendPromoInviteEmail } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 
@@ -66,18 +66,7 @@ export async function POST(req: Request) {
 
       const link = `${SITE}/accept-invite?token=${token}`;
       try {
-        await sendEmail({
-          to: email,
-          subject: `You've got free access to PubcoZone${name ? ` for ${name}` : ""}`,
-          html:
-            `<div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;max-width:560px;margin:0 auto;padding:28px;color:#0f172a">
-              <p style="font-size:20px;font-weight:800;margin:0 0 16px"><span>Pubco</span><span style="color:#059669">Zone.</span></p>
-              <p>You've been given <strong>free, full access</strong> to PubcoZone${name ? ` for <strong>${name}</strong>` : ""} — every feature, no charge.</p>
-              <p>Click below to set up your account with this email and connect your ticker.</p>
-              <p style="margin:22px 0"><a href="${link}" style="display:inline-block;background:#059669;color:#fff;font-weight:700;text-decoration:none;padding:11px 22px;border-radius:9px">Activate free access →</a></p>
-              <p style="font-size:12px;color:#64748b">Or paste this link: ${link}</p>
-            </div>`,
-        });
+        await sendPromoInviteEmail(email, link, name);
       } catch (e) {
         console.error("[promo_invite] email failed:", e);
       }
