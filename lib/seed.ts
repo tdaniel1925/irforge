@@ -4,6 +4,23 @@ const DAY = 86400000;
 const iso = (daysAgo: number) => new Date(Date.now() - daysAgo * DAY).toISOString();
 const isoDate = (daysAgo: number) => iso(daysAgo).slice(0, 10);
 
+// A clean, empty DB — no demo company, no fake data. Used in production / multi-
+// tenant mode so the legacy single-tenant fallback never surfaces seed (Meridian
+// Lithium) data on public pages or in any real account.
+export function emptyDb(): Database {
+  return {
+    scoreHistory: [], pressReleases: [], disclosureChecks: [], calendar: [],
+    contacts: [], documents: [], docAnalyses: [], convertibleNotes: [], capTable: [],
+    publicQuestions: [], filings: [], drafts: [], audit: [], investors: [], mentions: [], metrics: [],
+    company: {
+      name: "", ticker: "", exchange: "", cik: "", city: "", state: "", sector: "",
+      description: "", approverName: "", approverTitle: "", quietMode: false,
+      disclosureText: "", flsText: "", peers: [], xHandle: "",
+      onboarded: false, tier: "free", onboarding_complete: false,
+    },
+  } as Database;
+}
+
 export function buildSeed(): Database {
   const filings: Filing[] = [
     {

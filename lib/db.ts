@@ -1,7 +1,12 @@
 import fs from "fs";
 import path from "path";
 import type { AuditEvent, Database } from "./types";
-import { buildSeed } from "./seed";
+import { buildSeed, emptyDb } from "./seed";
+
+// In production / multi-tenant mode (AUTH_ENABLED), real data lives per-company in
+// Supabase. The legacy single-tenant JSON store must NEVER serve demo (Meridian
+// Lithium) data — public pages and fallbacks get a clean empty DB instead.
+const PROD_MODE = process.env.AUTH_ENABLED === "1";
 
 // Local-first JSON store. Seeds itself on first access — zero setup.
 const DATA_DIR = path.join(process.cwd(), "data");
@@ -11,6 +16,11 @@ let cache: Database | null = null;
 
 export function getDb(): Database {
   if (cache) return cache;
+  // Production: never seed, never read/write the local file — return a clean empty DB.
+  if (PROD_MODE) {
+    cache = emptyDb();
+    return cache;
+  }
   if (fs.existsSync(DB_FILE)) {
     cache = JSON.parse(fs.readFileSync(DB_FILE, "utf-8")) as Database;
     // Forward-compat: fields added after a db.json was created default safely.
@@ -44,8 +54,9 @@ function persist(db: Database): void {
 }
 
 export function resetDb(): Database {
-  cache = buildSeed();
-  persist(cache);
+  // In production this is a no-op-ish clean reset (empty), never the demo seed.
+  cache = PROD_MODE ? emptyDb() : buildSeed();
+  if (!PROD_MODE) persist(cache);
   return cache;
 }
 

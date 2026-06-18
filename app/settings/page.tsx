@@ -296,10 +296,11 @@ function SocialConnections() {
       const res = await fetch("/api/social/connect", { method: "POST" });
       const d = await res.json();
       if (!res.ok) throw new Error(d.error ?? "Couldn't open the connect page.");
-      if (d.url) window.open(d.url, "_blank", "noopener");
+      // Navigate the current tab — a post-await window.open() gets popup-blocked.
+      // Ayrshare's connect page is a full-page flow and returns the user back after.
+      if (d.url) { window.location.href = d.url; return; }
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Failed.");
-    } finally {
       setBusy(false);
     }
   };
