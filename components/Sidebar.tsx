@@ -4,8 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import ThemeToggle from "./ThemeToggle";
+import { HELP, getArticle } from "@/lib/helpContent";
 
-type NavItem = { href: string; label: string; icon: string; hint?: string; detail?: string };
+type NavItem = { href: string; label: string; icon: string; hint?: string; detail?: string; helpKey?: string };
 type NavGroup = { section: string; items: NavItem[] };
 
 // Grouped by the job to be done, in the order an IR person actually works:
@@ -68,7 +69,7 @@ const NAV: NavGroup[] = [
     // profile menu to avoid duplication — the sidebar keeps just the learn library.
     section: "Learn",
     items: [
-      { href: "/help/setup", label: "How setup works", icon: "❓", hint: "Onboarding walkthrough — admins & members", detail: "A step-by-step explanation of how a company gets set up on PubcoZone: the signup/invite, the 5-step wizard, what admins configure (socials, disclosures, team), and what each member sets up for themselves." },
+      { href: "/help", label: "Help Center", icon: "❓", hint: "Plain-English guides to every feature", detail: "Short, plain-language help articles for every part of PubcoZone — Approvals, Content Pipeline, CRM, Counsel, and more — plus the setup walkthrough. The same articles you reach from the ⓘ next to each menu item." },
       { href: "/learn", label: "Public Company 101", icon: "📚", hint: "Plain-English IR & filing guides", detail: "A plain-English library on being a public company — IR best practices, what each SEC filing means, disclosure rules, and how to engage investors compliantly. No jargon, written for busy operators." },
     ],
   },
@@ -244,6 +245,15 @@ function InfoModal({ item, onClose }: { item: NavItem; onClose: () => void }) {
           <button onClick={onClose} aria-label="Close" className="rounded-md px-2 text-faint transition hover:bg-app-hover hover:text-app">✕</button>
         </div>
         <p className="text-sm leading-relaxed text-muted">{item.detail}</p>
+        {(() => {
+          // Find a matching help article by explicit key or by the feature's href.
+          const article = item.helpKey ? getArticle(item.helpKey) : HELP.find((a) => a.href === item.href);
+          return article ? (
+            <Link href={`/help/${article.slug}`} onClick={onClose} className="mt-3 inline-block text-sm font-medium text-emerald-600 hover:underline dark:text-emerald-400">
+              📖 Learn more about {item.label} →
+            </Link>
+          ) : null;
+        })()}
         <div className="mt-5 flex justify-end gap-2">
           <button onClick={onClose} className="rounded-lg border border-app px-4 py-2 text-sm font-medium text-app transition hover:bg-app-hover">Close</button>
           <Link href={item.href} onClick={onClose} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500">

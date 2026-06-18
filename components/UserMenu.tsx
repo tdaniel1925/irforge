@@ -58,6 +58,7 @@ export default function UserMenu() {
             <Link href="/billing" onClick={() => setOpen(false)} className={item}>💳 Billing &amp; plan</Link>
             <Link href="/workspace" onClick={() => setOpen(false)} className={item}>🗒 My workspace</Link>
             <Link href="/admin/team" onClick={() => setOpen(false)} className={item}>👤 Team</Link>
+            <Link href="/help" onClick={() => setOpen(false)} className={item}>❓ Help Center</Link>
           </div>
           <div className="border-t border-app p-1.5">
             <button onClick={signOut} className={`${item} text-red-600 hover:text-red-600 dark:text-red-400`}>↩ Log out</button>
