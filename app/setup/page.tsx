@@ -19,8 +19,8 @@ export default async function SetupPage() {
       <PageHeader
         title="Get started"
         subtitle={status.isAdmin
-          ? "Everything to get your company live — and what each teammate sets up for themselves."
-          : "A quick checklist to get going. Company-wide settings are handled by your admins."}
+          ? "Everything to get your company live — and what each teammate sets up for themselves. New here? Read how setup works."
+          : "A quick checklist to get going. Company-wide settings are handled by your admins. New here? Read how setup works."}
       />
 
       {allDone && (

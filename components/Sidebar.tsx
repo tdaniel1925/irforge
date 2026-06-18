@@ -68,6 +68,7 @@ const NAV: NavGroup[] = [
     // profile menu to avoid duplication — the sidebar keeps just the learn library.
     section: "Learn",
     items: [
+      { href: "/help/setup", label: "How setup works", icon: "❓", hint: "Onboarding walkthrough — admins & members", detail: "A step-by-step explanation of how a company gets set up on PubcoZone: the signup/invite, the 5-step wizard, what admins configure (socials, disclosures, team), and what each member sets up for themselves." },
       { href: "/learn", label: "Public Company 101", icon: "📚", hint: "Plain-English IR & filing guides", detail: "A plain-English library on being a public company — IR best practices, what each SEC filing means, disclosure rules, and how to engage investors compliantly. No jargon, written for busy operators." },
     ],
   },
