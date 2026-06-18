@@ -36,8 +36,9 @@ export default function Login() {
           options: { data: { account_type: accountType === "investor" ? "member" : "company" } },
         });
         if (error) { setMsg({ text: error.message, ok: false }); return; }
-        // If email confirmation is ON, signUp returns no session — redirecting now
-        // would bounce off the auth gate. Show a "check your email" state instead.
+        // With email confirmation OFF (current setting), signUp returns a session and
+        // we redirect straight in. Safety net: if confirmation is ever turned back ON,
+        // signUp returns no session — show "check your email" instead of bouncing.
         if (!data.session) {
           setMsg({ text: "Check your email to confirm your account, then sign in.", ok: true });
           setMode("signin");

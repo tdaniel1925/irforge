@@ -120,9 +120,13 @@ export async function generateAyrshareLinkUrl(profileKey: string): Promise<{ ok:
 export async function getLinkedAccounts(profileKey?: string): Promise<string[]> {
   const key = process.env.AYRSHARE_API_KEY;
   if (!key) return [];
+  // No per-company profile yet = nothing connected. Without a Profile-Key header
+  // Ayrshare returns the PRIMARY account's socials, which would wrongly show another
+  // company's (or our own) connections on a brand-new account. So bail to [].
+  if (!profileKey) return [];
   try {
     const res = await fetch("https://api.ayrshare.com/api/user", {
-      headers: { Authorization: `Bearer ${key}`, ...(profileKey ? { "Profile-Key": profileKey } : {}) },
+      headers: { Authorization: `Bearer ${key}`, "Profile-Key": profileKey },
       signal: AbortSignal.timeout(15000),
     });
     const data = await res.json().catch(() => ({}));
