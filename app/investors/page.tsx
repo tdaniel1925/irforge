@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useAppState } from "@/components/useAppState";
 import { Button, Card, ErrorBanner, LoadingState, PageHeader } from "@/components/ui";
+import Term from "@/components/Term";
 import type { InvestorStage } from "@/lib/types";
 
 const STAGES: { key: InvestorStage; label: string }[] = [
@@ -66,7 +67,7 @@ export default function InvestorsPage() {
       <Card className="mb-5 border-amber-500/20 bg-amber-500/5">
         <p className="text-xs text-amber-700 dark:text-amber-200/90">
           Compliance note: PubcoZone charges a flat fee and never compensation tied to investment outcomes. Target lists are built
-          from public 13F filings. Your company conducts its own outreach — PubcoZone does not solicit investors on your behalf.
+          from public <Term id="13f">13F filings</Term>. Your company conducts its own outreach — PubcoZone does not solicit investors on your behalf.
         </p>
       </Card>
 

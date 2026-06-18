@@ -6,6 +6,7 @@ import { useAppState } from "@/components/useAppState";
 import { Banner, Button, Card, ErrorBanner, LoadingState, PageHeader, timeAgo } from "@/components/ui";
 import type { Notice } from "@/components/ui";
 import type { ThreatReport } from "@/lib/threats";
+import Term from "@/components/Term";
 import type { Scorecard } from "@/lib/score";
 
 const SEV: Record<string, { ring: string; chip: string; label: string }> = {
@@ -124,7 +125,7 @@ export default function CompanyCommandCenter() {
             {score} <span className="text-base font-normal text-muted">({grade})</span>
             {delta !== 0 && <span className={`ml-2 text-sm ${delta > 0 ? "text-emerald-500" : "text-red-500"}`}>{delta > 0 ? "▲" : "▼"}{Math.abs(delta)}</span>}
           </p>
-          <p className="mt-1 text-xs text-muted">Visibility score · {posted30} posts published</p>
+          <p className="mt-1 text-xs text-muted"><Term id="visibility-score">Visibility score</Term> · {posted30} posts published</p>
         </Card>
         <Card className="border-emerald-500/30">
           <p className="text-xs font-semibold tracking-wide text-faint">🎙 CONTROL</p>

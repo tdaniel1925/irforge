@@ -5,6 +5,7 @@ import { useAppState } from "@/components/useAppState";
 import { Banner, Button, Card, ErrorBanner, LoadingState, PageHeader } from "@/components/ui";
 import type { Notice } from "@/components/ui";
 import type { Company } from "@/lib/types";
+import Term from "@/components/Term";
 
 export default function SettingsPage() {
   const { db, error, busy, act } = useAppState();
@@ -53,9 +54,9 @@ export default function SettingsPage() {
       <Card className={`mb-6 ${db.company.quietMode ? "border-red-500/40" : "border-emerald-500/20"}`}>
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="font-semibold text-app">Quiet mode</h2>
+            <h2 className="font-semibold text-app"><Term id="quiet-period">Quiet mode</Term></h2>
             <p className="mt-1 text-sm text-muted">
-              One switch suspends ALL publishing — use before earnings, financings, or any material announcement window.
+              One switch suspends ALL publishing — use before earnings, financings, or any <Term id="material">material</Term> announcement window.
             </p>
           </div>
           <Button variant={db.company.quietMode ? "danger" : "secondary"} onClick={toggleQuiet} disabled={busy}>
@@ -100,14 +101,14 @@ export default function SettingsPage() {
         <p className="mb-4 text-xs text-faint">
           Appended to every published post automatically. The publish path physically cannot skip these.
         </p>
-        <Label text="Section 17(b) service-provider disclosure" />
+        <label className="mb-1 block text-xs font-medium text-muted"><Term id="section-17b">Section 17(b)</Term> service-provider disclosure</label>
         <textarea
           value={form.disclosureText}
           onChange={(e) => set("disclosureText", e.target.value)}
           rows={3}
           className="mb-4 w-full rounded-lg border border-app bg-surface-2 p-3 text-sm text-app focus:border-emerald-500 focus:outline-none"
         />
-        <Label text="Forward-looking statements notice" />
+        <label className="mb-1 block text-xs font-medium text-muted"><Term id="fls">Forward-looking statements</Term> notice</label>
         <textarea
           value={form.flsText}
           onChange={(e) => set("flsText", e.target.value)}
