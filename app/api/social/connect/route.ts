@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getStore, logAudit } from "@/lib/db";
+import { getMyCompany } from "@/lib/supabase/store";
 import {
   ayrshareMultiTenant,
   ayrshareConfigured,
@@ -36,9 +37,13 @@ export async function POST() {
     );
   }
 
-  // Create the profile on first connect.
+  // Create the profile on first connect. The title is made globally unique with the
+  // company id so two companies (even same name) never collide; createAyrshareProfile
+  // also recovers an existing profile if the title was already used.
   if (!db.company.ayrshareProfileKey) {
-    const created = await createAyrshareProfile(`${db.company.name} ($${db.company.ticker})`);
+    const mine = await getMyCompany();
+    const uniqueTitle = `${db.company.name || "Company"} ($${db.company.ticker || "—"}) · ${String(mine?.id ?? "").slice(0, 8)}`;
+    const created = await createAyrshareProfile(uniqueTitle);
     if (!created.ok || !created.profileKey) {
       return NextResponse.json({ error: created.error ?? "Couldn't create your social profile." }, { status: 502 });
     }

@@ -37,21 +37,49 @@ export function ayrshareMultiTenant(): boolean {
 
 // Create an Ayrshare user profile for a company. Returns its profileKey, which we
 // store on the company and pass on every post so it goes to THAT company's socials.
+// Look up an existing profile's key by its exact title (Ayrshare titles are unique).
+// Lets us recover when a profile was created earlier but its key wasn't persisted.
+export async function findProfileKeyByTitle(title: string): Promise<string | null> {
+  const key = process.env.AYRSHARE_API_KEY;
+  if (!key) return null;
+  try {
+    const res = await fetch("https://api.ayrshare.com/api/profiles", {
+      headers: { Authorization: `Bearer ${key}` },
+      signal: AbortSignal.timeout(20000),
+    });
+    const data = await res.json().catch(() => ({}));
+    const profiles: { title?: string; profileKey?: string }[] = data?.profiles ?? data ?? [];
+    const hit = Array.isArray(profiles) ? profiles.find((p) => p.title === title) : null;
+    return hit?.profileKey ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function createAyrshareProfile(title: string): Promise<{ ok: boolean; profileKey?: string; error?: string }> {
   const key = process.env.AYRSHARE_API_KEY;
   if (!key) return { ok: false, error: "Ayrshare not configured." };
+  const t = title.slice(0, 100);
   try {
     const res = await fetch("https://api.ayrshare.com/api/profiles", {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
       signal: AbortSignal.timeout(20000),
-      body: JSON.stringify({ title: title.slice(0, 100) }),
+      body: JSON.stringify({ title: t }),
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data.profileKey) {
-      return { ok: false, error: data?.message ?? `Ayrshare profile error (HTTP ${res.status})` };
+    // Ayrshare returns BOTH profileKey and refId on create; profileKey is the one
+    // used for posting + JWT.
+    const pk = data.profileKey ?? data.refId;
+    if (res.ok && pk) return { ok: true, profileKey: pk };
+
+    // Duplicate-title collision: recover the existing key if we can.
+    const msg = String(data?.message ?? "");
+    if (/already exists/i.test(msg)) {
+      const existing = await findProfileKeyByTitle(t);
+      if (existing) return { ok: true, profileKey: existing };
     }
-    return { ok: true, profileKey: data.profileKey };
+    return { ok: false, error: msg || `Ayrshare profile error (HTTP ${res.status})` };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Ayrshare unreachable" };
   }
