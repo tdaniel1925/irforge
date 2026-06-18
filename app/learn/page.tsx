@@ -10,6 +10,11 @@ export default function Learn() {
   const [view, setView] = useState<"library" | "glossary">("library");
   const [feed, setFeed] = useState<{ title: string; link: string; date: string }[]>([]);
 
+  // Record that this user opened the Learn library — checks off the setup item.
+  useEffect(() => {
+    fetch("/api/user-flags", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ flag: "learn_visited" }) }).catch(() => {});
+  }, []);
+
   useEffect(() => {
     fetch("/api/sec-feed")
       .then((r) => r.json())
