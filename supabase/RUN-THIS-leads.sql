@@ -35,8 +35,16 @@ create table if not exists public.leads (
   unique (list_id, cik)
 );
 
+-- Targeting signals (added in the targeting upgrade; safe to re-run).
+alter table public.leads add column if not exists market_cap   numeric;
+alter table public.leads add column if not exists size_tier    text default 'unknown';
+alter table public.leads add column if not exists price        numeric;
+alter table public.leads add column if not exists fit_score    int default 0;
+alter table public.leads add column if not exists fit_reason   text default '';
+
 create index if not exists leads_list_idx on public.leads (list_id, status);
 create index if not exists leads_message_idx on public.leads (message_id);
+create index if not exists leads_fit_idx on public.leads (list_id, fit_score desc);
 
 alter table public.lead_lists enable row level security;
 alter table public.leads enable row level security;

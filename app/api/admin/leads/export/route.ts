@@ -4,7 +4,7 @@ import { isSuperAdmin } from "@/lib/platform";
 
 export const dynamic = "force-dynamic";
 
-const COLS = ["name", "ticker", "exchange", "industry", "contact_name", "email", "phone", "address", "recent_form", "status", "last_sent_at", "edgar_url", "ir_lookup_url", "notes"] as const;
+const COLS = ["name", "ticker", "exchange", "industry", "fit_score", "size_tier", "market_cap", "price", "contact_name", "email", "phone", "address", "recent_form", "status", "last_sent_at", "edgar_url", "ir_lookup_url", "notes"] as const;
 
 // GET ?list=<id> → CSV download of that list's leads.
 export async function GET(req: Request) {
@@ -13,7 +13,7 @@ export async function GET(req: Request) {
   const listId = new URL(req.url).searchParams.get("list");
   if (!listId) return NextResponse.json({ error: "list required" }, { status: 422 });
 
-  const { data, error } = await svc.from("leads").select("*").eq("list_id", listId).order("name", { ascending: true });
+  const { data, error } = await svc.from("leads").select("*").eq("list_id", listId).order("fit_score", { ascending: false });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;

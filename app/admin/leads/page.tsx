@@ -8,6 +8,23 @@ interface Lead {
   id: string; cik: string; name: string; ticker: string; exchange: string; industry: string;
   phone: string; address: string; recent_form: string; edgar_url: string; ir_lookup_url: string;
   contact_name: string; email: string; status: string; last_sent_at?: string; notes: string;
+  market_cap?: number; size_tier?: string; price?: number; fit_score?: number; fit_reason?: string;
+}
+
+const SIZE_STYLE: Record<string, string> = {
+  nano: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
+  micro: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300",
+  small: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300",
+  mid: "bg-app-hover text-faint",
+  large: "bg-app-hover text-faint",
+  unknown: "bg-app-hover text-faint",
+};
+
+function fmtCap(n?: number): string {
+  if (n == null) return "—";
+  if (n >= 1e9) return `$${(n / 1e9).toFixed(1)}B`;
+  if (n >= 1e6) return `$${(n / 1e6).toFixed(0)}M`;
+  return `$${(n / 1e3).toFixed(0)}K`;
 }
 
 type Notice = { text: string; tone: "success" | "error" | "info" } | null;
@@ -43,6 +60,7 @@ export default function LeadFinder() {
   const [newListName, setNewListName] = useState("");
   const [forms, setForms] = useState<string[]>(["8-K", "10-Q"]);
   const [pullLimit, setPullLimit] = useState(30);
+  const [maxCapM, setMaxCapM] = useState(500); // max market cap in $M; 0 = no cap
 
   // Compose
   const [subject, setSubject] = useState("A quick visibility snapshot for ${ticker}");
@@ -88,7 +106,7 @@ export default function LeadFinder() {
     if (!activeList) return;
     setBusy("pull");
     setNotice({ text: "Pulling recent filers from SEC EDGAR — this takes ~20s…", tone: "info" });
-    const { ok, d } = await post({ action: "pull", listId: activeList, forms, limit: pullLimit });
+    const { ok, d } = await post({ action: "pull", listId: activeList, forms, limit: pullLimit, maxMarketCap: maxCapM === 0 ? 0 : maxCapM * 1e6, smallCapOnly: true });
     if (ok) { await loadLeads(activeList); await loadLists(); setNotice({ text: `Pulled ${d.pulled} companies. List now has ${d.total}. Add verified emails before sending.`, tone: "success" }); }
     else setNotice({ text: d.error ?? "Pull failed.", tone: "error" });
     setBusy("");
@@ -181,6 +199,10 @@ export default function LeadFinder() {
               <label className="mb-2 block text-xs text-muted">Max companies: <strong className="text-app">{pullLimit}</strong>
                 <input type="range" min={10} max={100} step={10} value={pullLimit} onChange={(e) => setPullLimit(Number(e.target.value))} className="mt-1 w-full" />
               </label>
+              <label className="mb-2 block text-xs text-muted">Max market cap: <strong className="text-app">{maxCapM === 0 ? "no limit" : `$${maxCapM}M`}</strong>
+                <input type="range" min={0} max={2000} step={50} value={maxCapM} onChange={(e) => setMaxCapM(Number(e.target.value))} className="mt-1 w-full" />
+              </label>
+              <p className="mb-2 text-[11px] text-faint">Drops banks, funds &amp; SPACs automatically. Best-fit (small, just-filed) ranked first.</p>
               <div className="[&>button]:w-full"><Button onClick={pull} disabled={busy === "pull" || forms.length === 0}>{busy === "pull" ? "Pulling…" : "🔎 Pull leads"}</Button></div>
             </Card>
           )}
@@ -212,6 +234,7 @@ export default function LeadFinder() {
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-app text-left text-xs text-faint">
+                          <th className="py-2 pr-3 font-medium">Fit</th>
                           <th className="py-2 pr-3 font-medium">Company</th>
                           <th className="py-2 pr-3 font-medium">Contact / Email (paste verified)</th>
                           <th className="py-2 pr-3 font-medium">Find</th>
@@ -222,10 +245,16 @@ export default function LeadFinder() {
                       <tbody>
                         {leads.map((l) => (
                           <tr key={l.id} className="border-b border-app/50 align-top">
+                            <td className="py-2 pr-3 whitespace-nowrap">
+                              <p className="text-sm font-semibold text-app">{l.fit_score ?? 0}</p>
+                              <span className={`mt-0.5 inline-block rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${SIZE_STYLE[l.size_tier ?? "unknown"]}`}>{l.size_tier ?? "?"}</span>
+                              <p className="mt-0.5 text-[11px] text-faint">{fmtCap(l.market_cap)}</p>
+                            </td>
                             <td className="py-2 pr-3">
                               <p className="font-medium text-app">{l.name}</p>
                               <p className="text-xs text-faint">${l.ticker} · {l.exchange} · {l.industry}</p>
                               <p className="text-xs text-faint">{l.phone} · {l.recent_form}</p>
+                              {l.fit_reason ? <p className="mt-0.5 text-[11px] text-emerald-600/80 dark:text-emerald-400/70">{l.fit_reason}</p> : null}
                             </td>
                             <td className="py-2 pr-3">
                               <input defaultValue={l.contact_name} onBlur={(e) => e.target.value !== l.contact_name && saveLead(l.id, { contact_name: e.target.value })} placeholder="Contact name" className="mb-1 w-full rounded border border-app bg-surface-2 px-2 py-1 text-xs text-app focus:outline-none" />

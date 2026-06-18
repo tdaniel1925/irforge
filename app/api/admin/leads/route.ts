@@ -17,7 +17,7 @@ export async function GET(req: Request) {
   const listId = new URL(req.url).searchParams.get("list");
 
   if (listId) {
-    const { data, error } = await svc.from("leads").select("*").eq("list_id", listId).order("created_at", { ascending: true });
+    const { data, error } = await svc.from("leads").select("*").eq("list_id", listId).order("fit_score", { ascending: false }).order("created_at", { ascending: true });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ leads: data ?? [] });
   }
@@ -54,7 +54,9 @@ export async function POST(req: Request) {
       if (!listId) return NextResponse.json({ error: "listId required" }, { status: 422 });
       const forms: string[] = Array.isArray(b.forms) && b.forms.length ? b.forms : ["8-K", "10-Q"];
       const limit = Math.min(Number(b.limit) || 30, 100);
-      const raw = await buildLeads({ forms, limit });
+      const maxMarketCap = b.maxMarketCap === 0 ? 0 : Number(b.maxMarketCap) || 500e6;
+      const smallCapOnly = b.smallCapOnly !== false;
+      const raw = await buildLeads({ forms, limit, maxMarketCap, smallCapOnly });
 
       // Insert, ignoring dupes (unique on list_id+cik). Map to row shape.
       const rows = raw.map((r) => ({
@@ -69,6 +71,11 @@ export async function POST(req: Request) {
         recent_form: r.recentForm,
         edgar_url: r.edgarUrl,
         ir_lookup_url: r.irLookupUrl,
+        market_cap: r.marketCap ?? null,
+        size_tier: r.sizeTier,
+        price: r.price ?? null,
+        fit_score: r.fitScore,
+        fit_reason: r.fitReason,
       }));
       // upsert on conflict do nothing (dedupe within list)
       const { error } = await svc.from("leads").upsert(rows, { onConflict: "list_id,cik", ignoreDuplicates: true });
