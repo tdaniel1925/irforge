@@ -15,9 +15,9 @@ const NAV: NavGroup[] = [
   {
     section: "Start here",
     items: [
+      { href: "/app", label: "Home", icon: "🏠", hint: "Your approval inbox — posts waiting for your tap", detail: "Your home base: the inbox of posts the AI has drafted and is ready to publish. Nothing ever goes out without you — review each one, edit if needed, then approve or skip with a single tap. Disclosures attach automatically on post." },
       { href: "/setup", label: "Get started", icon: "🚀", hint: "Your setup checklist — what's done, what's left", detail: "A live checklist that gets your company set up. Admins see the company-wide steps (ticker, profile, approver, social accounts, disclosures, peers, inviting the team); everyone sees their own (approve a first post, set up a workspace, learn the basics). Each item checks itself off automatically from your real data and links to where you complete it." },
-      { href: "/app", label: "Approvals", icon: "✅", hint: "Posts waiting for your one-tap approval", detail: "Your inbox of posts the AI has drafted and is ready to publish. Nothing ever goes out without you — review each one, edit if needed, then approve or skip with a single tap. Disclosures attach automatically on post." },
-      { href: "/intelligence", label: "Dashboard", icon: "📊", hint: "Your IR program at a glance + weekly summary", detail: "A live snapshot of how your investor-relations program is performing: what shipped, your Reg FD mix, inbound volume, and stakeholder counts. Generate a one-click weekly summary written for your board or execs and emailed to them." },
+      { href: "/intelligence", label: "Analytics", icon: "📊", hint: "Your IR program at a glance + weekly summary", detail: "A live snapshot of how your investor-relations program is performing: what shipped, your Reg FD mix, inbound volume, and stakeholder counts. Generate a one-click weekly summary written for your board or execs and emailed to them." },
     ],
   },
   {
@@ -41,7 +41,7 @@ const NAV: NavGroup[] = [
     section: "Investors",
     items: [
       { href: "/crm", label: "CRM", icon: "👥", hint: "Contacts, companies, deals, tasks — your whole pipeline", detail: "A full CRM built for IR: track contacts and the firms they work at, move deals through a pipeline, log every call/email/meeting, and manage follow-up tasks. Import your existing contacts from a CSV and export anytime. Dashboard shows pipeline value, win rate, and what's due." },
-      { href: "/stakeholders", label: "Inbound Triage", icon: "📥", hint: "Paste any inbound message — AI drafts a reply for your review", detail: "Paste any inbound DM, email, or comment and AI tells you who it's likely from, categorizes it, and drafts a reply — grounded in your public record — that you review and approve before sending. Keeps your investor/press relationships organized and your responses on the record." },
+      { href: "/stakeholders", label: "Investor Inbox", icon: "📥", hint: "Paste any inbound message — AI drafts a reply for your review", detail: "Paste any inbound DM, email, or comment and AI tells you who it's likely from, categorizes it, and drafts a reply — grounded in your public record — that you review and approve before sending. Keeps your investor/press relationships organized and your responses on the record." },
       { href: "/investors", label: "Find Investors", icon: "🎯", hint: "Funds that own similar companies", detail: "Discover institutional investors who already hold companies like yours (from public 13F data) — a targeted list of funds most likely to be interested in your story, so your outreach starts warm." },
       { href: "/captable", label: "Cap Table", icon: "📈", hint: "Ownership, dilution, convertible notes", detail: "See your ownership fully diluted — common, preferred, insiders, options, warrants — and exactly what your convertible notes turn into at any share price. The fully-diluted number every financing decision hinges on, in one place." },
     ],
@@ -49,8 +49,8 @@ const NAV: NavGroup[] = [
   {
     section: "Your reputation",
     items: [
-      { href: "/company", label: "Defense & Reach", icon: "🛡", hint: "Threats to your name + your visibility score", detail: "Monitors what's being said about you across the boards and flags threats — pump-and-dump posts, FUD, misinformation — and helps you respond with a calm, filing-cited rebuttal. Also tracks your Visibility Score so you can see your reach improving." },
-      { href: "/proof", label: "Results & Proof", icon: "📈", hint: "Numbers to show your board", detail: "The proof your IR budget is working: your Visibility Score over time, every post you published, and a complete, exportable record of who approved what (the part your lawyers want). Screenshot any of it for your board deck." },
+      { href: "/company", label: "Defend Your Name", icon: "🛡", hint: "Threats to your name + your visibility score", detail: "Monitors what's being said about you across the boards and flags threats — pump-and-dump posts, FUD, misinformation — and helps you respond with a calm, filing-cited rebuttal. Also tracks your Visibility Score so you can see your reach improving." },
+      { href: "/proof", label: "Results", icon: "📈", hint: "Numbers to show your board", detail: "The proof your IR budget is working: your Visibility Score over time, every post you published, and a complete, exportable record of who approved what (the part your lawyers want). Screenshot any of it for your board deck." },
     ],
   },
   {
@@ -64,12 +64,10 @@ const NAV: NavGroup[] = [
     ],
   },
   {
-    section: "Settings & account",
+    // Account items (Settings, Billing, Team, Workspace) live in the top-right
+    // profile menu to avoid duplication — the sidebar keeps just the learn library.
+    section: "Learn",
     items: [
-      { href: "/settings", label: "Settings", icon: "⚙", hint: "Company profile, social accounts, disclosures", detail: "The single source of truth for your company: profile (name, ticker, sector, approver), connect your social accounts for publishing, and your disclosure + forward-looking-statement language. Everything about your account lives here." },
-      { href: "/admin/team", label: "Team", icon: "👤", hint: "Invite & manage who can access this company", detail: "Add teammates to your company account. Admins can invite users by email, set them as admin or member, and remove access anytime. Everyone shares the company dashboard and data; each person also gets their own CRM ownership and workspace. The last admin can't be removed." },
-      { href: "/workspace", label: "My Workspace", icon: "🗒", hint: "Your private notes — only you can see them", detail: "Your personal scratchpad inside the company: private notes, call reminders, and drafts that only you can see — not teammates, not admins. Separate from the shared company data and CRM." },
-      { href: "/billing", label: "Billing & Plan", icon: "💳", hint: "Your subscription and plan", detail: "Manage your subscription and plan. Upgrade, see what each tier includes, and open the secure Stripe portal to update payment details or cancel anytime." },
       { href: "/learn", label: "Public Company 101", icon: "📚", hint: "Plain-English IR & filing guides", detail: "A plain-English library on being a public company — IR best practices, what each SEC filing means, disclosure rules, and how to engage investors compliantly. No jargon, written for busy operators." },
     ],
   },
@@ -87,6 +85,8 @@ export default function Sidebar() {
   const pathname = usePathname();
   const [info, setInfo] = useState<NavItem | null>(null);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [superAdmin, setSuperAdmin] = useState(false);
+  const [ticker, setTicker] = useState("");
 
   // Restore collapsed-section state across navigations/sessions.
   useEffect(() => {
@@ -97,6 +97,30 @@ export default function Sidebar() {
       /* ignore */
     }
   }, []);
+
+  // Who's signed in: drives admin-only nav + "Your Public Page" -> their real page.
+  useEffect(() => {
+    fetch("/api/state")
+      .then((r) => r.json())
+      .then((d) => {
+        setSuperAdmin(Boolean(d?.superAdmin));
+        setTicker(String(d?.company?.ticker ?? "").trim());
+      })
+      .catch(() => {});
+  }, []);
+
+  // Hide the Admin section unless the user is a platform super-admin; point
+  // "Your Public Page" at the company's real ticker page when we know it.
+  const nav: NavGroup[] = NAV
+    .filter((g) => g.section !== "Admin" || superAdmin)
+    .map((g) => ({
+      ...g,
+      items: g.items.map((it) =>
+        it.href === "/t" && it.label === "Your Public Page" && ticker
+          ? { ...it, href: `/t/${ticker}` }
+          : it
+      ),
+    }));
 
   const toggle = (section: string) => {
     setCollapsed((prev) => {
@@ -124,7 +148,7 @@ export default function Sidebar() {
       </div>
 
       <nav className="min-h-0 flex-1 space-y-2 overflow-y-auto px-4 pb-4">
-        {NAV.map((group) => {
+        {nav.map((group) => {
           const isCollapsed = collapsed[group.section];
           // A section containing the current page stays open even if collapsed in storage,
           // so the active link is never hidden.
