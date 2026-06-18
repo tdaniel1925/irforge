@@ -42,9 +42,9 @@ const STATUS_STYLE: Record<string, string> = {
 
 const DEFAULT_TEMPLATE = `Hi {name},
 
-I ran $\{ticker} through PubcoZone — an AI investor-relations platform for public companies. A couple of things stood out about how investors currently see {company}, and I put together a free visibility snapshot.
+I ran $\{ticker} through PubcoZone — an AI investor-relations platform for public companies — and put together {snapshot} (free, public data only).
 
-No pitch — happy to just send it over. Worth a look?
+A couple of things stood out about how investors currently see {company}. No pitch — worth a look?
 
 Trent`;
 
@@ -262,6 +262,7 @@ export default function LeadFinder() {
                             </td>
                             <td className="py-2 pr-3 text-xs">
                               <a href={l.ir_lookup_url} target="_blank" rel="noreferrer" className="block text-emerald-600 hover:underline dark:text-emerald-400">IR contact ↗</a>
+                              <a href={`/snapshot/${l.ticker}`} target="_blank" rel="noreferrer" className="block text-emerald-600 hover:underline dark:text-emerald-400">Snapshot ↗</a>
                               <a href={l.edgar_url} target="_blank" rel="noreferrer" className="block text-muted hover:underline">EDGAR ↗</a>
                             </td>
                             <td className="py-2 pr-3">
@@ -281,7 +282,7 @@ export default function LeadFinder() {
               {composeOpen && (
                 <Card>
                   <h2 className="mb-1 font-semibold text-app">Compose outreach</h2>
-                  <p className="mb-3 text-xs text-muted">Tokens: <code>{"{name}"}</code> <code>{"{company}"}</code> <code>{"{ticker}"}</code>. Sends only to leads that have an email and haven&apos;t been contacted, up to today&apos;s cap. An unsubscribe line is added automatically.</p>
+                  <p className="mb-3 text-xs text-muted">Tokens: <code>{"{name}"}</code> <code>{"{company}"}</code> <code>{"{ticker}"}</code> <code>{"{snapshot}"}</code> (links to their free public visibility report — the conversion hook). Sends only to leads with an email that haven&apos;t been contacted, up to today&apos;s cap. An unsubscribe line is added automatically.</p>
                   <label className="mb-1 block text-xs font-medium text-muted">Subject</label>
                   <input value={subject} onChange={(e) => setSubject(e.target.value)} className="mb-3 w-full rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:border-emerald-500 focus:outline-none" />
                   <label className="mb-1 block text-xs font-medium text-muted">Message</label>
