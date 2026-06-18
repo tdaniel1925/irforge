@@ -6,6 +6,7 @@ import MemberShell from "./MemberShell";
 import FreeTierBanner from "./FreeTierBanner";
 import FeatureGate from "./FeatureGate";
 import UserMenu from "./UserMenu";
+import WelcomeModal from "./WelcomeModal";
 import type { Feature } from "@/lib/billing";
 
 // The landing page (/) and other public routes render full-bleed with no app sidebar —
@@ -57,6 +58,7 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
           {feature ? <FeatureGate feature={feature}>{children}</FeatureGate> : children}
         </div>
       </main>
+      <WelcomeModal />
     </div>
   );
 }

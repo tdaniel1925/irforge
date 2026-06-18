@@ -78,6 +78,38 @@ export async function sendWatchConfirmation(to: string, ticker: string): Promise
   return sendEmail({ to, subject: `You're now watching $${ticker} on PubcoZone`, html: shell(inner) });
 }
 
+// Welcome / setup guide emailed to a new (or comped) company so they know exactly
+// how to get set up. The full version lives in-app at /help/setup.
+export async function sendCompanyWelcomeGuide(to: string, companyName?: string): Promise<boolean> {
+  const who = companyName ? ` for <strong style="color:#fff">${companyName}</strong>` : "";
+  const step = (n: string, t: string, d: string) =>
+    `<tr><td style="padding:0 0 14px"><table cellpadding="0" cellspacing="0"><tr>
+       <td valign="top" style="width:30px"><span style="display:inline-block;width:24px;height:24px;line-height:24px;text-align:center;border-radius:12px;background:#10b981;color:#fff;font-weight:700;font-size:13px">${n}</span></td>
+       <td style="font-size:14px;color:#cbd5e1;line-height:1.55"><strong style="color:#fff">${t}</strong><br/>${d}</td>
+     </tr></table></td></tr>`;
+  const inner = `
+    <h1 style="font-size:21px;color:#ffffff;margin:0 0 8px">Welcome to PubcoZone${who} 👋</h1>
+    <p style="font-size:14px;line-height:1.6;color:#cbd5e1;margin:0 0 18px">
+      Your investor-relations program, in one place. Getting set up takes about 10 minutes — and nothing ever posts without your approval.
+    </p>
+    <table cellpadding="0" cellspacing="0" style="width:100%">
+      ${step("1", "Connect your ticker", "We pull your SEC profile from EDGAR and draft your first posts automatically.")}
+      ${step("2", "Confirm your profile & approver", "Check the auto-filled details and name who signs off on posts.")}
+      ${step("3", "Connect your social accounts", "In Settings — approved posts publish to your own X / LinkedIn / etc.")}
+      ${step("4", "Invite your team", "Add admins and members; everyone shares the dashboard, each gets a private workspace.")}
+    </table>
+    <p style="font-size:14px;line-height:1.6;color:#cbd5e1;margin:16px 0 20px">
+      Your <strong style="color:#fff">Get started</strong> checklist tracks everything and checks items off as you go.
+    </p>
+    <a href="${SITE}/setup" style="display:inline-block;background:#10b981;color:#fff;font-weight:700;font-size:14px;text-decoration:none;padding:11px 22px;border-radius:9px">
+      Start setup →
+    </a>
+    <p style="font-size:12px;color:#64748b;margin:18px 0 0">
+      Full walkthrough any time: <a href="${SITE}/help/setup" style="color:#34d399">How setup works</a>.
+    </p>`;
+  return sendEmail({ to, subject: `Getting started on PubcoZone${companyName ? ` — ${companyName}` : ""}`, html: shell(inner) });
+}
+
 // Used by the alert worker when a watched ticker has news. (Wired for later use.)
 export async function sendWatchAlert(to: string, ticker: string, headline: string, detail: string): Promise<boolean> {
   const inner = `

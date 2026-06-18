@@ -3,6 +3,8 @@ import { getStore, logAudit, newId } from "@/lib/db";
 import { fetchEdgarFilings } from "@/lib/edgar";
 import { generateFilingThread } from "@/lib/ai";
 import { checkContent, hasBlockingFlags } from "@/lib/compliance";
+import { sendCompanyWelcomeGuide } from "@/lib/email";
+import { createServerSupabase } from "@/lib/supabase/server";
 import type { Company, Draft, Filing } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -139,6 +141,15 @@ export async function POST(req: Request) {
 
   logAudit(db, "system", "ONBOARDED", `${db.company.name} ($${db.company.ticker}) set up on the ${db.company.tier} tier — ${db.filings.length} filings imported, ${db.drafts.length} post(s) drafted`);
   await save();
+
+  // Email the new company a welcome/setup guide (best-effort; never blocks onboarding).
+  try {
+    const supabase = await createServerSupabase();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user?.email) await sendCompanyWelcomeGuide(user.email, db.company.name);
+  } catch (e) {
+    console.error("[onboard] welcome email failed:", e);
+  }
 
   return NextResponse.json({ ok: true, company: db.company, filings: db.filings.length, drafts: db.drafts.length });
 }
