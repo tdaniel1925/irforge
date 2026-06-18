@@ -4,9 +4,14 @@
 //
 // Required env:
 //   RESEND_API_KEY     — your Resend API key
-//   EMAIL_FROM         — verified sender, e.g. "PubcoZone <alerts@pubcozone.com>"
+//   EMAIL_FROM         — verified sender for transactional mail, e.g. "PubcoZone <alerts@pubcozone.com>"
+//   OUTREACH_FROM      — verified sender for COLD OUTREACH, on a separate subdomain,
+//                        e.g. "Trent at PubcoZone <trent@outreach.pubcozone.com>".
+//                        Kept apart so outreach complaints never taint transactional deliverability.
+//   OUTREACH_REPLY_TO  — where replies to outreach should land (your inbox).
 
 const FROM = process.env.EMAIL_FROM || "PubcoZone <alerts@pubcozone.com>";
+const OUTREACH_FROM = process.env.OUTREACH_FROM || "PubcoZone <outreach@outreach.pubcozone.com>";
 const SITE = "https://pubcozone.com";
 
 export function emailEnabled(): boolean {
@@ -35,12 +40,26 @@ export async function sendEmail(opts: {
   subject: string;
   html: string;
   replyTo?: string;
-  kind?: string; // for the delivery log (promo_invite, team_invite, welcome, ...)
+  from?: string; // override the sender (outreach uses the dedicated subdomain)
+  kind?: string; // for the delivery log (promo_invite, team_invite, welcome, outreach, ...)
 }): Promise<boolean> {
+  return Boolean(await sendEmailRaw(opts));
+}
+
+// Like sendEmail but returns the Resend message id (or null) so callers (outreach)
+// can persist it and match webhook delivery events back to a specific lead.
+export async function sendEmailRaw(opts: {
+  to: string | string[];
+  subject: string;
+  html: string;
+  replyTo?: string;
+  from?: string;
+  kind?: string;
+}): Promise<string | null> {
   const toEmail = Array.isArray(opts.to) ? opts.to[0] : opts.to;
   if (!emailEnabled()) {
     console.warn("[email] RESEND_API_KEY not set — skipping send to", opts.to);
-    return false;
+    return null;
   }
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -49,7 +68,7 @@ export async function sendEmail(opts: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: FROM,
+      from: opts.from || FROM,
       to: Array.isArray(opts.to) ? opts.to : [opts.to],
       subject: opts.subject,
       html: opts.html,
@@ -63,7 +82,25 @@ export async function sendEmail(opts: {
   }
   const data = await res.json().catch(() => ({} as { id?: string }));
   await logEmail({ message_id: data?.id, to_email: toEmail, kind: opts.kind, subject: opts.subject, status: "sent" });
-  return true;
+  return data?.id ?? null;
+}
+
+// Cold outreach to a prospective company. Sent from the dedicated OUTREACH subdomain,
+// with a reply-to to your inbox and a one-click unsubscribe footer (CAN-SPAM).
+// Returns the Resend message id so the lead row can track delivery.
+export async function sendOutreachEmail(o: {
+  to: string;
+  subject: string;
+  bodyHtml: string; // the operator's message (already HTML/escaped)
+  unsubscribeUrl?: string;
+}): Promise<string | null> {
+  const replyTo = process.env.OUTREACH_REPLY_TO || undefined;
+  const unsub = o.unsubscribeUrl
+    ? `<a href="${o.unsubscribeUrl}" style="color:#94a3b8;text-decoration:underline">unsubscribe</a>`
+    : `reply with "unsubscribe" and we'll remove you`;
+  const footer = `You're receiving this because $${""}PubcoZone identified your company in public SEC filings. Not interested? ${unsub}. PubcoZone, an AI investor-relations platform.`;
+  const html = shell(o.bodyHtml, footer);
+  return sendEmailRaw({ to: o.to, subject: o.subject, html, from: OUTREACH_FROM, replyTo, kind: "outreach" });
 }
 
 // Shared shell so every email looks on-brand: WHITE background, logo at top, dark text.
