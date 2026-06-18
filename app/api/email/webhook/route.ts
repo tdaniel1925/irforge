@@ -93,7 +93,7 @@ export async function POST(req: Request) {
     await svc.from("email_events").update(patch).eq("message_id", messageId);
     // Mirror outreach status onto the lead row so the Lead Finder shows delivered/opened/bounced.
     if (patch.status && ["delivered", "opened", "bounced"].includes(patch.status)) {
-      await svc.from("leads").update({ status: patch.status }).eq("message_id", messageId);
+      await svc.from("outreach_leads").update({ status: patch.status }).eq("message_id", messageId);
     }
   } catch (e) {
     console.error("[email-webhook] update failed:", e instanceof Error ? e.message : e);

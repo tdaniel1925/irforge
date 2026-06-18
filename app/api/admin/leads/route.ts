@@ -17,7 +17,7 @@ export async function GET(req: Request) {
   const listId = new URL(req.url).searchParams.get("list");
 
   if (listId) {
-    const { data, error } = await svc.from("leads").select("*").eq("list_id", listId).order("fit_score", { ascending: false }).order("created_at", { ascending: true });
+    const { data, error } = await svc.from("outreach_leads").select("*").eq("list_id", listId).order("fit_score", { ascending: false }).order("created_at", { ascending: true });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ leads: data ?? [] });
   }
@@ -27,8 +27,8 @@ export async function GET(req: Request) {
   // attach counts
   const withCounts = await Promise.all(
     (lists ?? []).map(async (l) => {
-      const { count } = await svc.from("leads").select("id", { count: "exact", head: true }).eq("list_id", l.id);
-      const { count: sent } = await svc.from("leads").select("id", { count: "exact", head: true }).eq("list_id", l.id).in("status", ["sent", "delivered", "opened"]);
+      const { count } = await svc.from("outreach_leads").select("id", { count: "exact", head: true }).eq("list_id", l.id);
+      const { count: sent } = await svc.from("outreach_leads").select("id", { count: "exact", head: true }).eq("list_id", l.id).in("status", ["sent", "delivered", "opened"]);
       return { ...l, count: count ?? 0, sent: sent ?? 0 };
     })
   );
@@ -78,9 +78,9 @@ export async function POST(req: Request) {
         fit_reason: r.fitReason,
       }));
       // upsert on conflict do nothing (dedupe within list)
-      const { error } = await svc.from("leads").upsert(rows, { onConflict: "list_id,cik", ignoreDuplicates: true });
+      const { error } = await svc.from("outreach_leads").upsert(rows, { onConflict: "list_id,cik", ignoreDuplicates: true });
       if (error) throw error;
-      const { count } = await svc.from("leads").select("id", { count: "exact", head: true }).eq("list_id", listId);
+      const { count } = await svc.from("outreach_leads").select("id", { count: "exact", head: true }).eq("list_id", listId);
       return NextResponse.json({ pulled: raw.length, total: count ?? 0 });
     }
 
@@ -89,13 +89,13 @@ export async function POST(req: Request) {
       if (!id) return NextResponse.json({ error: "id required" }, { status: 422 });
       const patch: Record<string, string> = {};
       for (const k of ["contact_name", "email", "notes", "status"]) if (k in b) patch[k] = String(b[k] ?? "");
-      const { error } = await svc.from("leads").update(patch).eq("id", id);
+      const { error } = await svc.from("outreach_leads").update(patch).eq("id", id);
       if (error) throw error;
       return NextResponse.json({ ok: true });
     }
 
     if (action === "delete_lead") {
-      const { error } = await svc.from("leads").delete().eq("id", String(b.id || ""));
+      const { error } = await svc.from("outreach_leads").delete().eq("id", String(b.id || ""));
       if (error) throw error;
       return NextResponse.json({ ok: true });
     }

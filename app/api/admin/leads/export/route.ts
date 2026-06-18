@@ -13,7 +13,7 @@ export async function GET(req: Request) {
   const listId = new URL(req.url).searchParams.get("list");
   if (!listId) return NextResponse.json({ error: "list required" }, { status: 422 });
 
-  const { data, error } = await svc.from("leads").select("*").eq("list_id", listId).order("fit_score", { ascending: false });
+  const { data, error } = await svc.from("outreach_leads").select("*").eq("list_id", listId).order("fit_score", { ascending: false });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;

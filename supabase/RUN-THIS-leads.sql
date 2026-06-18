@@ -9,7 +9,9 @@ create table if not exists public.lead_lists (
   created_at  timestamptz default now()
 );
 
-create table if not exists public.leads (
+-- NOTE: named outreach_leads (not "leads") because a separate public landing-page
+-- lead-capture table already owns public.leads.
+create table if not exists public.outreach_leads (
   id            uuid primary key default gen_random_uuid(),
   list_id       uuid references public.lead_lists(id) on delete cascade,
   -- Sourced from EDGAR
@@ -35,20 +37,20 @@ create table if not exists public.leads (
   unique (list_id, cik)
 );
 
--- Targeting signals (added in the targeting upgrade; safe to re-run).
-alter table public.leads add column if not exists market_cap   numeric;
-alter table public.leads add column if not exists size_tier    text default 'unknown';
-alter table public.leads add column if not exists price        numeric;
-alter table public.leads add column if not exists fit_score    int default 0;
-alter table public.leads add column if not exists fit_reason   text default '';
+-- Targeting signals (safe to re-run).
+alter table public.outreach_leads add column if not exists market_cap   numeric;
+alter table public.outreach_leads add column if not exists size_tier    text default 'unknown';
+alter table public.outreach_leads add column if not exists price        numeric;
+alter table public.outreach_leads add column if not exists fit_score    int default 0;
+alter table public.outreach_leads add column if not exists fit_reason   text default '';
 
-create index if not exists leads_list_idx on public.leads (list_id, status);
-create index if not exists leads_message_idx on public.leads (message_id);
-create index if not exists leads_fit_idx on public.leads (list_id, fit_score desc);
+create index if not exists outreach_leads_list_idx on public.outreach_leads (list_id, status);
+create index if not exists outreach_leads_message_idx on public.outreach_leads (message_id);
+create index if not exists outreach_leads_fit_idx on public.outreach_leads (list_id, fit_score desc);
 
 alter table public.lead_lists enable row level security;
-alter table public.leads enable row level security;
+alter table public.outreach_leads enable row level security;
 drop policy if exists lead_lists_admin on public.lead_lists;
-drop policy if exists leads_admin on public.leads;
+drop policy if exists outreach_leads_admin on public.outreach_leads;
 create policy lead_lists_admin on public.lead_lists for all using (public.is_super_admin()) with check (public.is_super_admin());
-create policy leads_admin on public.leads for all using (public.is_super_admin()) with check (public.is_super_admin());
+create policy outreach_leads_admin on public.outreach_leads for all using (public.is_super_admin()) with check (public.is_super_admin());
