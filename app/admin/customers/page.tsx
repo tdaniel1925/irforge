@@ -14,8 +14,18 @@ export default function AdminCustomers() {
 
   // New-customer form
   const [nc, setNc] = useState({ name: "", email: "", ticker: "", tier: "growth" });
-  // Promo-invite form (everything free)
-  const [promo, setPromo] = useState({ name: "", email: "" });
+  // Promo-invite form (everything free) — company, contact name, email, custom message
+  const [promo, setPromo] = useState({ name: "", contactName: "", email: "", message: "" });
+  const [promoPreview, setPromoPreview] = useState(false);
+  const [msgTouched, setMsgTouched] = useState(false);
+
+  // The default message (kept in sync with the inputs until the admin edits it).
+  const defaultMsg = (() => {
+    const hi = promo.contactName.trim() ? `Hi ${promo.contactName.trim()},` : "Hi there,";
+    const who = promo.name.trim() ? ` for ${promo.name.trim()}` : "";
+    return `${hi}\n\nPubcoZone is an AI investor-relations platform for public companies — turn your SEC filings into compliant updates you approve, answer investors on the record, and reach the funds that hold your peers. Nothing ever posts without your approval.\n\nYou've been set up with full, free access${who} — every feature, no charge and no card required. Click the button below to activate your account with this email and connect your ticker.`;
+  })();
+  const effectiveMsg = msgTouched ? promo.message : defaultMsg;
 
   const load = async () => {
     try {
@@ -69,8 +79,12 @@ export default function AdminCustomers() {
 
   const invitePromo = async () => {
     setBusy("promo");
-    const r = await act({ action: "promo_invite", name: promo.name, email: promo.email });
-    if (r.ok) { setNotice({ text: `Promo invite sent to ${promo.email} — full free access.`, tone: "success" }); setPromo({ name: "", email: "" }); }
+    const r = await act({ action: "promo_invite", name: promo.name, contactName: promo.contactName, email: promo.email, message: msgTouched ? promo.message : "" });
+    if (r.ok) {
+      setNotice({ text: `Promo invite sent to ${promo.email} — full free access.`, tone: "success" });
+      setPromo({ name: "", contactName: "", email: "", message: "" });
+      setMsgTouched(false); setPromoPreview(false);
+    }
     setBusy("");
   };
 
@@ -89,8 +103,46 @@ export default function AdminCustomers() {
         <h2 className="font-semibold text-app">🎁 Invite a promo company — everything free</h2>
         <p className="mb-3 mt-1 text-sm text-muted">Creates a comped account on the top (Command) tier with every feature unlocked, and emails them a link to set up. No card, no charge.</p>
         <div className="grid gap-3 sm:grid-cols-3">
-          <input value={promo.name} onChange={(e) => setPromo({ ...promo, name: e.target.value })} placeholder="Company name (optional)" className="rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:outline-none" />
-          <input value={promo.email} onChange={(e) => setPromo({ ...promo, email: e.target.value })} placeholder="Their email" className="rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:outline-none" />
+          <input value={promo.name} onChange={(e) => setPromo({ ...promo, name: e.target.value })} placeholder="Company name" className="rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:outline-none" />
+          <input value={promo.contactName} onChange={(e) => setPromo({ ...promo, contactName: e.target.value })} placeholder="Contact name (optional)" className="rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:outline-none" />
+          <input value={promo.email} onChange={(e) => setPromo({ ...promo, email: e.target.value })} placeholder="Contact email" className="rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:outline-none" />
+        </div>
+
+        {/* Preview & edit dropdown */}
+        <button onClick={() => setPromoPreview((v) => !v)} className="mt-3 text-sm font-medium text-emerald-600 hover:underline dark:text-emerald-400">
+          {promoPreview ? "▾ Hide email preview" : "▸ Preview & edit the email"}
+        </button>
+        {promoPreview && (
+          <div className="mt-3 rounded-xl border border-app bg-surface p-4">
+            <label className="mb-1 block text-xs font-medium text-muted">Message (edit freely — the activation button can&apos;t be removed)</label>
+            <textarea
+              value={effectiveMsg}
+              onChange={(e) => { setMsgTouched(true); setPromo({ ...promo, message: e.target.value }); }}
+              rows={7}
+              className="w-full rounded-lg border border-app bg-surface-2 p-3 text-sm text-app focus:border-emerald-500 focus:outline-none"
+            />
+            {msgTouched && (
+              <button onClick={() => { setMsgTouched(false); setPromo({ ...promo, message: "" }); }} className="mt-1 text-xs text-faint hover:text-muted">↺ Reset to default</button>
+            )}
+            {/* Live preview of the actual email (white, logo, locked button) */}
+            <p className="mt-4 mb-1 text-xs font-medium text-muted">Preview</p>
+            <div className="overflow-hidden rounded-lg border border-app" style={{ background: "#f1f5f9" }}>
+              <div style={{ maxWidth: 560, margin: "12px auto", background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden" }}>
+                <div style={{ padding: "14px 22px", borderBottom: "1px solid #eef2f7", fontWeight: 800, fontSize: 18 }}>
+                  <span style={{ color: "#0f172a" }}>Pubco</span><span style={{ color: "#059669" }}>Zone.</span>
+                </div>
+                <div style={{ padding: "20px 22px", color: "#334155" }}>
+                  <p style={{ fontSize: 18, fontWeight: 700, color: "#0f172a", margin: "0 0 10px" }}>You&apos;ve been given free access to PubcoZone 🎁</p>
+                  <p style={{ fontSize: 13, lineHeight: 1.6, color: "#475569", whiteSpace: "pre-wrap", margin: "0 0 16px" }}>{effectiveMsg}</p>
+                  <span style={{ display: "inline-block", background: "#10b981", color: "#fff", fontWeight: 700, fontSize: 13, padding: "9px 18px", borderRadius: 8 }}>Activate free access →</span>
+                  <p style={{ fontSize: 11, color: "#94a3b8", margin: "14px 0 0" }}>🔒 The button + activation link are always included and can&apos;t be edited out.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="mt-3">
           <Button onClick={invitePromo} disabled={busy === "promo" || !promo.email}>{busy === "promo" ? "Sending…" : "Send free-access invite"}</Button>
         </div>
       </Card>

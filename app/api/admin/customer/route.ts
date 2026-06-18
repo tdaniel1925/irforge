@@ -46,6 +46,8 @@ export async function POST(req: Request) {
     if (action === "promo_invite") {
       const email = String(b.email ?? "").trim().toLowerCase();
       const name = String(b.name ?? "").trim();
+      const contactName = String(b.contactName ?? "").trim().slice(0, 80);
+      const message = String(b.message ?? "").trim().slice(0, 2000);
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return NextResponse.json({ error: "Enter a valid email." }, { status: 422 });
 
       // Create the company shell (owner_id null until they sign up & claim).
@@ -67,7 +69,7 @@ export async function POST(req: Request) {
       const link = `${SITE}/accept-invite?token=${token}`;
       const inviter = (await getCurrentUser())?.email || undefined;
       try {
-        await sendPromoInviteEmail(email, link, name, inviter);
+        await sendPromoInviteEmail({ to: email, link, companyName: name, contactName, invitedBy: inviter, message });
       } catch (e) {
         console.error("[promo_invite] email failed:", e);
       }
