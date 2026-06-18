@@ -150,6 +150,7 @@ export interface Company {
   onboarded: boolean;
   tier: "free" | "starter" | "growth" | "pro";
   subscription_status?: string; // none | active | trialing | past_due | canceled
+  comped?: boolean; // free/promo access — no Stripe subscription; hide pricing/checkout
   onboarding_complete: boolean;
   ayrshareProfileKey?: string; // this company's Ayrshare user profile (their own linked socials)
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const TIERS = [
   { key: "starter", name: "Starter", price: "$1,500/mo", blurb: "Verified page, filing-to-post drafting, the board, monthly proof." },
@@ -19,6 +19,9 @@ export default function Onboarding() {
   const [step, setStep] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  // Comped accounts (promo / super-admin) already have full free access — they
+  // should NOT see a pricing/plan step. We detect that and skip it.
+  const [comped, setComped] = useState(false);
 
   const [tickerInput, setTickerInput] = useState("");
   const [lookup, setLookup] = useState<any>(null);
@@ -27,6 +30,16 @@ export default function Onboarding() {
     approverName: "", approverTitle: "", xHandle: "", peers: "",
     disclosureText: DEFAULT_DISCLOSURE, flsText: DEFAULT_FLS, tier: "growth",
   });
+
+  // Is this a comped/free account? (already active before any payment.)
+  useEffect(() => {
+    fetch("/api/state")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d?.superAdmin || d?.company?.comped) setComped(true);
+      })
+      .catch(() => {});
+  }, []);
 
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -75,13 +88,13 @@ export default function Onboarding() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      {/* Progress */}
+      {/* Progress — comped accounts skip the Plan step entirely */}
       <div className="mb-8 flex items-center gap-2">
-        {["Ticker", "Confirm", "Approver", "Compliance", "Plan"].map((label, i) => (
+        {["Ticker", "Confirm", "Approver", "Compliance", ...(comped ? [] : ["Plan"])].map((label, i, arr) => (
           <div key={label} className="flex flex-1 items-center gap-2">
             <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${i <= step ? "bg-emerald-500 text-white" : "bg-surface-2 text-faint"}`}>{i + 1}</div>
             <span className={`hidden text-xs sm:inline ${i === step ? "font-semibold text-app" : "text-faint"}`}>{label}</span>
-            {i < 4 && <div className={`h-0.5 flex-1 ${i < step ? "bg-emerald-500" : "bg-surface-2"}`} />}
+            {i < arr.length - 1 && <div className={`h-0.5 flex-1 ${i < step ? "bg-emerald-500" : "bg-surface-2"}`} />}
           </div>
         ))}
       </div>
@@ -142,12 +155,22 @@ export default function Onboarding() {
         <Panel title="Your disclosure language" sub="Appended to every published post automatically — it can't be skipped. Edit if your counsel prefers different wording.">
           <TextField label="Section 17(b) disclosure" value={form.disclosureText} onChange={(v) => set("disclosureText", v)} rows={3} />
           <TextField label="Forward-looking statements notice" value={form.flsText} onChange={(v) => set("flsText", v)} rows={2} />
-          <Back onClick={() => setStep(2)} /><Next onClick={() => setStep(4)} label="Next →" />
+          <Back onClick={() => setStep(2)} />
+          {comped
+            ? <Next onClick={finish} busy={busy} label="Activate my dashboard →" />
+            : <Next onClick={() => setStep(4)} label="Next →" />}
         </Panel>
       )}
 
       {/* STEP 4 — tier (no charge at signup; you can add billing later) */}
-      {step === 4 && (
+      {step === 4 && comped && (
+        <Panel title="You're all set — free, full access" sub="Your account has every feature unlocked at no charge. No plan to pick, no card needed.">
+          <Back onClick={() => setStep(3)} />
+          <Next onClick={finish} busy={busy} label="Activate my dashboard →" />
+        </Panel>
+      )}
+
+      {step === 4 && !comped && (
         <Panel title="Which plan fits you?" sub="No card needed to get started — we'll activate your dashboard now and sort out billing with you later. This just tells us what you're after.">
           <div className="space-y-3">
             {TIERS.map((t) => (

@@ -28,6 +28,7 @@ export default function Billing() {
 
   const currentTier = (db.company as { tier?: string }).tier ?? "free";
   const status = (db.company as { subscription_status?: string }).subscription_status ?? "none";
+  const comped = Boolean((db.company as { comped?: boolean }).comped);
   const live = (db as { stripeMode?: string }).stripeMode === "live";
 
   const subscribe = async (tier: string) => {
@@ -49,6 +50,23 @@ export default function Billing() {
       else setNotice({ text: data.error ?? "Couldn't open billing portal.", tone: "error" });
     } catch { setNotice({ text: "Network error.", tone: "error" }); } finally { setBusy(""); }
   };
+
+  // Comped/promo account: full free access, no billing. Don't show pricing or checkout.
+  if (comped) {
+    return (
+      <div className="max-w-2xl">
+        <PageHeader title="Billing & Plan" subtitle="Your account and access." />
+        {notice && <Banner message={notice.text} tone={notice.tone} onDismiss={() => setNotice(null)} />}
+        <Card className="border-emerald-500/30 bg-emerald-500/[0.04]">
+          <h2 className="font-semibold text-app">🎁 Complimentary full access</h2>
+          <p className="mt-2 text-sm leading-relaxed text-muted">
+            Your account has <strong className="text-app">every feature unlocked at no charge</strong> — nothing to pay,
+            no plan to choose. If anything about your access ever changes, we&apos;ll reach out directly first.
+          </p>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl">

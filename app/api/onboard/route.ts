@@ -38,10 +38,15 @@ export async function POST(req: Request) {
     approverName: String(b.approverName ?? db.company.approverName).slice(0, 80),
     approverTitle: String(b.approverTitle ?? db.company.approverTitle).slice(0, 60),
     xHandle: String(b.xHandle ?? db.company.xHandle).slice(0, 40),
-    tier: ["free", "starter", "growth", "pro"].includes(b.tier) ? b.tier : db.company.tier,
     peers: Array.isArray(b.peers) ? b.peers.map((p: string) => String(p).toUpperCase().trim()).filter(Boolean).slice(0, 6) : db.company.peers,
     onboarding_complete: true,
   };
+  // Never let onboarding downgrade a comped/active account (promo/super-admin):
+  // they already have full free access. Only apply a tier choice for non-comped accounts.
+  const isComped = (db.company as { subscription_status?: string }).subscription_status === "active";
+  if (!isComped && ["free", "starter", "growth", "pro"].includes(b.tier)) {
+    patch.tier = b.tier;
+  }
   if (b.disclosureText) patch.disclosureText = String(b.disclosureText).slice(0, 600);
   if (b.flsText) patch.flsText = String(b.flsText).slice(0, 600);
 

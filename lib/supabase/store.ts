@@ -18,6 +18,9 @@ function rowToCompany(r: Record<string, unknown>): Company {
     peers: (r.peers as string[]) ?? [],
     tier: ((r.tier as string) ?? "free") as Company["tier"],
     subscription_status: (r.subscription_status as string) ?? "none",
+    // Comped/promo: active access with no Stripe subscription behind it (they were
+    // given free access, not billed). Lets the UI hide pricing/checkout for them.
+    comped: (r.subscription_status as string) === "active" && !r.stripe_subscription_id,
     quietMode: Boolean(r.quiet_mode),
     disclosureText: (r.disclosure_text as string) ?? "",
     flsText: (r.fls_text as string) ?? "",
