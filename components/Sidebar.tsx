@@ -15,6 +15,7 @@ const NAV: NavGroup[] = [
   {
     section: "Start here",
     items: [
+      { href: "/setup", label: "Get started", icon: "🚀", hint: "Your setup checklist — what's done, what's left", detail: "A live checklist that gets your company set up. Admins see the company-wide steps (ticker, profile, approver, social accounts, disclosures, peers, inviting the team); everyone sees their own (approve a first post, set up a workspace, learn the basics). Each item checks itself off automatically from your real data and links to where you complete it." },
       { href: "/app", label: "Approvals", icon: "✅", hint: "Posts waiting for your one-tap approval", detail: "Your inbox of posts the AI has drafted and is ready to publish. Nothing ever goes out without you — review each one, edit if needed, then approve or skip with a single tap. Disclosures attach automatically on post." },
       { href: "/intelligence", label: "Dashboard", icon: "📊", hint: "Your IR program at a glance + weekly summary", detail: "A live snapshot of how your investor-relations program is performing: what shipped, your Reg FD mix, inbound volume, and stakeholder counts. Generate a one-click weekly summary written for your board or execs and emailed to them." },
     ],
