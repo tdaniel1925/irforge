@@ -102,6 +102,7 @@ export async function inviteTeammate(email: string, role: "admin" | "member"): P
           <p style="margin:22px 0"><a href="${link}" style="display:inline-block;background:#059669;color:#fff;font-weight:700;text-decoration:none;padding:11px 22px;border-radius:9px">Accept invitation →</a></p>
           <p style="font-size:12px;color:#64748b">Or paste this link: ${link}</p>
         </div>`,
+      kind: "team_invite",
     });
   } catch (e) {
     // Invite row exists even if email fails; admin can copy the link from the UI.

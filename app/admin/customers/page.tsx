@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Banner, Button, Card, LoadingState, PageHeader } from "@/components/ui";
 
 interface Company { id: string; name: string; ticker: string; tier: string; subscription_status: string; stripe_customer_id?: string; stripe_subscription_id?: string }
+interface EmailEvent { id: string; message_id?: string; to_email: string; kind: string; subject: string; status: string; sent_at?: string; delivered_at?: string; opened_at?: string; error?: string }
 
 export default function AdminCustomers() {
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -18,6 +19,23 @@ export default function AdminCustomers() {
   const [promo, setPromo] = useState({ name: "", contactName: "", email: "", message: "" });
   const [promoPreview, setPromoPreview] = useState(false);
   const [msgTouched, setMsgTouched] = useState(false);
+
+  // Email delivery log
+  const [emails, setEmails] = useState<EmailEvent[]>([]);
+  const [emailsOpen, setEmailsOpen] = useState(false);
+  const [emailFilter, setEmailFilter] = useState("");
+  const [emailsBusy, setEmailsBusy] = useState(false);
+  const loadEmails = async (filter = "") => {
+    setEmailsBusy(true);
+    try {
+      const url = "/api/admin/customer" + (filter.trim() ? `?email=${encodeURIComponent(filter.trim())}` : "");
+      const res = await fetch(url);
+      const d = await res.json().catch(() => ({}));
+      if (res.ok) setEmails(d.events ?? []);
+    } finally {
+      setEmailsBusy(false);
+    }
+  };
 
   // The default message (kept in sync with the inputs until the admin edits it).
   const defaultMsg = (() => {
@@ -147,6 +165,65 @@ export default function AdminCustomers() {
         </div>
       </Card>
 
+      {/* Email delivery log — confirm invites & welcomes actually arrived */}
+      <Card className="mb-6">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-semibold text-app">📬 Email delivery log</h2>
+          <button
+            onClick={() => { const next = !emailsOpen; setEmailsOpen(next); if (next && emails.length === 0) loadEmails(); }}
+            className="text-sm font-medium text-emerald-600 hover:underline dark:text-emerald-400"
+          >
+            {emailsOpen ? "▾ Hide" : "▸ Show delivery status"}
+          </button>
+        </div>
+        <p className="mb-3 mt-1 text-sm text-muted">Every invite and welcome email we send, with delivery status and timestamps from Resend.</p>
+        {emailsOpen && (
+          <>
+            <div className="mb-3 flex flex-wrap gap-2">
+              <input
+                value={emailFilter}
+                onChange={(e) => setEmailFilter(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") loadEmails(emailFilter); }}
+                placeholder="Filter by email (optional)"
+                className="rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:outline-none"
+              />
+              <Button variant="secondary" onClick={() => loadEmails(emailFilter)} disabled={emailsBusy}>{emailsBusy ? "…" : "↻ Refresh"}</Button>
+            </div>
+            {emails.length === 0 ? (
+              <p className="py-4 text-sm text-faint">{emailsBusy ? "Loading…" : "No emails logged yet."}</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-app text-left text-xs text-faint">
+                      <th className="py-2 pr-3 font-medium">Recipient</th>
+                      <th className="py-2 pr-3 font-medium">Type</th>
+                      <th className="py-2 pr-3 font-medium">Status</th>
+                      <th className="py-2 pr-3 font-medium">Sent</th>
+                      <th className="py-2 pr-3 font-medium">Delivered / Opened</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {emails.map((e) => (
+                      <tr key={e.id} className="border-b border-app/50 align-top">
+                        <td className="py-2 pr-3 text-app">{e.to_email}</td>
+                        <td className="py-2 pr-3 text-muted">{e.kind || "—"}</td>
+                        <td className="py-2 pr-3"><EmailStatus e={e} /></td>
+                        <td className="py-2 pr-3 text-muted">{fmtTs(e.sent_at)}</td>
+                        <td className="py-2 pr-3 text-muted">
+                          {e.opened_at ? `Opened ${fmtTs(e.opened_at)}` : e.delivered_at ? `Delivered ${fmtTs(e.delivered_at)}` : "—"}
+                          {e.error ? <span className="block text-xs text-red-500">{e.error}</span> : null}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        )}
+      </Card>
+
       {/* Create a new customer */}
       <Card className="mb-6">
         <h2 className="mb-3 font-semibold text-app">Add a customer to Stripe</h2>
@@ -193,4 +270,25 @@ export default function AdminCustomers() {
       <p className="mt-6 text-xs text-faint">For charging a card you hold on the customer&apos;s behalf, use the Stripe Dashboard directly — this console only sends hosted invoices, so you never touch raw card data (keeps you out of PCI scope).</p>
     </div>
   );
+}
+
+function fmtTs(ts?: string): string {
+  if (!ts) return "—";
+  const d = new Date(ts);
+  if (isNaN(d.getTime())) return "—";
+  return d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+}
+
+function EmailStatus({ e }: { e: EmailEvent }) {
+  const map: Record<string, { label: string; cls: string }> = {
+    opened: { label: "Opened ✓", cls: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300" },
+    delivered: { label: "Delivered ✓", cls: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300" },
+    sent: { label: "Sent", cls: "bg-sky-500/15 text-sky-600 dark:text-sky-300" },
+    delayed: { label: "Delayed", cls: "bg-amber-500/15 text-amber-700 dark:text-amber-300" },
+    bounced: { label: "Bounced ✕", cls: "bg-red-500/15 text-red-600 dark:text-red-300" },
+    complained: { label: "Spam ✕", cls: "bg-red-500/15 text-red-600 dark:text-red-300" },
+    failed: { label: "Failed ✕", cls: "bg-red-500/15 text-red-600 dark:text-red-300" },
+  };
+  const s = map[e.status] ?? { label: e.status, cls: "bg-app-hover text-faint" };
+  return <span className={`rounded px-1.5 py-0.5 text-xs font-semibold ${s.cls}`}>{s.label}</span>;
 }

@@ -22,6 +22,22 @@ async function grantEverythingFree(svc: ReturnType<typeof createServiceClient>, 
   for (const f of IROS_FEATURES) await setCompanyFeature(companyId, f.key, true);
 }
 
+// GET — the email delivery log (super-admin only). Optional ?email= filter.
+export async function GET(req: Request) {
+  const svc = await requireAdmin();
+  if (!svc) return NextResponse.json({ error: "Admin only" }, { status: 403 });
+  const email = new URL(req.url).searchParams.get("email")?.trim().toLowerCase();
+  let q = svc
+    .from("email_events")
+    .select("id,message_id,to_email,kind,subject,status,sent_at,delivered_at,opened_at,error")
+    .order("sent_at", { ascending: false })
+    .limit(50);
+  if (email) q = q.ilike("to_email", email);
+  const { data, error } = await q;
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ events: data ?? [] });
+}
+
 // POST — admin actions for manual customer management.
 // action: create_customer | send_subscription_invoice | charge_setup_fee | cancel_sub | comp
 export async function POST(req: Request) {

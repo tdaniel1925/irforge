@@ -13,12 +13,31 @@ export function emailEnabled(): boolean {
   return Boolean(process.env.RESEND_API_KEY);
 }
 
+// Log one email to the email_events ops table (best-effort — never throws).
+async function logEmail(row: { message_id?: string; to_email: string; kind?: string; subject?: string; status: string; error?: string }) {
+  try {
+    const { createServiceClient } = await import("./supabase/server");
+    await createServiceClient().from("email_events").insert({
+      message_id: row.message_id ?? null,
+      to_email: row.to_email,
+      kind: row.kind ?? "",
+      subject: row.subject ?? "",
+      status: row.status,
+      error: row.error ?? "",
+    });
+  } catch (e) {
+    console.error("[email] log failed:", e instanceof Error ? e.message : e);
+  }
+}
+
 export async function sendEmail(opts: {
   to: string | string[];
   subject: string;
   html: string;
   replyTo?: string;
+  kind?: string; // for the delivery log (promo_invite, team_invite, welcome, ...)
 }): Promise<boolean> {
+  const toEmail = Array.isArray(opts.to) ? opts.to[0] : opts.to;
   if (!emailEnabled()) {
     console.warn("[email] RESEND_API_KEY not set — skipping send to", opts.to);
     return false;
@@ -39,8 +58,11 @@ export async function sendEmail(opts: {
   });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
+    await logEmail({ to_email: toEmail, kind: opts.kind, subject: opts.subject, status: "failed", error: `${res.status}: ${text.slice(0, 200)}` });
     throw new Error(`Resend ${res.status}: ${text.slice(0, 300)}`);
   }
+  const data = await res.json().catch(() => ({} as { id?: string }));
+  await logEmail({ message_id: data?.id, to_email: toEmail, kind: opts.kind, subject: opts.subject, status: "sent" });
   return true;
 }
 
@@ -131,7 +153,7 @@ export function renderPromoInviteHtml(o: { link: string; message: string; invite
 export async function sendPromoInviteEmail(o: PromoInviteOpts): Promise<boolean> {
   const message = (o.message && o.message.trim()) || defaultPromoMessage(o.companyName, o.contactName);
   const html = renderPromoInviteHtml({ link: o.link, message, invitedBy: o.invitedBy });
-  return sendEmail({ to: o.to, subject: `Your free access to PubcoZone${o.companyName ? ` — ${o.companyName}` : ""}`, html });
+  return sendEmail({ to: o.to, subject: `Your free access to PubcoZone${o.companyName ? ` — ${o.companyName}` : ""}`, html, kind: "promo_invite" });
 }
 
 // Welcome / setup guide emailed to a new (or comped) company so they know exactly
@@ -163,7 +185,7 @@ export async function sendCompanyWelcomeGuide(to: string, companyName?: string):
     <p style="font-size:12px;color:#64748b;margin:18px 0 0">
       Full walkthrough any time: <a href="${SITE}/help/setup" style="color:#34d399">How setup works</a>.
     </p>`;
-  return sendEmail({ to, subject: `Getting started on PubcoZone${companyName ? ` — ${companyName}` : ""}`, html: shell(inner) });
+  return sendEmail({ to, subject: `Getting started on PubcoZone${companyName ? ` — ${companyName}` : ""}`, html: shell(inner), kind: "welcome" });
 }
 
 // Used by the alert worker when a watched ticker has news. (Wired for later use.)
