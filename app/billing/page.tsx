@@ -26,7 +26,7 @@ export default function Billing() {
   if (error) return <ErrorBanner message={error} />;
   if (!db) return <LoadingState />;
 
-  const currentTier = (db.company as { tier?: string }).tier ?? "growth";
+  const currentTier = (db.company as { tier?: string }).tier ?? "free";
   const status = (db.company as { subscription_status?: string }).subscription_status ?? "none";
   const live = (db as { stripeMode?: string }).stripeMode === "live";
 

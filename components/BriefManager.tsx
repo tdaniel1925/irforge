@@ -94,7 +94,7 @@ export default function BriefManager({ initial }: { initial: Brief[] }) {
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
-    ordered: "bg-slate-500/15 text-faint", paid: "bg-sky-500/15 text-sky-600 dark:text-sky-300",
+    ordered: "bg-app-hover text-faint", paid: "bg-sky-500/15 text-sky-600 dark:text-sky-300",
     generated: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300", published: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300",
   };
   return <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${map[status] ?? map.ordered}`}>{status}</span>;

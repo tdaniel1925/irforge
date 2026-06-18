@@ -6,7 +6,7 @@ import { useState } from "react";
 interface Contact { id: string; crmCompanyId: string | null; fullName: string; title: string; email: string; phone: string; category: string; stage: string; topics: string[]; aum: string; peersHeld: string[]; notes: string; nextFollowup: string | null; lastTouchAt: string | null; ownerEmail?: string }
 interface Company { id: string; name: string; type: string; industry: string; website: string; notes: string; ownerEmail?: string }
 interface Deal { id: string; title: string; stage: string; value: number; currency: string; contactId: string | null; crmCompanyId: string | null; closeDate: string | null; status: string; notes: string; ownerEmail?: string }
-interface Task { id: string; title: string; dueDate: string | null; done: boolean; contactId: string | null; ownerEmail?: string }
+interface Task { id: string; title: string; dueDate: string | null; done: boolean; contactId: string | null; dealId?: string | null; ownerEmail?: string }
 interface Metrics { contacts: number; openDeals: number; pipelineValue: number; wonValue: number; wonCount: number; lostCount: number; activities7d: number; tasksDue: number; dealsByStage: Record<string, { count: number; value: number }> }
 
 const DEAL_STAGES = ["lead", "qualified", "meeting", "proposal", "won", "lost"];

@@ -70,7 +70,7 @@ export default function WatchButton({ ticker }: { ticker: string }) {
       <p className="text-[11px] text-faint">
         Alerts on new filings, insider trades, halts &amp; grade changes. No spam, unsubscribe anytime.
       </p>
-      {error && <p className="text-xs text-red-400">{error}</p>}
+      {error && <p className="text-xs text-red-500">{error}</p>}
     </div>
   );
 }

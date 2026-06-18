@@ -41,8 +41,18 @@ export default function CalendarPage() {
 
   const remove = async (id: string) => {
     if (!confirm("Remove this event from your calendar?")) return;
-    await fetch(`/api/calendar?id=${id}`, { method: "DELETE" });
-    await refresh();
+    setNotice(null);
+    try {
+      const res = await fetch(`/api/calendar?id=${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setNotice({ text: data.error ?? "Couldn't remove that event.", tone: "error" });
+        return;
+      }
+      await refresh();
+    } catch {
+      setNotice({ text: "Network error.", tone: "error" });
+    }
   };
 
   const Row = ({ e }: { e: CalendarEvent }) => {

@@ -122,6 +122,22 @@ function People({ people, setPeople }: { people: Stakeholder[]; setPeople: (f: (
     } finally { setBusy(false); }
   };
 
+  const del = async (id: string) => {
+    if (!confirm("Remove this person? This can't be undone.")) return;
+    setError("");
+    try {
+      const res = await fetch("/api/iros/stakeholders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "delete", id }) });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setError(d.error ?? "Couldn't remove that person.");
+        return;
+      }
+      setPeople((ps) => ps.filter((p) => p.id !== id));
+    } catch {
+      setError("Network error — couldn't remove that person.");
+    }
+  };
+
   if (editing) {
     return (
       <div className="space-y-3 rounded-2xl border border-app bg-surface p-5">
@@ -151,6 +167,7 @@ function People({ people, setPeople }: { people: Stakeholder[]; setPeople: (f: (
         <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="🔍 Search…" className="flex-1 rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:border-emerald-500 focus:outline-none" />
         <button onClick={() => setEditing({ ...BLANK })} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">+ Add</button>
       </div>
+      {error && <p className="mb-3 text-sm text-red-500">{error}</p>}
       {shown.length === 0 ? (
         <p className="py-8 text-center text-sm text-faint">No people yet.</p>
       ) : (
@@ -161,7 +178,10 @@ function People({ people, setPeople }: { people: Stakeholder[]; setPeople: (f: (
                 <p className="text-sm font-semibold text-app">{p.fullName} {p.org && <span className="font-normal text-faint">· {p.org}</span>}</p>
                 <p className="text-xs text-muted">{p.title} <span className="ml-1 rounded bg-surface-2 px-1.5 py-0.5 text-[10px] text-faint">{p.category}</span></p>
               </div>
-              <button onClick={() => setEditing(p)} className="text-xs text-emerald-600 hover:underline dark:text-emerald-400">Edit</button>
+              <div className="flex gap-3 text-xs">
+                <button onClick={() => setEditing(p)} className="text-emerald-600 hover:underline dark:text-emerald-400">Edit</button>
+                <button onClick={() => del(p.id)} className="text-faint hover:text-red-500">Del</button>
+              </div>
             </div>
           ))}
         </div>

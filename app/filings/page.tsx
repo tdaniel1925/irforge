@@ -22,8 +22,10 @@ export default function FilingsPage() {
       // Match useAppState.act: bounce to login on 401 instead of a confusing error.
       if (res.status === 401) { window.location.href = "/login"; return; }
       const data = await res.json().catch(() => ({}));
+      // The sync route returns HTTP 200 with { ok: false, error } when EDGAR is
+      // unreachable, so check data.ok — not just res.ok — to surface the failure.
       setNotice(
-        res.ok
+        res.ok && data.ok !== false
           ? { text: `Checked EDGAR — found ${data.added ?? 0} new filing(s).`, tone: "success" }
           : { text: data.error ?? `Sync failed (${res.status}).`, tone: "error" }
       );

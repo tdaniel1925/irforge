@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getPublicTickerAudit } from "@/lib/tickerCache";
 import { generateTickerExplainer } from "@/lib/ai";
-import { bumpViews } from "@/lib/publicStats";
+import { bumpViews, getBoardPosts } from "@/lib/publicStats";
 import { getDb } from "@/lib/db";
 import { buildPlainFlags } from "@/lib/flags";
 import ClaimCard from "@/components/ClaimCard";
@@ -121,7 +121,21 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
     console.error(`[ticker ${ticker}] getDb failed:`, e);
   }
   const claimed = db ? db.company.ticker.toUpperCase() === ticker : false;
-  const tickerQuestions = db ? db.publicQuestions.filter((q) => q.ticker === ticker).slice(0, 10) : [];
+  // Public questions persist in Supabase public_board (flag='question'); a verified
+  // reply to a question is the company's on-the-record answer.
+  let tickerQuestions: { id: string; author: string; question: string; ts: string; status: string; answerText?: string }[] = [];
+  try {
+    const board = await getBoardPosts(ticker, 400);
+    const answersByParent = new Map<string, string>();
+    for (const p of board) if (p.verified && p.parentId) answersByParent.set(p.parentId, p.body);
+    tickerQuestions = board
+      .filter((p) => p.flag === "question" && !p.parentId)
+      .slice(0, 10)
+      .map((p) => {
+        const answer = answersByParent.get(p.id);
+        return { id: p.id, author: p.author, question: p.body, ts: p.ts, status: answer ? "answered" : "open", answerText: answer };
+      });
+  } catch { /* leave empty */ }
   // Company-provided disclosures (OTC/SEDAR) only show on the claimed company's own page.
   const companyFilings = claimed && db ? db.filings.filter((f) => f.source === "company").slice(0, 6) : [];
   const rated = audit.social.bullish + audit.social.bearish;
@@ -691,18 +705,11 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
               <p className="mt-1 text-sm font-medium text-app">{q.question}</p>
               {q.status === "answered" && q.answerText ? (
                 <div className="mt-2 rounded-lg border border-emerald-500/25 bg-emerald-500/5 p-3">
-                  <p className="text-xs font-semibold text-emerald-400">
-                    ✓ VERIFIED COMPANY ANSWER
-                    {q.xPostUrl && (
-                      <a href={q.xPostUrl} target="_blank" rel="noreferrer" className="ml-2 font-normal text-emerald-300 hover:underline">
-                        also disclosed on X ↗
-                      </a>
-                    )}
-                  </p>
+                  <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">✓ VERIFIED COMPANY ANSWER</p>
                   <p className="mt-1 text-sm text-app">{q.answerText}</p>
                 </div>
               ) : (
-                <p className="mt-2 text-xs text-amber-400/80">
+                <p className="mt-2 text-xs text-amber-600/90 dark:text-amber-400/80">
                   {claimed ? "Awaiting company answer — it's in their queue." : "Unanswered — this company hasn't claimed its page."}
                 </p>
               )}

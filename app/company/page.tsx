@@ -11,7 +11,7 @@ import type { Scorecard } from "@/lib/score";
 const SEV: Record<string, { ring: string; chip: string; label: string }> = {
   high: { ring: "border-red-500/40", chip: "bg-red-500/15 text-red-600 dark:text-red-300", label: "HIGH" },
   medium: { ring: "border-amber-500/40", chip: "bg-amber-500/15 text-amber-600 dark:text-amber-300", label: "MEDIUM" },
-  low: { ring: "border-app", chip: "bg-slate-500/15 text-faint", label: "LOW" },
+  low: { ring: "border-app", chip: "bg-app-hover text-faint", label: "LOW" },
 };
 
 export default function CompanyCommandCenter() {

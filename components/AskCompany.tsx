@@ -37,7 +37,7 @@ export default function AskCompany({ ticker, claimed }: { ticker: string; claime
       <div className="mx-auto max-w-4xl px-4 py-3">
         {state === "done" ? (
           <div className="flex items-center justify-between gap-3">
-            <p className="text-sm text-emerald-300">
+            <p className="text-sm text-emerald-600 dark:text-emerald-300">
               ✓ Question posted.{" "}
               <span className="text-muted">
                 {claimed ? "Answers are officer-approved and published here and on X at the same time." : "It's recorded publicly and waiting for the company to claim this page."}
@@ -74,7 +74,7 @@ export default function AskCompany({ ticker, claimed }: { ticker: string; claime
                 {state === "busy" ? "Posting…" : "Ask"}
               </button>
             </div>
-            {error && <p className="mt-1.5 text-xs text-red-400">{error}</p>}
+            {error && <p className="mt-1.5 text-xs text-red-500">{error}</p>}
             {expanded && (
               <p className="mt-1.5 text-[11px] text-faint">
                 Questions are public. Company answers are compliance-checked, officer-approved, and published here and on X at the same time — that simultaneity is what makes them fair, legal public disclosure.

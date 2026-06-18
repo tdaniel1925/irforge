@@ -31,7 +31,7 @@ export default function BadgeEmbed({ ticker, grade, score }: { ticker: string; g
   return (
     <div className="mt-6 rounded-xl border border-app bg-surface p-5">
       <div className="mb-3 flex items-baseline gap-3">
-        <h2 className="font-semibold text-white">Put this badge on your site</h2>
+        <h2 className="font-semibold text-app">Put this badge on your site</h2>
         <span className="text-[11px] text-faint">live grade · updates itself · links back here</span>
       </div>
       <div className="flex flex-wrap items-center gap-5">

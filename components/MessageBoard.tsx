@@ -18,7 +18,7 @@ const FLAGS: Record<string, { label: string; rail: string; badge: string; tint: 
   opinion: { label: "Opinion", rail: "bg-sky-500", badge: "bg-sky-500/15 text-sky-600 dark:text-sky-300", tint: "" },
   hype: { label: "Hype", rail: "bg-amber-500", badge: "bg-amber-500/15 text-amber-600 dark:text-amber-300", tint: "bg-amber-500/[0.04]" },
   fud: { label: "Unverified / FUD", rail: "bg-orange-500", badge: "bg-orange-500/15 text-orange-600 dark:text-orange-300", tint: "bg-orange-500/[0.04]" },
-  chatter: { label: "Chatter", rail: "bg-slate-400", badge: "bg-slate-500/15 text-faint", tint: "" },
+  chatter: { label: "Chatter", rail: "bg-app-hover", badge: "bg-app-hover text-faint", tint: "" },
 };
 
 const REACTIONS: { key: ReactionKind; icon: string; label: string }[] = [

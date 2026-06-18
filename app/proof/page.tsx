@@ -95,7 +95,7 @@ export default function ProofPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {[...db.metrics].reverse().slice(0, 8).map((w) => (
+                  {[...metrics].reverse().slice(0, 8).map((w) => (
                     <tr key={w.weekStart} className="border-b border-app text-muted">
                       <td className="py-2 pr-4">{w.weekStart}</td>
                       <td className="py-2 pr-4">{w.followers.toLocaleString()}</td>

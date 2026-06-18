@@ -149,6 +149,7 @@ export interface Company {
   xHandle: string;
   onboarded: boolean;
   tier: "free" | "starter" | "growth" | "pro";
+  subscription_status?: string; // none | active | trialing | past_due | canceled
   onboarding_complete: boolean;
   ayrshareProfileKey?: string; // this company's Ayrshare user profile (their own linked socials)
 }

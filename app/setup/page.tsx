@@ -9,10 +9,10 @@ export default async function SetupPage() {
   const status = await getSetupStatus();
   if (!status) redirect("/login");
 
-  const allDone =
-    status.companyDone === status.companyTotal &&
-    status.personalDone === status.personalTotal &&
-    (status.isAdmin || true);
+  // Admins must finish company-wide setup too; members only own their personal checklist
+  // (company setup is handled by their admins and isn't shown to them).
+  const companyDone = !status.isAdmin || status.companyDone === status.companyTotal;
+  const allDone = companyDone && status.personalDone === status.personalTotal;
 
   return (
     <div className="max-w-3xl">

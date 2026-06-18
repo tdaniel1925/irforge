@@ -28,11 +28,23 @@ export async function POST(req: Request) {
   return NextResponse.json({ ok: true, calendar: db.calendar });
 }
 
-// DELETE — remove an event.
+// DELETE — remove an event. Removing an earnings event also clears the
+// quiet-period start that was auto-scheduled 14 days before it.
 export async function DELETE(req: Request) {
   const id = new URL(req.url).searchParams.get("id");
   const { db, save } = await getStore();
-  db.calendar = db.calendar.filter((e) => e.id !== id);
+  const target = db.calendar.find((e) => e.id === id);
+  if (!target) return NextResponse.json({ error: "Event not found." }, { status: 404 });
+
+  const removeIds = new Set<string>([target.id]);
+  if (target.type === "earnings") {
+    const quietDate = new Date(new Date(target.date).getTime() - 14 * 86400000).toISOString().slice(0, 10);
+    for (const e of db.calendar) {
+      if (e.type === "quiet_start" && e.date === quietDate) removeIds.add(e.id);
+    }
+  }
+
+  db.calendar = db.calendar.filter((e) => !removeIds.has(e.id));
   await save();
   return NextResponse.json({ ok: true, calendar: db.calendar });
 }

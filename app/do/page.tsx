@@ -50,7 +50,7 @@ export default function DoPage() {
         subtitle="Work the queue top to bottom — each item feeds your score. Most weeks this takes five minutes."
       >
         {db.company.quietMode && (
-          <span className="rounded-full border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-300">
+          <span className="rounded-full border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-700 dark:text-red-300">
             ⏸ QUIET MODE — publishing suspended
           </span>
         )}

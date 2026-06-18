@@ -41,6 +41,7 @@ export default function AdminCustomers() {
     setBusy("create");
     const r = await act({ action: "create_customer", ...nc });
     if (r.customerId) { setNotice({ text: `Stripe customer created (${r.customerId}). Now subscribe them below.`, tone: "success" }); setNc({ name: "", email: "", ticker: "", tier: "growth" }); }
+    else if (r.ok) setNotice({ text: "Stripe customer created.", tone: "success" });
     setBusy("");
   };
 
@@ -49,6 +50,7 @@ export default function AdminCustomers() {
     if (!c.stripe_customer_id) { setNotice({ text: "This company has no Stripe customer yet — create one first.", tone: "error" }); setBusy(""); return; }
     const r = await act({ action: "send_subscription_invoice", customerId: c.stripe_customer_id, companyId: c.id, tier });
     if (r.invoiceUrl) setNotice({ text: `Subscription created. Send this invoice to the customer: ${r.invoiceUrl}`, tone: "success" });
+    else if (r.ok) setNotice({ text: "Subscription created. The invoice is being generated in Stripe — check the Stripe dashboard for the hosted link.", tone: "info" });
     setBusy("");
   };
 
@@ -57,6 +59,7 @@ export default function AdminCustomers() {
     if (!c.stripe_customer_id) { setNotice({ text: "Create a Stripe customer first.", tone: "error" }); setBusy(""); return; }
     const r = await act({ action: "charge_setup_fee", customerId: c.stripe_customer_id });
     if (r.invoiceUrl) setNotice({ text: `Setup-fee invoice created: ${r.invoiceUrl}`, tone: "success" });
+    else if (r.ok) setNotice({ text: "Setup-fee invoice created — check the Stripe dashboard for the hosted link.", tone: "info" });
     setBusy("");
   };
 

@@ -46,7 +46,13 @@ export default function ProfileForm({ initial }: { initial: Member }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Couldn't save.");
-      setHandle(data.member.handle);
+      // Re-sync every field from the server's normalized values (it trims/slices
+      // displayName & bio and may keep the old handle if the new one was invalid),
+      // so the form shows exactly what was persisted — not the untrimmed input.
+      setDisplayName(data.member.displayName ?? "");
+      setHandle(data.member.handle ?? "");
+      setBio(data.member.bio ?? "");
+      setAvatarUrl(data.member.avatarUrl ?? "");
       setMsg({ text: "Saved.", ok: true });
     } catch (e) {
       setMsg({ text: e instanceof Error ? e.message : "Failed.", ok: false });

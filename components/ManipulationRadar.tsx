@@ -81,7 +81,7 @@ export default function ManipulationRadar({ ticker }: { ticker: string }) {
           </p>
 
           <a
-            href={`/t/${encodeURIComponent(ticker.toLowerCase())}#filings`}
+            href={`/t/${encodeURIComponent(ticker.toUpperCase())}`}
             className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:text-emerald-500 dark:text-emerald-400"
           >
             Verify against SEC filings →

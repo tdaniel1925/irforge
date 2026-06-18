@@ -299,6 +299,7 @@ function SocialConnections() {
       // Navigate the current tab — a post-await window.open() gets popup-blocked.
       // Ayrshare's connect page is a full-page flow and returns the user back after.
       if (d.url) { window.location.href = d.url; return; }
+      throw new Error("Couldn't open the connect page.");
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Failed.");
       setBusy(false);

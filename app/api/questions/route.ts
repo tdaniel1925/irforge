@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
-import { getStore, logAudit, newId } from "@/lib/db";
+import { addBoardPost } from "@/lib/publicStats";
 
 export const dynamic = "force-dynamic";
 
-// POST — an investor asks a question from a public ticker page.
+// POST — an investor asks a question from a public ticker page. Persisted to the
+// Supabase public_board (flag='question') so it survives on the serverless host
+// and appears on the ticker's board; the company answers as a verified reply.
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const ticker = String(body.ticker ?? "").toUpperCase().slice(0, 8);
@@ -14,25 +16,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Write a question of at least 10 characters." }, { status: 422 });
   }
 
-  const { db, save } = await getStore();
-  const q = {
-    id: newId("puq"),
-    ticker,
-    author,
-    question,
-    ts: new Date().toISOString(),
-    status: "open" as const,
-  };
-  db.publicQuestions.unshift(q);
+  try {
+    await addBoardPost({
+      ticker,
+      author,
+      body: question,
+      verified: false,
+      flag: "question",
+      flagReason: "Investor question for the company.",
+      ts: new Date().toISOString(),
+    });
+  } catch {
+    return NextResponse.json({ error: "Couldn't post your question — try again." }, { status: 500 });
+  }
 
-  const isClaimed = ticker === db.company.ticker.toUpperCase();
-  logAudit(
-    db,
-    "public-site",
-    "QUESTION_ASKED",
-    `$${ticker} question from ${author}${isClaimed ? " — routed to Do queue" : " — page unclaimed, held for the company"}`
-  );
-  await save();
-
-  return NextResponse.json({ ok: true, claimed: isClaimed });
+  return NextResponse.json({ ok: true });
 }
