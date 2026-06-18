@@ -169,7 +169,7 @@ export async function acceptInvite(token: string): Promise<{ ok: boolean; error?
   const svc = createServiceClient();
   const { data: invite } = await svc
     .from("company_users")
-    .select("id, invited_email, company_id, status")
+    .select("id, invited_email, company_id, status, role")
     .eq("invite_token", token)
     .eq("status", "invited")
     .maybeSingle();
@@ -183,5 +183,14 @@ export async function acceptInvite(token: string): Promise<{ ok: boolean; error?
     .update({ user_id: user.id, status: "active", invite_token: null, invited_at: null })
     .eq("id", invite.id);
   if (error) return { ok: false, error: error.message };
+
+  // Promo/comp case: the company was created ownerless. The first admin to accept
+  // claims ownership so it's never permanently orphaned.
+  if (invite.role === "admin") {
+    const { data: co } = await svc.from("companies").select("owner_id").eq("id", invite.company_id).maybeSingle();
+    if (co && !co.owner_id) {
+      await svc.from("companies").update({ owner_id: user.id }).eq("id", invite.company_id);
+    }
+  }
   return { ok: true };
 }
