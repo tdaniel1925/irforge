@@ -1,4 +1,4 @@
-import { createServerSupabase } from "./server";
+import { createServerSupabase, createServiceClient } from "./server";
 import type { Company } from "../types";
 
 // Maps the snake_case companies row to the app's Company shape and back.
@@ -83,6 +83,35 @@ export async function getMyCompany(): Promise<{ id: string; company: Company } |
 
   // Member (investor) accounts must NOT get a phantom company minted.
   if (user.user_metadata?.account_type === "member") return null;
+
+  // 2b) Pending invite for this email (promo/team) that was never accepted via the
+  // /accept-invite link. Auto-accept it here so the user lands on the comped company
+  // they were invited to — NOT a fresh free company. This prevents the "you're on
+  // the Free plan" bug for promo users who signed in without clicking the invite link.
+  {
+    const svc = createServiceClient();
+    const { data: pending } = await svc
+      .from("company_users")
+      .select("id, company_id, role, invited_email")
+      .ilike("invited_email", user.email ?? "")
+      .eq("status", "invited")
+      .order("invited_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (pending?.company_id) {
+      await svc
+        .from("company_users")
+        .update({ user_id: user.id, status: "active", invite_token: null, invited_at: null })
+        .eq("id", pending.id);
+      // First admin to accept claims ownership of an ownerless (promo) company.
+      if (pending.role === "admin") {
+        const { data: co } = await svc.from("companies").select("owner_id").eq("id", pending.company_id).maybeSingle();
+        if (co && !co.owner_id) await svc.from("companies").update({ owner_id: user.id }).eq("id", pending.company_id);
+      }
+      const { data: c } = await supabase.from("companies").select("*").eq("id", pending.company_id).maybeSingle();
+      if (c) return { id: c.id as string, company: rowToCompany(c) };
+    }
+  }
 
   // 3) Brand-new company account with no row yet — mint one + an admin membership.
   const { data: created } = await supabase
