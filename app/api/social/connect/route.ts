@@ -7,6 +7,7 @@ import {
   createAyrshareProfile,
   generateAyrshareLinkUrl,
   getLinkedAccounts,
+  disconnectAccount,
 } from "@/lib/ayrshare";
 
 export const dynamic = "force-dynamic";
@@ -42,8 +43,11 @@ export async function POST() {
   // also recovers an existing profile if the title was already used.
   if (!db.company.ayrshareProfileKey) {
     const mine = await getMyCompany();
-    const uniqueTitle = `${db.company.name || "Company"} ($${db.company.ticker || "—"}) · ${String(mine?.id ?? "").slice(0, 8)}`;
-    const created = await createAyrshareProfile(uniqueTitle);
+    const idSuffix = String(mine?.id ?? "").slice(0, 8);
+    const uniqueTitle = `${db.company.name || "Company"} ($${db.company.ticker || "—"}) · ${idSuffix}`;
+    // Pass the id suffix so an existing profile (even if the company was renamed
+    // since it was created) is reused instead of colliding on "title already exists".
+    const created = await createAyrshareProfile(uniqueTitle, idSuffix);
     if (!created.ok || !created.profileKey) {
       return NextResponse.json({ error: created.error ?? "Couldn't create your social profile." }, { status: 502 });
     }
@@ -57,4 +61,21 @@ export async function POST() {
     return NextResponse.json({ error: link.error ?? "Couldn't open the connect page." }, { status: 502 });
   }
   return NextResponse.json({ ok: true, url: link.url });
+}
+
+// DELETE — disconnect ONE social network from this company's Ayrshare profile.
+// Body: { platform: "twitter" }. Always scoped to THIS company's profileKey.
+export async function DELETE(req: Request) {
+  const { db, save } = await getStore();
+  const platform = String((await req.json().catch(() => ({})))?.platform ?? "").trim().toLowerCase();
+  if (!platform) return NextResponse.json({ error: "No platform specified." }, { status: 422 });
+  if (!db.company.ayrshareProfileKey) {
+    return NextResponse.json({ error: "No social profile for this company — nothing to disconnect." }, { status: 400 });
+  }
+  const result = await disconnectAccount(platform, db.company.ayrshareProfileKey);
+  if (!result.ok) return NextResponse.json({ error: result.error ?? "Couldn't disconnect." }, { status: 502 });
+  logAudit(db, `${db.company.approverName} (${db.company.approverTitle})`, "SOCIAL_DISCONNECTED", `Disconnected ${platform}`);
+  await save();
+  const accounts = await getLinkedAccounts(db.company.ayrshareProfileKey);
+  return NextResponse.json({ ok: true, accounts });
 }

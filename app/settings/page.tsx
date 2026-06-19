@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useAppState } from "@/components/useAppState";
 import { Banner, Button, Card, ErrorBanner, LoadingState, PageHeader } from "@/components/ui";
@@ -37,13 +38,6 @@ export default function SettingsPage() {
         ? { text: err, tone: "error" }
         : { text: next ? "Quiet mode is ON — nothing will publish until you turn it off." : "Quiet mode is OFF — publishing works again.", tone: "success" }
     );
-  };
-
-  const reset = async () => {
-    if (!confirm("This wipes all demo data. Continue?")) return;
-    const err = await act("/api/reset", "POST");
-    setForm(null);
-    setNotice(err ? { text: err, tone: "error" } : { text: "Demo data restored to its original state.", tone: "success" });
   };
 
   return (
@@ -121,37 +115,33 @@ export default function SettingsPage() {
 
       <SocialConnections />
 
-      <Card className="mb-6">
-        <h2 className="mb-2 font-semibold text-app">Integration status</h2>
-        <div className="space-y-2 text-sm text-muted">
-          <p>
-            <span className={`mr-2 rounded px-1.5 py-0.5 text-xs font-semibold ${db.hasAyrshare ? "bg-emerald-500/15 text-emerald-300" : "bg-surface-2 text-faint"}`}>
-              {db.hasAyrshare ? "LIVE" : "SIMULATED"}
-            </span>
-            X (Twitter) posting via Ayrshare —{" "}
-            {db.hasAyrshare
-              ? "publishing a draft posts it to your connected X account, for real."
-              : "no AYRSHARE_API_KEY set; publishing marks posts as posted locally only."}
-          </p>
-          <p>
-            <span className={`mr-2 rounded px-1.5 py-0.5 text-xs font-semibold ${db.hasAi ? "bg-emerald-500/15 text-emerald-300" : "bg-surface-2 text-faint"}`}>
-              {db.hasAi ? "LIVE" : "TEMPLATE"}
-            </span>
-            Claude AI drafting —{" "}
-            {db.hasAi ? "ANTHROPIC_API_KEY detected (verify it's valid — invalid keys silently fall back to templates)." : "set ANTHROPIC_API_KEY in .env.local for AI-written drafts; templates otherwise."}
-          </p>
-        </div>
-      </Card>
+      <TeamSection />
 
       <div className="flex items-center justify-between">
         <Button onClick={save} disabled={busy}>
           Save settings
         </Button>
-        <Button variant="danger" onClick={reset} disabled={busy} title="Restores the original demo data">
-          Reset demo data
-        </Button>
       </div>
     </div>
+  );
+}
+
+// Team management — invite and manage the people on this company account.
+// Lives here in Settings so admins find it where they expect. The full roster +
+// invite form is the /admin/team page (works for any company admin, not just
+// platform super-admins).
+function TeamSection() {
+  return (
+    <Card className="mb-6">
+      <h2 className="font-semibold text-app">Your team</h2>
+      <p className="mb-3 mt-1 text-sm text-muted">
+        Invite colleagues to this company account. Everyone shares the dashboard; each person gets their own private workspace.
+        Admins can approve posts and manage settings; members can draft and collaborate.
+      </p>
+      <Link href="/admin/team" className="inline-block rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500">
+        Manage team &amp; invite people →
+      </Link>
+    </Card>
   );
 }
 
@@ -315,6 +305,23 @@ function SocialConnections() {
     setBusy(false);
   };
 
+  // Disconnect one network from THIS company's profile.
+  const disconnect = async (platform: string, label: string) => {
+    if (!confirm(`Disconnect ${label}? Approved posts will no longer publish there until you reconnect.`)) return;
+    setErr("");
+    setBusy(true);
+    try {
+      const res = await fetch("/api/social/connect", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ platform }) });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error ?? "Couldn't disconnect.");
+      setStatus((s) => ({ ...s, accounts: d.accounts ?? [] }));
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Failed.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const connected = new Set((status.accounts ?? []).map((a) => a.toLowerCase()));
 
   return (
@@ -359,7 +366,14 @@ function SocialConnections() {
                 {loading ? (
                   <span className="text-xs text-faint">…</span>
                 ) : on ? (
-                  <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">✓</span>
+                  <button
+                    onClick={() => disconnect(n.key, n.label)}
+                    disabled={busy}
+                    title={`Disconnect ${n.label}`}
+                    className="text-xs font-semibold text-emerald-600 hover:text-red-500 disabled:opacity-50 dark:text-emerald-400"
+                  >
+                    ✓ <span className="underline-offset-2 hover:underline">Disconnect</span>
+                  </button>
                 ) : (
                   <span className="text-xs text-faint">—</span>
                 )}

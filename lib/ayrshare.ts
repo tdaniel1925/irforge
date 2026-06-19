@@ -39,7 +39,11 @@ export function ayrshareMultiTenant(): boolean {
 // store on the company and pass on every post so it goes to THAT company's socials.
 // Look up an existing profile's key by its exact title (Ayrshare titles are unique).
 // Lets us recover when a profile was created earlier but its key wasn't persisted.
-export async function findProfileKeyByTitle(title: string): Promise<string | null> {
+// Find an existing profile key. Matches the full title first; if that misses
+// (e.g. the company renamed itself after the profile was created), falls back to
+// the stable "· <companyId8>" suffix we always append — so recovery is robust to
+// name changes. Pass the company-id suffix (8 chars) for the fallback.
+export async function findProfileKeyByTitle(title: string, idSuffix?: string): Promise<string | null> {
   const key = process.env.AYRSHARE_API_KEY;
   if (!key) return null;
   try {
@@ -48,18 +52,30 @@ export async function findProfileKeyByTitle(title: string): Promise<string | nul
       signal: AbortSignal.timeout(20000),
     });
     const data = await res.json().catch(() => ({}));
-    const profiles: { title?: string; profileKey?: string }[] = data?.profiles ?? data ?? [];
-    const hit = Array.isArray(profiles) ? profiles.find((p) => p.title === title) : null;
-    return hit?.profileKey ?? null;
+    const profiles: { title?: string; profileKey?: string; refId?: string }[] = data?.profiles ?? data ?? [];
+    if (!Array.isArray(profiles)) return null;
+    const exact = profiles.find((p) => p.title === title);
+    if (exact) return exact.profileKey ?? exact.refId ?? null;
+    if (idSuffix) {
+      const bySuffix = profiles.find((p) => (p.title ?? "").includes(`· ${idSuffix}`));
+      if (bySuffix) return bySuffix.profileKey ?? bySuffix.refId ?? null;
+    }
+    return null;
   } catch {
     return null;
   }
 }
 
-export async function createAyrshareProfile(title: string): Promise<{ ok: boolean; profileKey?: string; error?: string }> {
+export async function createAyrshareProfile(title: string, idSuffix?: string): Promise<{ ok: boolean; profileKey?: string; error?: string }> {
   const key = process.env.AYRSHARE_API_KEY;
   if (!key) return { ok: false, error: "Ayrshare not configured." };
   const t = title.slice(0, 100);
+  // If a profile for this company already exists (matched by the stable id suffix),
+  // reuse it up front rather than colliding on create.
+  if (idSuffix) {
+    const pre = await findProfileKeyByTitle(t, idSuffix);
+    if (pre) return { ok: true, profileKey: pre };
+  }
   try {
     const res = await fetch("https://api.ayrshare.com/api/profiles", {
       method: "POST",
@@ -73,10 +89,10 @@ export async function createAyrshareProfile(title: string): Promise<{ ok: boolea
     const pk = data.profileKey ?? data.refId;
     if (res.ok && pk) return { ok: true, profileKey: pk };
 
-    // Duplicate-title collision: recover the existing key if we can.
+    // Duplicate-title collision: recover the existing key (by full title or id suffix).
     const msg = String(data?.message ?? "");
     if (/already exists/i.test(msg)) {
-      const existing = await findProfileKeyByTitle(t);
+      const existing = await findProfileKeyByTitle(t, idSuffix);
       if (existing) return { ok: true, profileKey: existing };
     }
     return { ok: false, error: msg || `Ayrshare profile error (HTTP ${res.status})` };
@@ -134,6 +150,32 @@ export async function getLinkedAccounts(profileKey?: string): Promise<string[]> 
     return Array.isArray(accounts) ? accounts : [];
   } catch {
     return [];
+  }
+}
+
+// Unlink ONE social network from a company's Ayrshare profile.
+// CRITICAL: Ayrshare's DELETE /profiles/social unlinks the PRIMARY profile if no
+// Profile-Key is sent — so we hard-require profileKey and refuse otherwise, to
+// avoid ever disconnecting our own main account.
+export async function disconnectAccount(platform: string, profileKey?: string): Promise<{ ok: boolean; error?: string }> {
+  const key = process.env.AYRSHARE_API_KEY;
+  if (!key) return { ok: false, error: "Publishing isn't configured." };
+  if (!profileKey) return { ok: false, error: "No social profile for this company — nothing to disconnect." };
+  const plat = String(platform || "").trim().toLowerCase();
+  if (!plat) return { ok: false, error: "No platform specified." };
+  try {
+    const res = await fetch("https://api.ayrshare.com/api/profiles/social", {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", "Profile-Key": profileKey },
+      body: JSON.stringify({ platform: plat }),
+      signal: AbortSignal.timeout(15000),
+    });
+    const data = await res.json().catch(() => ({}));
+    // Ayrshare returns 200 even if the platform wasn't linked — treat that as success.
+    if (res.ok && (data?.status === "success" || data?.status === undefined)) return { ok: true };
+    return { ok: false, error: data?.message ?? `Couldn't disconnect (${res.status}).` };
+  } catch {
+    return { ok: false, error: "Couldn't reach the publishing service. Try again." };
   }
 }
 
