@@ -35,70 +35,54 @@ export function ayrshareMultiTenant(): boolean {
   return Boolean(process.env.AYRSHARE_API_KEY && ayrsharePrivateKey());
 }
 
+// NOTE: there is deliberately NO "recover profileKey by title" helper. Ayrshare's
+// GET /profiles list exposes only `refId` (never `profileKey`), and refId is
+// REJECTED by generateJWT and /post ("Profile Key is invalid"). The usable
+// profileKey is returned ONLY in the create response — so the only correct way to
+// obtain one is to create a profile and persist its key immediately (which we now
+// do; see store.ts ayrshare_profile_key). Recovering by title would only ever
+// yield a refId and silently break connect/posting.
+
 // Create an Ayrshare user profile for a company. Returns its profileKey, which we
 // store on the company and pass on every post so it goes to THAT company's socials.
-// Look up an existing profile's key by its exact title (Ayrshare titles are unique).
-// Lets us recover when a profile was created earlier but its key wasn't persisted.
-// Find an existing profile key. Matches the full title first; if that misses
-// (e.g. the company renamed itself after the profile was created), falls back to
-// the stable "· <companyId8>" suffix we always append — so recovery is robust to
-// name changes. Pass the company-id suffix (8 chars) for the fallback.
-export async function findProfileKeyByTitle(title: string, idSuffix?: string): Promise<string | null> {
-  const key = process.env.AYRSHARE_API_KEY;
-  if (!key) return null;
-  try {
-    const res = await fetch("https://api.ayrshare.com/api/profiles", {
-      headers: { Authorization: `Bearer ${key}` },
-      signal: AbortSignal.timeout(20000),
-    });
-    const data = await res.json().catch(() => ({}));
-    const profiles: { title?: string; profileKey?: string; refId?: string }[] = data?.profiles ?? data ?? [];
-    if (!Array.isArray(profiles)) return null;
-    const exact = profiles.find((p) => p.title === title);
-    if (exact) return exact.profileKey ?? exact.refId ?? null;
-    if (idSuffix) {
-      const bySuffix = profiles.find((p) => (p.title ?? "").includes(`· ${idSuffix}`));
-      if (bySuffix) return bySuffix.profileKey ?? bySuffix.refId ?? null;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
 export async function createAyrshareProfile(title: string, idSuffix?: string): Promise<{ ok: boolean; profileKey?: string; error?: string }> {
   const key = process.env.AYRSHARE_API_KEY;
   if (!key) return { ok: false, error: "Ayrshare not configured." };
-  const t = title.slice(0, 100);
-  // If a profile for this company already exists (matched by the stable id suffix),
-  // reuse it up front rather than colliding on create.
-  if (idSuffix) {
-    const pre = await findProfileKeyByTitle(t, idSuffix);
-    if (pre) return { ok: true, profileKey: pre };
-  }
-  try {
-    const res = await fetch("https://api.ayrshare.com/api/profiles", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      signal: AbortSignal.timeout(20000),
-      body: JSON.stringify({ title: t }),
-    });
-    const data = await res.json().catch(() => ({}));
-    // Ayrshare returns BOTH profileKey and refId on create; profileKey is the one
-    // used for posting + JWT.
-    const pk = data.profileKey ?? data.refId;
-    if (res.ok && pk) return { ok: true, profileKey: pk };
 
-    // Duplicate-title collision: recover the existing key (by full title or id suffix).
-    const msg = String(data?.message ?? "");
-    if (/already exists/i.test(msg)) {
-      const existing = await findProfileKeyByTitle(t, idSuffix);
-      if (existing) return { ok: true, profileKey: existing };
+  // CRITICAL: Ayrshare's profileKey (used for JWT/posting) is returned ONLY in the
+  // create response. The /profiles LIST exposes only `refId`, which generateJWT and
+  // /post REJECT ("Profile Key is invalid"). So we must NEVER recover a profile by
+  // title from the list (it can only yield refId) — the only source of a usable key
+  // is a fresh create. On a title collision we retry with a disambiguated title so
+  // create always succeeds and returns a real profileKey. Any abandoned empty
+  // profile is harmless (no linked socials) and can be cleaned up in the dashboard.
+  const base = title.slice(0, 90);
+  const attempts = [base, `${base} ·${idSuffix ?? ""}`.slice(0, 100), `${base} ·${idSuffix ?? ""}-2`.slice(0, 100)];
+
+  let lastErr = "";
+  for (const t of attempts) {
+    try {
+      const res = await fetch("https://api.ayrshare.com/api/profiles", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+        signal: AbortSignal.timeout(20000),
+        body: JSON.stringify({ title: t }),
+      });
+      const data = await res.json().catch(() => ({}));
+      // Only profileKey is usable. Do NOT fall back to refId.
+      if (res.ok && data.profileKey) return { ok: true, profileKey: data.profileKey };
+
+      const msg = String(data?.message ?? "");
+      lastErr = msg || `Ayrshare profile error (HTTP ${res.status})`;
+      // On a duplicate-title collision, try the next disambiguated title.
+      if (/already exists/i.test(msg)) continue;
+      // Any other error: stop and report.
+      return { ok: false, error: lastErr };
+    } catch (e) {
+      lastErr = e instanceof Error ? e.message : "Ayrshare unreachable";
     }
-    return { ok: false, error: msg || `Ayrshare profile error (HTTP ${res.status})` };
-  } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Ayrshare unreachable" };
   }
+  return { ok: false, error: lastErr || "Couldn't create a social profile." };
 }
 
 // Generate a single-use SSO URL to Ayrshare's hosted "connect your socials" page,

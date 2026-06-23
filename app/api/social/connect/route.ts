@@ -38,25 +38,45 @@ export async function POST() {
     );
   }
 
-  // Create the profile on first connect. The title is made globally unique with the
-  // company id so two companies (even same name) never collide; createAyrshareProfile
-  // also recovers an existing profile if the title was already used.
-  if (!db.company.ayrshareProfileKey) {
-    const mine = await getMyCompany();
-    const idSuffix = String(mine?.id ?? "").slice(0, 8);
-    const uniqueTitle = `${db.company.name || "Company"} ($${db.company.ticker || "—"}) · ${idSuffix}`;
-    // Pass the id suffix so an existing profile (even if the company was renamed
-    // since it was created) is reused instead of colliding on "title already exists".
+  const mine = await getMyCompany();
+  const idSuffix = String(mine?.id ?? "").slice(0, 8);
+  const uniqueTitle = `${db.company.name || "Company"} ($${db.company.ticker || "—"}) · ${idSuffix}`;
+
+  // A real Ayrshare profileKey looks like XXXXXXXX-XXXXXXXX-XXXXXXXX-XXXXXXXX
+  // (uppercase hex groups). Older builds wrongly stored a refId (40-char lowercase
+  // hex) here, which generateJWT/posting REJECT. Treat anything that isn't a real
+  // profileKey as missing so it gets recreated.
+  const looksLikeProfileKey = (v?: string) => Boolean(v && /^[0-9A-F]{8}(-[0-9A-F]{8}){3}$/.test(v));
+
+  const createFresh = async () => {
     const created = await createAyrshareProfile(uniqueTitle, idSuffix);
-    if (!created.ok || !created.profileKey) {
-      return NextResponse.json({ error: created.error ?? "Couldn't create your social profile." }, { status: 502 });
-    }
+    if (!created.ok || !created.profileKey) return created.error ?? "Couldn't create your social profile.";
     db.company.ayrshareProfileKey = created.profileKey;
     logAudit(db, `${db.company.approverName} (${db.company.approverTitle})`, "SOCIAL_PROFILE_CREATED", "Ayrshare profile created");
     await save();
+    return null;
+  };
+
+  // Create on first connect, or replace a stored value that isn't a valid profileKey
+  // (self-heals companies that have a stale refId from an older build).
+  if (!looksLikeProfileKey(db.company.ayrshareProfileKey)) {
+    const err = await createFresh();
+    if (err) return NextResponse.json({ error: err }, { status: 502 });
   }
 
-  const link = await generateAyrshareLinkUrl(db.company.ayrshareProfileKey);
+  let key = db.company.ayrshareProfileKey ?? "";
+  let link = await generateAyrshareLinkUrl(key);
+
+  // Self-heal: if Ayrshare still rejects the key as invalid (e.g. the profile was
+  // deleted in the dashboard, or a stale key slipped through), create a fresh one
+  // and retry ONCE.
+  if (!link.ok && /profile key is invalid/i.test(link.error ?? "")) {
+    const err = await createFresh();
+    if (err) return NextResponse.json({ error: err }, { status: 502 });
+    key = db.company.ayrshareProfileKey ?? "";
+    link = await generateAyrshareLinkUrl(key);
+  }
+
   if (!link.ok || !link.url) {
     return NextResponse.json({ error: link.error ?? "Couldn't open the connect page." }, { status: 502 });
   }
