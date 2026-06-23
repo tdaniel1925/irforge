@@ -90,6 +90,36 @@ Supabase Storage bucket for generated images.
 
 ---
 
+## STATUS — all six steps shipped ✅
+
+| Step | State | Key files |
+|---|---|---|
+| 1 Interview & strategy | ✅ | `lib/social/strategy.ts`, `/social`, `SocialEngine` |
+| 2 Calendar generation | ✅ | `lib/social/calendar.ts` `generateCalendar`, `SocialCalendar` |
+| 3 Drafts + AI images | ✅ | `lib/image.ts`, `draftCalendarBatch`, `/api/social/draft` |
+| 4 Bulk review/approve | ✅ | `iros.ts` `bulkDecision`, `/social/review`, `SocialReview` |
+| 5 Scheduled publish | ✅ | `ayrshare.ts` opts, `scheduleApprovedPosts` |
+| 6 Compliance/audit | ✅ | banned-claims merged into classification; RED gates |
+
+**Compliance guarantees verified end-to-end:**
+- Every drafted post runs banned-claims (`checkContent`) + Reg FD (`classifyRegFD`)
+  before any human sees it. A hard banned claim forces **RED**; other flags
+  escalate green→yellow — so nothing slips through bulk-approve silently.
+- RED is blocked from bulk approval (counsel only) and from scheduling (defense
+  in depth in `scheduleApprovedPosts`).
+- FLS + Section 17(b) disclosures are appended in the **publish path**, not the
+  draft — they cannot be edited out.
+- Quiet mode blocks the whole schedule run; quiet periods block sensitive approvals.
+- Bulk approval records a **separate named-human approval per post** (audited).
+
+## Operator setup (one-time, per environment)
+1. Run `supabase/RUN-THIS-social-engine.sql` (table + columns + `social-images` bucket).
+2. Toggle the **`social`** feature on for each company in Admin → Features.
+3. Ensure `GEMINI_API_KEY` is set in env (images degrade gracefully without it).
+4. Ayrshare must be connected per company (the profileKey fix is already in `main`).
+
+---
+
 ## Open questions (resolve before Step 2)
 
 1. **Calendar storage:** add `calendar_slot`/`scheduled_at` usage to `iros_posts`

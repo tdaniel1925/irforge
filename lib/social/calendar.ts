@@ -211,9 +211,22 @@ export async function draftCalendarBatch(): Promise<{ ok: boolean; error?: strin
 
     // 2) Compliance check (banned-claims) on the text.
     const flags = checkContent([text]);
+    const blocked = flags.some((f) => f.severity === "block");
 
     // 3) Reg FD classification.
     const cls = await classifyRegFD(text, company);
+
+    // Merge banned-claims into the classification so the review gate + badge see
+    // them — NOT just the Reg FD result. A hard banned claim (price prediction,
+    // "undervalued", advice) forces RED so it can never be bulk-approved and must
+    // go through counsel; any other compliance flag escalates green -> yellow.
+    let classification = cls.classification;
+    if (blocked) classification = "red";
+    else if (flags.length && classification === "green") classification = "yellow";
+    const mergedFlags = Array.from(new Set([...cls.flags, ...flags.map((f) => `claim:${f.rule}`)]));
+    const reason = blocked
+      ? `Blocked language detected (${flags.map((f) => f.rule).join(", ")}). ${cls.reasoning}`
+      : cls.reasoning;
 
     // 4) Image (best-effort).
     const imagePrompt = buildImagePrompt({ companyName: company.name, ticker: company.ticker, theme, postText: text });
@@ -224,10 +237,10 @@ export async function draftCalendarBatch(): Promise<{ ok: boolean; error?: strin
       .from("iros_posts")
       .update({
         body: text.slice(0, 4000),
-        classification: cls.classification,
+        classification,
         class_confidence: cls.confidence,
-        class_flags: cls.flags,
-        class_reason: cls.reasoning,
+        class_flags: mergedFlags,
+        class_reason: reason,
         media_url: mediaUrl ?? "",
         status: "draft",
         updated_at: new Date().toISOString(),
@@ -237,7 +250,7 @@ export async function draftCalendarBatch(): Promise<{ ok: boolean; error?: strin
     await writeAudit({
       companyId: cid, actorUserId: user.id, actorEmail: user.email,
       action: "social.post_drafted", entityType: "post", entityId: String(slot.id),
-      payload: { platform, theme, classification: cls.classification, blocked: flags.some((f) => f.severity === "block"), hasImage: Boolean(mediaUrl) },
+      payload: { platform, theme, classification, regFd: cls.classification, blocked, hasImage: Boolean(mediaUrl) },
     });
     drafted++;
   }
@@ -276,7 +289,7 @@ export async function scheduleApprovedPosts(): Promise<{ ok: boolean; error?: st
 
   const { data: approved } = await supabase
     .from("iros_posts")
-    .select("id, body, channels, platform, media_url, scheduled_at")
+    .select("id, body, channels, platform, media_url, scheduled_at, classification")
     .eq("company_id", cid)
     .eq("calendar_batch", batchId)
     .eq("status", "approved");
@@ -288,6 +301,9 @@ export async function scheduleApprovedPosts(): Promise<{ ok: boolean; error?: st
   let scheduled = 0;
 
   for (const p of todo) {
+    // Defense in depth: a RED post should never reach 'approved' (counsel only),
+    // but never schedule one even if it somehow did.
+    if (p.classification === "red") { failed.push({ id: String(p.id), reason: "RED — needs counsel sign-off" }); continue; }
     const channels = (p.channels as string[]) ?? [];
     if (!channels.length) { failed.push({ id: String(p.id), reason: "no channel" }); continue; }
 
