@@ -3,7 +3,8 @@
 
 export interface PostResult {
   ok: boolean;
-  posted: boolean; // true = went to the real network
+  posted: boolean; // true = went to the real network now
+  scheduled?: boolean; // true = accepted by Ayrshare for a future scheduleDate
   postUrl?: string;
   externalId?: string;
   error?: string;
@@ -137,6 +138,42 @@ export async function getLinkedAccounts(profileKey?: string): Promise<string[]> 
   }
 }
 
+// Look up the live status of one previously-submitted post by its Ayrshare id.
+// Used by the delivery dashboard to confirm a scheduled post actually went out.
+// Returns a normalized status + the per-platform live URLs when available.
+export interface AyrPostStatus {
+  found: boolean;
+  status: "scheduled" | "pending" | "success" | "error" | "deleted" | "unknown";
+  postUrl?: string;
+  error?: string;
+}
+export async function getPostStatus(ayrPostId: string, profileKey?: string): Promise<AyrPostStatus> {
+  const key = process.env.AYRSHARE_API_KEY;
+  if (!key) return { found: false, status: "unknown" };
+  if (!ayrPostId) return { found: false, status: "unknown" };
+  try {
+    const res = await fetch(`https://api.ayrshare.com/api/post/${encodeURIComponent(ayrPostId)}`, {
+      headers: { Authorization: `Bearer ${key}`, ...(profileKey ? { "Profile-Key": profileKey } : {}) },
+      signal: AbortSignal.timeout(15000),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.status === 404) return { found: false, status: "unknown" };
+    // Ayrshare reports overall `status` plus a postIds[] array once posted.
+    const raw = String(data?.status ?? "").toLowerCase();
+    const first = (data?.postIds ?? [])[0];
+    const postUrl = first?.postUrl ?? data?.postUrl;
+    let status: AyrPostStatus["status"] = "unknown";
+    if (raw.includes("schedule")) status = "scheduled";
+    else if (raw === "pending" || raw.includes("process")) status = "pending";
+    else if (raw === "success" || raw === "posted" || raw === "completed") status = "success";
+    else if (raw === "error" || raw === "failed") status = "error";
+    else if (raw.includes("delete")) status = "deleted";
+    return { found: true, status, postUrl, error: data?.errors?.[0]?.message ?? undefined };
+  } catch {
+    return { found: false, status: "unknown" };
+  }
+}
+
 // Unlink ONE social network from a company's Ayrshare profile.
 // CRITICAL: Ayrshare's DELETE /profiles/social unlinks the PRIMARY profile if no
 // Profile-Key is sent — so we hard-require profileKey and refuse otherwise, to
@@ -176,19 +213,33 @@ export const AYRSHARE_CHANNELS = [
   { key: "reddit", label: "Reddit" },
 ] as const;
 
+// Optional publish controls: a future schedule time (Ayrshare holds + posts at
+// the slot) and image attachments. Additive — existing callers omit them.
+export interface PublishOptions {
+  scheduleDate?: string;  // ISO 8601; when set, Ayrshare schedules instead of posting now
+  mediaUrls?: string[];   // public image/video URLs to attach
+}
+
 // Generic publish: one post text out to any set of Ayrshare channels.
-export async function publishToChannels(text: string, channels: string[], profileKey?: string): Promise<PostResult> {
+export async function publishToChannels(text: string, channels: string[], profileKey?: string, opts?: PublishOptions): Promise<PostResult> {
   const key = process.env.AYRSHARE_API_KEY;
   const platforms = channels.filter((c) => AYRSHARE_CHANNELS.some((a) => a.key === c));
   if (platforms.length === 0) return { ok: false, posted: false, error: "No channels selected." };
-  if (!key) return { ok: true, posted: false }; // simulate when not configured
+  if (!key) return { ok: true, posted: false, scheduled: Boolean(opts?.scheduleDate) }; // simulate when not configured
 
+  const mediaUrls = (opts?.mediaUrls ?? []).filter(Boolean);
+  const scheduled = Boolean(opts?.scheduleDate);
   try {
     const res = await fetch("https://api.ayrshare.com/api/post", {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", ...(profileKey ? { "Profile-Key": profileKey } : {}) },
       signal: AbortSignal.timeout(30000),
-      body: JSON.stringify({ post: text, platforms }),
+      body: JSON.stringify({
+        post: text,
+        platforms,
+        ...(mediaUrls.length ? { mediaUrls } : {}),
+        ...(opts?.scheduleDate ? { scheduleDate: opts.scheduleDate } : {}),
+      }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || data.status === "error") {
@@ -196,7 +247,8 @@ export async function publishToChannels(text: string, channels: string[], profil
       return { ok: false, posted: false, error: `Ayrshare: ${detail}` };
     }
     const first = (data.postIds ?? [])[0];
-    return { ok: true, posted: true, postUrl: first?.postUrl, externalId: first?.id ?? data.id };
+    // A scheduled post isn't "posted" yet — flag it so the caller records the right status.
+    return { ok: true, posted: !scheduled, scheduled, postUrl: first?.postUrl, externalId: first?.id ?? data.id };
   } catch (e) {
     return { ok: false, posted: false, error: e instanceof Error ? `Ayrshare unreachable: ${e.message}` : "Ayrshare unreachable" };
   }

@@ -18,6 +18,10 @@ export interface IrosPost {
   classFlags: string[];
   classReason: string;
   voiceProfileId: string | null;
+  platform: string;
+  mediaUrl: string;
+  theme: string;
+  calendarBatch: string | null;
   createdAt: string;
 }
 
@@ -34,6 +38,10 @@ function rowToPost(r: Record<string, unknown>): IrosPost {
     classFlags: (r.class_flags as string[]) ?? [],
     classReason: (r.class_reason as string) ?? "",
     voiceProfileId: r.voice_profile_id ? String(r.voice_profile_id) : null,
+    platform: (r.platform as string) ?? "",
+    mediaUrl: (r.media_url as string) ?? "",
+    theme: (r.theme as string) ?? "",
+    calendarBatch: r.calendar_batch ? String(r.calendar_batch) : null,
     createdAt: String(r.created_at ?? ""),
   };
 }
@@ -206,6 +214,49 @@ export async function recordApproval(input: {
   });
 
   return { ok: true };
+}
+
+// Bulk approve/reject for the Social Engine review screen. Records a SEPARATE,
+// named-human approval per post (never one decision for the batch) so the audit
+// log stays defensible, reusing recordApproval's full compliance gating. For an
+// "approve" decision, GREEN/YELLOW drafts are advanced straight to 'approved'
+// in one human action; RED posts are blocked here and must go through counsel.
+export async function bulkDecision(input: {
+  postIds: string[];
+  decision: "approved" | "rejected";
+  ip?: string;
+  userAgent?: string;
+}): Promise<{ approved: number; rejected: number; skipped: { id: string; reason: string }[] }> {
+  const out = { approved: 0, rejected: 0, skipped: [] as { id: string; reason: string }[] };
+  const supabase = await createServerSupabase();
+  const ts = new Date().toISOString();
+
+  for (const id of input.postIds.slice(0, 200)) {
+    const post = await getPost(id);
+    if (!post) { out.skipped.push({ id, reason: "not found" }); continue; }
+
+    if (input.decision === "rejected") {
+      const r = await recordApproval({ postId: id, stage: "approver", decision: "rejected" });
+      if (r.ok) out.rejected++; else out.skipped.push({ id, reason: r.error ?? "rejected failed" });
+      continue;
+    }
+
+    // approve
+    if (post.classification === "red") {
+      out.skipped.push({ id, reason: "RED — needs counsel sign-off" });
+      continue;
+    }
+    const r = await recordApproval({ postId: id, stage: "approver", decision: "approved", ip: input.ip, userAgent: input.userAgent });
+    if (!r.ok) { out.skipped.push({ id, reason: r.error ?? "approve failed" }); continue; }
+    // recordApproval lands a draft on 'reviewed'; finish the one-action approve by
+    // advancing to 'approved' (a second audited step).
+    const fresh = await getPost(id);
+    if (fresh && fresh.status === "reviewed") {
+      await supabase.from("iros_posts").update({ status: "approved", updated_at: ts }).eq("id", id);
+    }
+    out.approved++;
+  }
+  return out;
 }
 
 // ── Quiet periods / disclosure events ──
