@@ -1,6 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import SocialCalendar from "./SocialCalendar";
+
+interface Slot {
+  id: string;
+  scheduledAt: string | null;
+  platform: string;
+  theme: string;
+  status: string;
+  body: string;
+  title: string;
+  mediaUrl: string;
+}
 
 interface Strategy {
   id: string;
@@ -40,8 +52,9 @@ function ListField({ label, value, onChange, placeholder }: { label: string; val
   );
 }
 
-export default function SocialEngine({ initialStrategy, channels }: { initialStrategy: Strategy | null; channels: Channel[] }) {
+export default function SocialEngine({ initialStrategy, channels, initialSlots }: { initialStrategy: Strategy | null; channels: Channel[]; initialSlots: Slot[] }) {
   const [strategy, setStrategy] = useState<Strategy>(initialStrategy ?? BLANK);
+  const [saved, setSaved] = useState<boolean>(Boolean(initialStrategy?.interviewComplete));
   // "interview" = answering questions; "review" = editing the proposed/saved strategy.
   const [stage, setStage] = useState<"interview" | "review">(initialStrategy?.interviewComplete ? "review" : "interview");
   const [interview, setInterview] = useState({ goals: "", audience: "", tone: "professional", frequency: "3 posts/week", topics: "" });
@@ -88,6 +101,7 @@ export default function SocialEngine({ initialStrategy, channels }: { initialStr
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Couldn't save.");
       setStrategy(data.strategy);
+      setSaved(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong.");
     } finally {
@@ -202,11 +216,7 @@ export default function SocialEngine({ initialStrategy, channels }: { initialStr
         </div>
       </div>
 
-      {/* Step 2 will turn this into a live calendar generator. */}
-      <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-5 text-sm text-gray-600">
-        <p className="font-medium text-gray-800">Next: generate your calendar</p>
-        <p className="mt-1">Once your strategy is saved, the AI will plan a month of posts from your filings and these settings — then draft and image each one for bulk review. (Coming in the next step.)</p>
-      </div>
+      <SocialCalendar initialSlots={initialSlots} hasStrategy={saved} />
     </div>
   );
 }

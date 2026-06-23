@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getMyCompany } from "@/lib/supabase/store";
 import { companyHasFeature } from "@/lib/platform";
 import { getStrategy } from "@/lib/social/strategy";
+import { listLatestCalendar } from "@/lib/social/calendar";
 import { AYRSHARE_CHANNELS } from "@/lib/ayrshare";
 import { PageHeader } from "@/components/ui";
 import UpgradePrompt from "@/components/UpgradePrompt";
@@ -35,6 +36,7 @@ export default async function SocialPage() {
 
   const strategy = await getStrategy();
   const channels = AYRSHARE_CHANNELS.map((c) => ({ key: c.key, label: c.label }));
+  const { slots } = await listLatestCalendar();
 
   return (
     <div className="max-w-3xl">
@@ -42,7 +44,7 @@ export default async function SocialPage() {
         title="AI Content Engine"
         subtitle="Build a month of compliant social posts from your public record. Review and approve in bulk before anything goes out."
       />
-      <SocialEngine initialStrategy={strategy} channels={channels} />
+      <SocialEngine initialStrategy={strategy} channels={channels} initialSlots={slots} />
     </div>
   );
 }

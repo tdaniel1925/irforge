@@ -18,6 +18,10 @@ export interface IrosPost {
   classFlags: string[];
   classReason: string;
   voiceProfileId: string | null;
+  platform: string;
+  mediaUrl: string;
+  theme: string;
+  calendarBatch: string | null;
   createdAt: string;
 }
 
@@ -34,6 +38,10 @@ function rowToPost(r: Record<string, unknown>): IrosPost {
     classFlags: (r.class_flags as string[]) ?? [],
     classReason: (r.class_reason as string) ?? "",
     voiceProfileId: r.voice_profile_id ? String(r.voice_profile_id) : null,
+    platform: (r.platform as string) ?? "",
+    mediaUrl: (r.media_url as string) ?? "",
+    theme: (r.theme as string) ?? "",
+    calendarBatch: r.calendar_batch ? String(r.calendar_batch) : null,
     createdAt: String(r.created_at ?? ""),
   };
 }
