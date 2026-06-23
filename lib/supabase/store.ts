@@ -26,6 +26,8 @@ function rowToCompany(r: Record<string, unknown>): Company {
     flsText: (r.fls_text as string) ?? "",
     onboarded: Boolean(r.onboarding_complete),
     onboarding_complete: Boolean(r.onboarding_complete),
+    // This company's Ayrshare user profile — the handle to their own linked socials.
+    ayrshareProfileKey: (r.ayrshare_profile_key as string) || undefined,
     google_place_id: undefined,
     google_review_link: undefined,
   } as unknown as Company;
@@ -50,6 +52,7 @@ function companyToRow(c: Partial<Company>): Record<string, unknown> {
   if (c.disclosureText !== undefined) row.disclosure_text = c.disclosureText;
   if (c.flsText !== undefined) row.fls_text = c.flsText;
   if (c.onboarding_complete !== undefined) row.onboarding_complete = c.onboarding_complete;
+  if (c.ayrshareProfileKey !== undefined) row.ayrshare_profile_key = c.ayrshareProfileKey;
   return row;
 }
 

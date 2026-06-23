@@ -33,6 +33,7 @@ create table if not exists public.companies (
   disclosure_text text default '',
   fls_text      text default '',
   onboarding_complete boolean default false,
+  ayrshare_profile_key text default '',  -- this company's Ayrshare user profile (their own linked socials)
   created_at    timestamptz default now(),
   unique (owner_id)            -- one company per user
 );
