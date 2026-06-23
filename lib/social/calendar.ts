@@ -5,6 +5,7 @@ import { writeAudit } from "../platform";
 import { planCalendar, generateSocialPost, classifyRegFD } from "../ai";
 import { checkContent } from "../compliance";
 import { generatePostImage, buildImagePrompt } from "../image";
+import { publishToChannels } from "../ayrshare";
 import { buildStrategyContext, renderContextForPrompt, getStrategy } from "./strategy";
 
 // Social Content Engine — calendar layer.
@@ -250,4 +251,70 @@ export async function draftCalendarBatch(): Promise<{ ok: boolean; error?: strin
     .eq("body", "");
 
   return { ok: true, drafted, remaining: count ?? 0 };
+}
+
+// Schedule every APPROVED post in the latest batch to its slot time via Ayrshare
+// native scheduling. Disclosures (FLS + Section 17(b)) are appended HERE, in the
+// publish path — never editable out. Quiet mode blocks the whole run. Each post
+// gets its image attached and its scheduled_at handed to Ayrshare; on success the
+// row advances to 'scheduled'. Returns counts.
+export async function scheduleApprovedPosts(): Promise<{ ok: boolean; error?: string; scheduled: number; failed: { id: string; reason: string }[] }> {
+  const supabase = await createServerSupabase();
+  const { data: { user } } = await supabase.auth.getUser();
+  const mine = await getMyCompany();
+  if (!mine || !user) return { ok: false, error: "Sign in.", scheduled: 0, failed: [] };
+  const cid = mine.id;
+  const company = mine.company;
+
+  // Quiet mode suspends ALL publishing — same gate as the rest of the app.
+  if (company.quietMode) {
+    return { ok: false, error: "Quiet mode is ON — publishing is suspended. Turn it off to schedule.", scheduled: 0, failed: [] };
+  }
+
+  const { batchId } = await listLatestCalendar();
+  if (!batchId) return { ok: false, error: "No calendar to schedule.", scheduled: 0, failed: [] };
+
+  const { data: approved } = await supabase
+    .from("iros_posts")
+    .select("id, body, channels, platform, media_url, scheduled_at")
+    .eq("company_id", cid)
+    .eq("calendar_batch", batchId)
+    .eq("status", "approved");
+
+  const todo = approved ?? [];
+  if (!todo.length) return { ok: true, scheduled: 0, failed: [] };
+
+  const failed: { id: string; reason: string }[] = [];
+  let scheduled = 0;
+
+  for (const p of todo) {
+    const channels = (p.channels as string[]) ?? [];
+    if (!channels.length) { failed.push({ id: String(p.id), reason: "no channel" }); continue; }
+
+    // Append the mandatory disclosures in the publish path (not the draft).
+    const disclosures = [company.flsText, company.disclosureText].filter(Boolean).join("\n\n");
+    const finalText = disclosures ? `${p.body}\n\n${disclosures}` : String(p.body);
+
+    const result = await publishToChannels(finalText, channels, company.ayrshareProfileKey, {
+      scheduleDate: p.scheduled_at ? String(p.scheduled_at) : undefined,
+      mediaUrls: p.media_url ? [String(p.media_url)] : undefined,
+    });
+
+    if (!result.ok) {
+      failed.push({ id: String(p.id), reason: result.error ?? "publish failed" });
+      await writeAudit({ companyId: cid, actorUserId: user.id, actorEmail: user.email, action: "social.schedule_failed", entityType: "post", entityId: String(p.id), payload: { error: result.error } });
+      continue;
+    }
+
+    await supabase.from("iros_posts").update({ status: "scheduled", updated_at: new Date().toISOString() }).eq("id", p.id);
+    await writeAudit({
+      companyId: cid, actorUserId: user.id, actorEmail: user.email,
+      action: result.scheduled ? "social.post_scheduled" : "social.post_published",
+      entityType: "post", entityId: String(p.id),
+      payload: { platform: p.platform, scheduledAt: p.scheduled_at, postUrl: result.postUrl ?? null, posted: result.posted },
+    });
+    scheduled++;
+  }
+
+  return { ok: true, scheduled, failed };
 }

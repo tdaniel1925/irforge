@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getMyCompany } from "@/lib/supabase/store";
 import { companyHasFeature } from "@/lib/platform";
 import { bulkDecision, updatePostFields, getPost } from "@/lib/iros";
-import { listLatestCalendar } from "@/lib/social/calendar";
+import { listLatestCalendar, scheduleApprovedPosts } from "@/lib/social/calendar";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -36,6 +36,13 @@ export async function POST(req: Request) {
     await updatePostFields(String(body.id), { body: String(body.body).slice(0, 4000) });
     const calendar = await listLatestCalendar();
     return NextResponse.json({ ok: true, slots: calendar.slots });
+  }
+
+  if (body.action === "schedule") {
+    const result = await scheduleApprovedPosts();
+    if (!result.ok) return NextResponse.json({ error: result.error }, { status: 422 });
+    const calendar = await listLatestCalendar();
+    return NextResponse.json({ ok: true, scheduled: result.scheduled, failed: result.failed, slots: calendar.slots });
   }
 
   if (body.action === "bulk") {

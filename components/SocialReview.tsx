@@ -53,6 +53,7 @@ export default function SocialReview({ initialSlots }: { initialSlots: Slot[] })
   const reviewable = slots.filter((s) => s.body && (s.status === "draft" || s.status === "reviewed"));
   const decided = slots.filter((s) => ["approved", "scheduled", "published", "pulled"].includes(s.status));
 
+  const approvedCount = slots.filter((s) => s.status === "approved").length;
   const isRed = (s: Slot) => s.classification === "red";
   // RED posts can't be bulk-approved here (need counsel), so exclude from "select all".
   const selectableForApprove = reviewable.filter((s) => !isRed(s));
@@ -82,6 +83,28 @@ export default function SocialReview({ initialSlots }: { initialSlots: Slot[] })
       clearSel();
       const skipped = (data.skipped ?? []).length;
       setMsg(`${decision === "approved" ? "Approved" : "Rejected"} ${decision === "approved" ? data.approved : data.rejected}${skipped ? ` · ${skipped} skipped (see badges)` : ""}.`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Something went wrong.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Hand every approved post to Ayrshare at its slot time (disclosures appended
+  // server-side in the publish path). Quiet mode blocks this server-side.
+  const scheduleApproved = async () => {
+    setBusy(true); setError(""); setMsg("");
+    try {
+      const res = await fetch("/api/social/review", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "schedule" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Couldn't schedule.");
+      setSlots(data.slots ?? []);
+      const failed = (data.failed ?? []).length;
+      setMsg(`Scheduled ${data.scheduled} post${data.scheduled === 1 ? "" : "s"}${failed ? ` · ${failed} failed` : ""}.`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong.");
     } finally {
@@ -128,6 +151,11 @@ export default function SocialReview({ initialSlots }: { initialSlots: Slot[] })
           <button disabled={busy || !selected.size} onClick={() => bulk("approved")} className="rounded-lg bg-green-600 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50">
             {busy ? "Working…" : "Approve selected"}
           </button>
+          {approvedCount > 0 && (
+            <button disabled={busy} onClick={scheduleApproved} className="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50">
+              {busy ? "Working…" : `Schedule ${approvedCount} approved →`}
+            </button>
+          )}
         </div>
       </div>
       {msg && <p className="text-sm text-green-600">{msg}</p>}
