@@ -2,7 +2,9 @@ import crypto from "crypto";
 import { createServerSupabase } from "../supabase/server";
 import { getMyCompany } from "../supabase/store";
 import { writeAudit } from "../platform";
-import { planCalendar } from "../ai";
+import { planCalendar, generateSocialPost, classifyRegFD } from "../ai";
+import { checkContent } from "../compliance";
+import { generatePostImage, buildImagePrompt } from "../image";
 import { buildStrategyContext, renderContextForPrompt, getStrategy } from "./strategy";
 
 // Social Content Engine — calendar layer.
@@ -153,4 +155,95 @@ export async function listLatestCalendar(): Promise<{ batchId: string | null; sl
     calendarBatch: r.calendar_batch ? String(r.calendar_batch) : null,
   }));
   return { batchId, slots };
+}
+
+// Draft empty slots in the latest batch: for each, generate platform-formatted
+// text → compliance check → Reg FD classify → generate image → save. Capped per
+// call (LIMIT) so a single request can't time out; the UI calls repeatedly until
+// nothing's left undrafted. Returns how many were drafted and how many remain.
+const DRAFT_LIMIT = 4;
+
+export async function draftCalendarBatch(): Promise<{ ok: boolean; error?: string; drafted: number; remaining: number }> {
+  const supabase = await createServerSupabase();
+  const { data: { user } } = await supabase.auth.getUser();
+  const mine = await getMyCompany();
+  if (!mine || !user) return { ok: false, error: "Sign in.", drafted: 0, remaining: 0 };
+  const cid = mine.id;
+
+  const { batchId } = await listLatestCalendar();
+  if (!batchId) return { ok: false, error: "No calendar to draft. Generate one first.", drafted: 0, remaining: 0 };
+
+  // Empty slots = body is '' (not yet drafted).
+  const { data: empties } = await supabase
+    .from("iros_posts")
+    .select("id, platform, theme")
+    .eq("company_id", cid)
+    .eq("calendar_batch", batchId)
+    .eq("body", "")
+    .order("scheduled_at", { ascending: true })
+    .limit(DRAFT_LIMIT);
+
+  const todo = empties ?? [];
+  if (!todo.length) return { ok: true, drafted: 0, remaining: 0 };
+
+  const ctx = await buildStrategyContext();
+  if (!ctx) return { ok: false, error: "No company context.", drafted: 0, remaining: 0 };
+  const contextBlock = renderContextForPrompt(ctx);
+  const company = ctx.company;
+
+  let drafted = 0;
+  for (const slot of todo) {
+    const platform = String(slot.platform || "linkedin");
+    const theme = String(slot.theme || "Update");
+
+    // 1) Generate the post text for this platform.
+    const gen = await generateSocialPost(contextBlock, { theme, angle: "" }, platform);
+    let text = gen.text;
+    if (!text) {
+      // Deterministic fallback so a slot is never left blank/broken.
+      text = `${company.name} ($${company.ticker}): ${theme}. Details are in our public SEC filings on EDGAR.`;
+    }
+
+    // 2) Compliance check (banned-claims) on the text.
+    const flags = checkContent([text]);
+
+    // 3) Reg FD classification.
+    const cls = await classifyRegFD(text, company);
+
+    // 4) Image (best-effort).
+    const imagePrompt = buildImagePrompt({ companyName: company.name, ticker: company.ticker, theme, postText: text });
+    const mediaUrl = await generatePostImage({ companyId: cid, postId: String(slot.id), prompt: imagePrompt });
+
+    // 5) Save everything onto the slot row.
+    await supabase
+      .from("iros_posts")
+      .update({
+        body: text.slice(0, 4000),
+        classification: cls.classification,
+        class_confidence: cls.confidence,
+        class_flags: cls.flags,
+        class_reason: cls.reasoning,
+        media_url: mediaUrl ?? "",
+        status: "draft",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", slot.id);
+
+    await writeAudit({
+      companyId: cid, actorUserId: user.id, actorEmail: user.email,
+      action: "social.post_drafted", entityType: "post", entityId: String(slot.id),
+      payload: { platform, theme, classification: cls.classification, blocked: flags.some((f) => f.severity === "block"), hasImage: Boolean(mediaUrl) },
+    });
+    drafted++;
+  }
+
+  // How many empty slots remain after this pass?
+  const { count } = await supabase
+    .from("iros_posts")
+    .select("id", { count: "exact", head: true })
+    .eq("company_id", cid)
+    .eq("calendar_batch", batchId)
+    .eq("body", "");
+
+  return { ok: true, drafted, remaining: count ?? 0 };
 }

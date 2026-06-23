@@ -34,6 +34,8 @@ function dayKey(iso: string | null): string {
 export default function SocialCalendar({ initialSlots, hasStrategy }: { initialSlots: Slot[]; hasStrategy: boolean }) {
   const [slots, setSlots] = useState<Slot[]>(initialSlots);
   const [busy, setBusy] = useState(false);
+  const [drafting, setDrafting] = useState(false);
+  const [draftMsg, setDraftMsg] = useState("");
   const [error, setError] = useState("");
   const [weeks, setWeeks] = useState(4);
 
@@ -52,6 +54,28 @@ export default function SocialCalendar({ initialSlots, hasStrategy }: { initialS
       setError(e instanceof Error ? e.message : "Something went wrong.");
     } finally {
       setBusy(false);
+    }
+  };
+
+  // Draft every empty slot: POST in a loop (the API caps each call) until none remain.
+  const draftAll = async () => {
+    setDrafting(true); setError(""); setDraftMsg("");
+    try {
+      let guard = 0;
+      // Hard cap on iterations so a stuck "remaining" can't loop forever.
+      while (guard++ < 40) {
+        const res = await fetch("/api/social/draft", { method: "POST" });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Drafting failed.");
+        setSlots(data.slots ?? []);
+        setDraftMsg(`Drafted ${data.slots?.filter((s: Slot) => s.body).length ?? 0}/${data.slots?.length ?? 0} — ${data.remaining} to go…`);
+        if ((data.remaining ?? 0) <= 0 || (data.drafted ?? 0) === 0) break;
+      }
+      setDraftMsg("All posts drafted ✓");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Something went wrong.");
+    } finally {
+      setDrafting(false);
     }
   };
 
@@ -109,14 +133,28 @@ export default function SocialCalendar({ initialSlots, hasStrategy }: { initialS
             ))}
           </div>
 
-          <div className="mt-4 rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-600">
-            <p className="font-medium text-gray-800">Next: draft &amp; review</p>
-            <p className="mt-1">
-              {draftCount > 0
-                ? `${draftCount} slots still need their post written. The AI will draft each one (with an image) and run it through the compliance check, then you review and approve in bulk.`
-                : "All slots drafted — head to bulk review to approve."}
-              {" "}(Coming in the next step.)
-            </p>
+          <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-sm text-gray-600">
+                <p className="font-medium text-gray-800">Draft the posts</p>
+                <p className="mt-1">
+                  {draftCount > 0
+                    ? `${draftCount} slot${draftCount === 1 ? "" : "s"} still need writing. The AI drafts each one (with an image) and runs the compliance + Reg FD check.`
+                    : "All slots drafted — review and approve in bulk."}
+                </p>
+                {draftMsg && <p className="mt-1 text-indigo-600">{draftMsg}</p>}
+              </div>
+              {draftCount > 0 && (
+                <button disabled={drafting} onClick={draftAll} className="shrink-0 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+                  {drafting ? "Drafting…" : "Draft all posts"}
+                </button>
+              )}
+              {draftCount === 0 && (
+                <a href="/social/review" className="shrink-0 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white">
+                  Review &amp; approve →
+                </a>
+              )}
+            </div>
           </div>
         </>
       )}
