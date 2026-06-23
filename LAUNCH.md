@@ -60,6 +60,14 @@ hard gate — do not take real customers/payments until all three are done.
   FeatureGate now fails closed; server checks exist on the IR-OS/CRM routes).
 - Lawyer review of the Privacy / Terms / "How it's legal" pages.
 - Custom OG/share images verified rendering on a live X/LinkedIn share.
+- **Clean up pre-fix Ayrshare profiles by hand.** Profiles created before the
+  `ayrshare_profile_key` persistence fix (PR #1) never had their `profileKey`
+  saved. Ayrshare's delete API requires the `profileKey` (returned only at
+  create time) — the listing API exposes only `refId`, which it won't accept —
+  so these old profiles **cannot be deleted from code or the API**. Delete the
+  stale/test ones manually in the Ayrshare dashboard (app.ayrshare.com → User
+  Profiles). Profiles created after the fix store their key and are deletable
+  normally.
 
 ---
 

@@ -152,7 +152,12 @@ export interface Company {
   subscription_status?: string; // none | active | trialing | past_due | canceled
   comped?: boolean; // free/promo access — no Stripe subscription; hide pricing/checkout
   onboarding_complete: boolean;
-  ayrshareProfileKey?: string; // this company's Ayrshare user profile (their own linked socials)
+  // This company's Ayrshare user profile (their own linked socials). NOTE: this is
+  // the only handle to the profile — Ayrshare's delete API needs this exact value
+  // (returned just once, at create time) and the listing API only exposes refId,
+  // which delete rejects. Profiles created before this field was persisted can't be
+  // deleted from code; they must be removed by hand in the Ayrshare dashboard.
+  ayrshareProfileKey?: string;
 }
 
 export interface Filing {
