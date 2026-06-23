@@ -82,7 +82,17 @@ export default function SocialReview({ initialSlots }: { initialSlots: Slot[] })
       setSlots(data.slots ?? []);
       clearSel();
       const skipped = (data.skipped ?? []).length;
-      setMsg(`${decision === "approved" ? "Approved" : "Rejected"} ${decision === "approved" ? data.approved : data.rejected}${skipped ? ` · ${skipped} skipped (see badges)` : ""}.`);
+      if (decision === "approved") {
+        const scheduled = data.scheduled ?? 0;
+        const tail = data.scheduleNote
+          ? ` ${data.scheduleNote}` // e.g. quiet mode is on
+          : scheduled > 0
+            ? ` ${scheduled} sent to your channels — track them on the posting dashboard →`
+            : "";
+        setMsg(`Approved ${data.approved}${skipped ? ` · ${skipped} skipped (see badges)` : ""}.${tail}`);
+      } else {
+        setMsg(`Rejected ${data.rejected}${skipped ? ` · ${skipped} skipped (see badges)` : ""}.`);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong.");
     } finally {

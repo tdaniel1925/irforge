@@ -52,8 +52,22 @@ export async function POST(req: Request) {
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || undefined;
     const userAgent = req.headers.get("user-agent") || undefined;
     const result = await bulkDecision({ postIds: ids, decision, ip, userAgent });
+
+    // Auto-schedule on approve: just-approved posts go straight to Ayrshare so they
+    // appear on the posting dashboard immediately — no separate "Schedule" step.
+    // All compliance gates (quiet mode, RED-block, disclosures) live inside
+    // scheduleApprovedPosts. If quiet mode blocks it, the approval still stands and
+    // we tell the client the posts are approved-but-not-scheduled.
+    let scheduled = 0;
+    let scheduleNote: string | undefined;
+    if (decision === "approved" && result.approved > 0) {
+      const sched = await scheduleApprovedPosts();
+      if (sched.ok) scheduled = sched.scheduled;
+      else scheduleNote = sched.error; // e.g. quiet mode on
+    }
+
     const calendar = await listLatestCalendar();
-    return NextResponse.json({ ok: true, ...result, slots: calendar.slots });
+    return NextResponse.json({ ok: true, ...result, scheduled, scheduleNote, slots: calendar.slots });
   }
 
   return NextResponse.json({ error: "Unknown action." }, { status: 422 });
