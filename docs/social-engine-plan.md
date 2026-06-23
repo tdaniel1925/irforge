@@ -117,6 +117,21 @@ Supabase Storage bucket for generated images.
 2. Toggle the **`social`** feature on for each company in Admin → Features.
 3. Ensure `GEMINI_API_KEY` is set in env (images degrade gracefully without it).
 4. Ayrshare must be connected per company (the profileKey fix is already in `main`).
+5. Optional: `SOCIAL_MONTHLY_DRAFT_CAP` (default 120) bounds AI-drafted posts per
+   company per UTC month; set 0 for unlimited.
+
+## Cost cap
+Each drafted post spends Claude (text + Reg FD) + Gemini (image). `draftCalendarBatch`
+enforces a per-company monthly cap (`SOCIAL_MONTHLY_DRAFT_CAP`, default 120) by
+counting `social.post_drafted` audit events since the start of the UTC month, and
+refuses to spend AI calls past it (with a clear message + remaining-slot count).
+
+## Live verification
+`scripts/verify-social-engine.mjs` exercises the real pipeline end-to-end against
+the live APIs (no browser/auth needed): Claude strategy/calendar/post + Reg FD,
+banned-claims gate (incl. a negative control that MUST be caught), Gemini image,
+and Ayrshare `scheduleDate`/`mediaUrls` field validation. All stages passing
+confirms the engine produces real, compliant output. Run: `node scripts/verify-social-engine.mjs`.
 
 ---
 

@@ -168,6 +168,26 @@ export async function listLatestCalendar(): Promise<{ batchId: string | null; sl
 // nothing's left undrafted. Returns how many were drafted and how many remain.
 const DRAFT_LIMIT = 4;
 
+// Per-company monthly cap on AI-drafted posts. Each draft spends Claude (text +
+// Reg FD) + Gemini (image), so this bounds cost. Override per env; default 120
+// (~one calendar/week across a couple platforms). 0 = unlimited.
+const MONTHLY_DRAFT_CAP = Number(process.env.SOCIAL_MONTHLY_DRAFT_CAP ?? 120);
+
+// How many posts this company has drafted since the start of the current UTC
+// month (counts the audit-logged "social.post_drafted" events).
+async function draftedThisMonth(cid: string): Promise<number> {
+  const supabase = await createServerSupabase();
+  const now = new Date();
+  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
+  const { count } = await supabase
+    .from("audit_log")
+    .select("id", { count: "exact", head: true })
+    .eq("company_id", cid)
+    .eq("action", "social.post_drafted")
+    .gte("created_at", monthStart);
+  return count ?? 0;
+}
+
 export async function draftCalendarBatch(): Promise<{ ok: boolean; error?: string; drafted: number; remaining: number }> {
   const supabase = await createServerSupabase();
   const { data: { user } } = await supabase.auth.getUser();
@@ -178,7 +198,19 @@ export async function draftCalendarBatch(): Promise<{ ok: boolean; error?: strin
   const { batchId } = await listLatestCalendar();
   if (!batchId) return { ok: false, error: "No calendar to draft. Generate one first.", drafted: 0, remaining: 0 };
 
-  // Empty slots = body is '' (not yet drafted).
+  // Enforce the monthly cap before spending any AI calls.
+  let monthRemaining = Infinity;
+  if (MONTHLY_DRAFT_CAP > 0) {
+    const used = await draftedThisMonth(cid);
+    monthRemaining = MONTHLY_DRAFT_CAP - used;
+    if (monthRemaining <= 0) {
+      return { ok: false, error: `Monthly limit reached (${MONTHLY_DRAFT_CAP} AI posts). It resets at the start of next month, or contact support to raise it.`, drafted: 0, remaining: 0 };
+    }
+  }
+
+  // Empty slots = body is '' (not yet drafted). Never draft more than the
+  // monthly cap allows in this pass.
+  const passLimit = Math.max(0, Math.min(DRAFT_LIMIT, monthRemaining));
   const { data: empties } = await supabase
     .from("iros_posts")
     .select("id, platform, theme")
@@ -186,10 +218,22 @@ export async function draftCalendarBatch(): Promise<{ ok: boolean; error?: strin
     .eq("calendar_batch", batchId)
     .eq("body", "")
     .order("scheduled_at", { ascending: true })
-    .limit(DRAFT_LIMIT);
+    .limit(passLimit);
 
   const todo = empties ?? [];
-  if (!todo.length) return { ok: true, drafted: 0, remaining: 0 };
+  if (!todo.length) {
+    // No work this pass. If it's because the cap zeroed passLimit (not because the
+    // calendar is fully drafted), surface that so the UI shows why it stopped.
+    if (passLimit === 0) {
+      const { count: stillEmpty } = await supabase
+        .from("iros_posts").select("id", { count: "exact", head: true })
+        .eq("company_id", cid).eq("calendar_batch", batchId).eq("body", "");
+      if ((stillEmpty ?? 0) > 0) {
+        return { ok: false, error: `Monthly limit reached (${MONTHLY_DRAFT_CAP} AI posts). ${stillEmpty} slot(s) left undrafted until next month.`, drafted: 0, remaining: stillEmpty ?? 0 };
+      }
+    }
+    return { ok: true, drafted: 0, remaining: 0 };
+  }
 
   const ctx = await buildStrategyContext();
   if (!ctx) return { ok: false, error: "No company context.", drafted: 0, remaining: 0 };
