@@ -8,6 +8,7 @@ export const IROS_FEATURES = [
   { key: "compliance", label: "Reg FD Classifier & Counsel Console", icon: "🛡️" },
   { key: "voices", label: "Executive Voice Profiles", icon: "🎙️" },
   { key: "calendar", label: "Editorial Calendar", icon: "🗓️" },
+  { key: "social", label: "AI Social Content Engine", icon: "✨" },
   { key: "publishing", label: "Multi-channel Publishing", icon: "📣" },
   { key: "stakeholders", label: "Stakeholder Graph & Inbound", icon: "🤝" },
   { key: "intelligence", label: "Intelligence & Weekly Summary", icon: "📊" },

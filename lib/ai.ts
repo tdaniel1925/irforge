@@ -820,3 +820,133 @@ export async function generateInvestorTargets(
   }));
   return { targets, engine: "template" };
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Social Content Engine generators (strategy → calendar → per-platform posts).
+// All draft from the public record + the company's stated intent only. Every
+// generated post still passes the compliance gate before any human sees it.
+// See docs/social-engine-plan.md.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Pull the first {...} or [...] JSON block out of a model response.
+function extractJson<T>(text: string | null): T | null {
+  if (!text) return null;
+  const m = text.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
+  if (!m) return null;
+  try {
+    return JSON.parse(m[0]) as T;
+  } catch {
+    return null;
+  }
+}
+
+// Turn raw interview answers into a structured social strategy proposal. The
+// client reviews/edits it before it's saved — this just seeds sensible defaults.
+export async function proposeStrategy(
+  contextBlock: string,
+  interview: { goals?: string; audience?: string; tone?: string; frequency?: string; topics?: string; platforms?: string[] }
+): Promise<{
+  goals: string; audience: string; tone: string; themes: string[];
+  dos: string[]; donts: string[]; postsPerWeek: number; engine: "claude" | "template";
+}> {
+  const ai = await claude(
+    `You are an investor-relations social strategist for a public company. From the company context and the client's interview answers, produce a compliant social content strategy. ` +
+      `Compliance is mandatory: never propose price talk, predictions, "undervalued", guarantees, or investment advice as themes. ` +
+      `Return ONLY JSON: {"goals":"...","audience":"...","tone":"...","themes":["..."],"dos":["..."],"donts":["..."],"postsPerWeek":3}.`,
+    `${contextBlock}\n\nINTERVIEW ANSWERS:\n` +
+      `Goals: ${interview.goals ?? "(none)"}\nAudience: ${interview.audience ?? "(none)"}\n` +
+      `Tone: ${interview.tone ?? "(none)"}\nDesired frequency: ${interview.frequency ?? "(none)"}\n` +
+      `Topics they want to cover: ${interview.topics ?? "(none)"}`
+  );
+  const v = extractJson<Record<string, unknown>>(ai);
+  if (v && (v.goals || v.themes)) {
+    return {
+      goals: String(v.goals ?? interview.goals ?? "").slice(0, 2000),
+      audience: String(v.audience ?? interview.audience ?? "").slice(0, 1000),
+      tone: String(v.tone ?? interview.tone ?? "professional").slice(0, 120),
+      themes: Array.isArray(v.themes) ? v.themes.map(String).slice(0, 12) : [],
+      dos: Array.isArray(v.dos) ? v.dos.map(String).slice(0, 20) : [],
+      donts: Array.isArray(v.donts) ? v.donts.map(String).slice(0, 20) : [],
+      postsPerWeek: Number(v.postsPerWeek) > 0 ? Math.min(21, Number(v.postsPerWeek)) : 3,
+      engine: "claude",
+    };
+  }
+  // Deterministic fallback so the interview always yields a usable starting point.
+  return {
+    goals: interview.goals ?? "Build awareness with retail and institutional investors using the public record.",
+    audience: interview.audience ?? "Current and prospective shareholders.",
+    tone: interview.tone ?? "professional",
+    themes: ["Filing highlights (plain English)", "Company explainers", "Sector education", "Milestones & operational updates"],
+    dos: ["Cite the SEC filing as the source", "Keep it factual and plain-language"],
+    donts: ["No price predictions", "No 'undervalued' or valuation claims", "No investment advice or guarantees"],
+    postsPerWeek: 3,
+    engine: "template",
+  };
+}
+
+// Plan a month of calendar slots (NOT yet drafted). Returns slot stubs the
+// generator later turns into per-platform posts.
+export interface CalendarSlotPlan {
+  dayOffset: number;   // days from the calendar start date
+  theme: string;       // which content pillar this slot serves
+  angle: string;       // the specific idea for this post
+  platforms: string[]; // ayrshare channel keys for this slot
+}
+export async function planCalendar(
+  contextBlock: string,
+  opts: { platforms: string[]; postsPerWeek: number; weeks: number }
+): Promise<{ slots: CalendarSlotPlan[]; engine: "claude" | "template" }> {
+  const total = Math.max(1, Math.min(40, opts.postsPerWeek * opts.weeks));
+  const ai = await claude(
+    `You plan a ${opts.weeks}-week investor-relations social calendar for a public company. ` +
+      `Produce exactly ${total} post slots spread evenly across the period. Each slot draws ONLY on the public record + stated themes — ` +
+      `no price talk, predictions, or advice. Vary the angles (don't repeat). ` +
+      `Return ONLY JSON: an array of {"dayOffset":N,"theme":"...","angle":"..."} sorted by dayOffset ascending, dayOffset between 0 and ${opts.weeks * 7 - 1}.`,
+    contextBlock
+  );
+  const arr = extractJson<Array<Record<string, unknown>>>(ai);
+  if (Array.isArray(arr) && arr.length) {
+    const slots = arr.slice(0, total).map((s) => ({
+      dayOffset: Math.max(0, Math.min(opts.weeks * 7 - 1, Number(s.dayOffset) || 0)),
+      theme: String(s.theme ?? "Update").slice(0, 120),
+      angle: String(s.angle ?? "").slice(0, 280),
+      platforms: opts.platforms,
+    }));
+    return { slots, engine: "claude" };
+  }
+  // Fallback: evenly spaced generic slots.
+  const spacing = Math.max(1, Math.floor((opts.weeks * 7) / total));
+  const slots: CalendarSlotPlan[] = Array.from({ length: total }, (_, i) => ({
+    dayOffset: Math.min(opts.weeks * 7 - 1, i * spacing),
+    theme: ["Filing highlight", "Company explainer", "Sector education", "Milestone"][i % 4],
+    angle: "",
+    platforms: opts.platforms,
+  }));
+  return { slots, engine: "template" };
+}
+
+// Generate a single post formatted for one platform. Returns the raw text only;
+// the caller runs it through the compliance gate + image generation.
+const PLATFORM_FORMAT: Record<string, string> = {
+  twitter: "Format as an X (Twitter) thread: 3-4 tweets, max 270 chars each, separated by a blank line. Lead with a hook.",
+  linkedin: "Format as a single LinkedIn post: 1-3 short paragraphs, professional, a clear opening line, 2-3 relevant hashtags at the end.",
+  facebook: "Format as a single Facebook post: 1-2 short paragraphs, approachable but factual.",
+  instagram: "Format as a short Instagram caption: 1 paragraph plus 3-5 hashtags.",
+  gmb: "Format as a short Google Business post: 1 concise paragraph, factual.",
+};
+export async function generateSocialPost(
+  contextBlock: string,
+  slot: { theme: string; angle: string },
+  platform: string
+): Promise<{ text: string; engine: "claude" | "template" }> {
+  const fmt = PLATFORM_FORMAT[platform] ?? PLATFORM_FORMAT.linkedin;
+  const ai = await claude(
+    `You write investor-relations social posts for a public company, using ONLY the public record provided. ` +
+      `STRICT COMPLIANCE: never predict stock price, never say "undervalued", never give investment advice, never guarantee outcomes, never share non-public info. ` +
+      `${fmt} Output ONLY the post text — no preamble, no labels, no explanation.`,
+    `${contextBlock}\n\nTHIS POST — theme: ${slot.theme}. Angle: ${slot.angle || "company-appropriate update on this theme"}.`
+  );
+  if (ai && !isRefusal(ai)) return { text: ai.trim(), engine: "claude" };
+  // Fallback handled by the caller (it has company data for a template).
+  return { text: "", engine: "template" };
+}
