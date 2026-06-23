@@ -38,6 +38,13 @@ alter table public.iros_posts add column if not exists media_url   text default 
 alter table public.iros_posts add column if not exists theme       text default '';
 alter table public.iros_posts add column if not exists calendar_batch uuid;  -- groups a generated calendar run
 
+-- Publish tracking (for the delivery dashboard): the Ayrshare post id we hand
+-- off, the live URL once posted, and the last publish error if it failed.
+alter table public.iros_posts add column if not exists ayr_post_id  text default '';
+alter table public.iros_posts add column if not exists post_url     text default '';
+alter table public.iros_posts add column if not exists publish_error text default '';
+alter table public.iros_posts add column if not exists posted_at    timestamptz;
+
 create index if not exists iros_posts_calendar_batch_idx
   on public.iros_posts (calendar_batch) where calendar_batch is not null;
 

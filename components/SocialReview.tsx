@@ -104,7 +104,7 @@ export default function SocialReview({ initialSlots }: { initialSlots: Slot[] })
       if (!res.ok) throw new Error(data.error || "Couldn't schedule.");
       setSlots(data.slots ?? []);
       const failed = (data.failed ?? []).length;
-      setMsg(`Scheduled ${data.scheduled} post${data.scheduled === 1 ? "" : "s"}${failed ? ` · ${failed} failed` : ""}.`);
+      setMsg(`Scheduled ${data.scheduled} post${data.scheduled === 1 ? "" : "s"}${failed ? ` · ${failed} failed` : ""}. Track delivery on the posting dashboard →`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong.");
     } finally {
@@ -141,6 +141,10 @@ export default function SocialReview({ initialSlots }: { initialSlots: Slot[] })
 
   return (
     <div className="space-y-4">
+      <div className="flex justify-end">
+        <a href="/social/outbox" className="text-sm text-indigo-600">Posting dashboard →</a>
+      </div>
+
       {/* Bulk action bar */}
       <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 rounded-xl border border-gray-200 bg-white p-3">
         <span className="text-sm font-medium text-gray-700">{selected.size} selected</span>

@@ -1,11 +1,11 @@
 import crypto from "crypto";
-import { createServerSupabase } from "../supabase/server";
+import { createServerSupabase, createServiceClient } from "../supabase/server";
 import { getMyCompany } from "../supabase/store";
 import { writeAudit } from "../platform";
 import { planCalendar, generateSocialPost, classifyRegFD } from "../ai";
 import { checkContent } from "../compliance";
 import { generatePostImage, buildImagePrompt } from "../image";
-import { publishToChannels } from "../ayrshare";
+import { publishToChannels, getPostStatus } from "../ayrshare";
 import { buildStrategyContext, renderContextForPrompt, getStrategy } from "./strategy";
 
 // Social Content Engine — calendar layer.
@@ -362,19 +362,169 @@ export async function scheduleApprovedPosts(): Promise<{ ok: boolean; error?: st
 
     if (!result.ok) {
       failed.push({ id: String(p.id), reason: result.error ?? "publish failed" });
+      await supabase.from("iros_posts").update({ publish_error: (result.error ?? "publish failed").slice(0, 500), updated_at: new Date().toISOString() }).eq("id", p.id);
       await writeAudit({ companyId: cid, actorUserId: user.id, actorEmail: user.email, action: "social.schedule_failed", entityType: "post", entityId: String(p.id), payload: { error: result.error } });
       continue;
     }
 
-    await supabase.from("iros_posts").update({ status: "scheduled", updated_at: new Date().toISOString() }).eq("id", p.id);
+    // Persist Ayrshare's handles so the dashboard can show + confirm delivery.
+    // posted=true means it went out now; scheduled=true means it's queued for the slot.
+    await supabase.from("iros_posts").update({
+      status: result.posted ? "published" : "scheduled",
+      ayr_post_id: result.externalId ?? "",
+      post_url: result.postUrl ?? "",
+      publish_error: "",
+      posted_at: result.posted ? new Date().toISOString() : null,
+      updated_at: new Date().toISOString(),
+    }).eq("id", p.id);
     await writeAudit({
       companyId: cid, actorUserId: user.id, actorEmail: user.email,
       action: result.scheduled ? "social.post_scheduled" : "social.post_published",
       entityType: "post", entityId: String(p.id),
-      payload: { platform: p.platform, scheduledAt: p.scheduled_at, postUrl: result.postUrl ?? null, posted: result.posted },
+      payload: { platform: p.platform, scheduledAt: p.scheduled_at, postUrl: result.postUrl ?? null, ayrPostId: result.externalId ?? null, posted: result.posted },
     });
     scheduled++;
   }
 
   return { ok: true, scheduled, failed };
+}
+
+// ── Delivery dashboard (the "outbox") ──
+
+export interface OutboxPost {
+  id: string;
+  platform: string;
+  theme: string;
+  body: string;
+  mediaUrl: string;
+  status: string;           // scheduled | published | pulled | ...
+  scheduledAt: string | null;
+  postedAt: string | null;
+  postUrl: string;          // live link on the social network, once posted
+  ayrPostId: string;
+  publishError: string;
+}
+
+function rowToOutbox(r: Record<string, unknown>): OutboxPost {
+  return {
+    id: String(r.id),
+    platform: (r.platform as string) ?? "",
+    theme: (r.theme as string) ?? "",
+    body: (r.body as string) ?? "",
+    mediaUrl: (r.media_url as string) ?? "",
+    status: (r.status as string) ?? "draft",
+    scheduledAt: r.scheduled_at ? String(r.scheduled_at) : null,
+    postedAt: r.posted_at ? String(r.posted_at) : null,
+    postUrl: (r.post_url as string) ?? "",
+    ayrPostId: (r.ayr_post_id as string) ?? "",
+    publishError: (r.publish_error as string) ?? "",
+  };
+}
+
+// Everything that's been handed off to publishing (scheduled / published / failed),
+// newest first — what the delivery dashboard shows. Spans all calendar batches.
+export async function listOutbox(): Promise<OutboxPost[]> {
+  const supabase = await createServerSupabase();
+  const cid = await myCompanyId();
+  if (!cid) return [];
+  const { data } = await supabase
+    .from("iros_posts")
+    .select("id, platform, theme, body, media_url, status, scheduled_at, posted_at, post_url, ayr_post_id, publish_error")
+    .eq("company_id", cid)
+    .in("status", ["scheduled", "published", "pulled"])
+    .order("scheduled_at", { ascending: true })
+    .limit(500);
+  return (data ?? []).map(rowToOutbox);
+}
+
+// Confirm delivery: for each post we scheduled (has an ayr_post_id) that isn't yet
+// confirmed published, ask Ayrshare its live status and update the row. Returns
+// how many flipped to published / failed. Safe to call on demand or from a cron.
+export async function reconcileScheduledPosts(): Promise<{ ok: boolean; checked: number; published: number; failed: number }> {
+  const supabase = await createServerSupabase();
+  const { data: { user } } = await supabase.auth.getUser();
+  const mine = await getMyCompany();
+  if (!mine) return { ok: false, checked: 0, published: 0, failed: 0 };
+  const cid = mine.id;
+  const profileKey = mine.company.ayrshareProfileKey;
+
+  const { data } = await supabase
+    .from("iros_posts")
+    .select("id, ayr_post_id, status")
+    .eq("company_id", cid)
+    .eq("status", "scheduled")
+    .neq("ayr_post_id", "")
+    .limit(100);
+
+  const todo = data ?? [];
+  let published = 0, failed = 0;
+  for (const p of todo) {
+    const s = await getPostStatus(String(p.ayr_post_id), profileKey);
+    if (!s.found) continue;
+    if (s.status === "success") {
+      await supabase.from("iros_posts").update({
+        status: "published",
+        post_url: s.postUrl ?? "",
+        posted_at: new Date().toISOString(),
+        publish_error: "",
+        updated_at: new Date().toISOString(),
+      }).eq("id", p.id);
+      await writeAudit({ companyId: cid, actorUserId: user?.id, actorEmail: user?.email, action: "social.post_published", entityType: "post", entityId: String(p.id), payload: { postUrl: s.postUrl ?? null, confirmed: true } });
+      published++;
+    } else if (s.status === "error") {
+      await supabase.from("iros_posts").update({
+        publish_error: (s.error ?? "Ayrshare reported an error").slice(0, 500),
+        updated_at: new Date().toISOString(),
+      }).eq("id", p.id);
+      failed++;
+    }
+    // scheduled / pending → leave as-is, check again later.
+  }
+  return { ok: true, checked: todo.length, published, failed };
+}
+
+// Cron variant: reconcile scheduled posts for ALL companies via the service-role
+// client (no auth session). Looks up each company's ayrshareProfileKey to scope
+// the Ayrshare status check correctly. Time-budgeted for serverless.
+export async function reconcileAllScheduled(deadlineMs: number): Promise<{ checked: number; published: number; failed: number }> {
+  const svc = createServiceClient();
+  const started = Date.now();
+
+  const { data: due } = await svc
+    .from("iros_posts")
+    .select("id, company_id, ayr_post_id")
+    .eq("status", "scheduled")
+    .neq("ayr_post_id", "")
+    .limit(500);
+
+  const rows = due ?? [];
+  if (!rows.length) return { checked: 0, published: 0, failed: 0 };
+
+  // Cache profileKey per company (one lookup each).
+  const keyCache = new Map<string, string | undefined>();
+  const profileKeyFor = async (cid: string): Promise<string | undefined> => {
+    if (keyCache.has(cid)) return keyCache.get(cid);
+    const { data } = await svc.from("companies").select("ayrshare_profile_key").eq("id", cid).maybeSingle();
+    const pk = (data?.ayrshare_profile_key as string) || undefined;
+    keyCache.set(cid, pk);
+    return pk;
+  };
+
+  let checked = 0, published = 0, failed = 0;
+  for (const p of rows) {
+    if (Date.now() - started > deadlineMs) break;
+    checked++;
+    const pk = await profileKeyFor(String(p.company_id));
+    const s = await getPostStatus(String(p.ayr_post_id), pk);
+    if (!s.found) continue;
+    if (s.status === "success") {
+      await svc.from("iros_posts").update({ status: "published", post_url: s.postUrl ?? "", posted_at: new Date().toISOString(), publish_error: "", updated_at: new Date().toISOString() }).eq("id", p.id);
+      await writeAudit({ companyId: String(p.company_id), action: "social.post_published", entityType: "post", entityId: String(p.id), payload: { postUrl: s.postUrl ?? null, confirmed: true, via: "cron" } });
+      published++;
+    } else if (s.status === "error") {
+      await svc.from("iros_posts").update({ publish_error: (s.error ?? "Ayrshare reported an error").slice(0, 500), updated_at: new Date().toISOString() }).eq("id", p.id);
+      failed++;
+    }
+  }
+  return { checked, published, failed };
 }

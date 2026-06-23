@@ -112,8 +112,19 @@ Supabase Storage bucket for generated images.
 - Quiet mode blocks the whole schedule run; quiet periods block sensitive approvals.
 - Bulk approval records a **separate named-human approval per post** (audited).
 
+## Posting dashboard (delivery visibility)
+After approval, posts are scheduled to Ayrshare and tracked end-to-end at
+`/social/outbox`: status (scheduled → posting → posted ✓ / failed), channel,
+scheduled/posted time, a preview with image, a live link to the published post,
+and a warning if a channel isn't connected. `scheduleApprovedPosts` persists
+Ayrshare's post id + URL on the row; `reconcileScheduledPosts` (manual "Check
+delivery status" button) and `/api/cron/reconcile-social` (every 15 min) ask
+Ayrshare each post's live status and flip rows to published/failed.
+
 ## Operator setup (one-time, per environment)
-1. Run `supabase/RUN-THIS-social-engine.sql` (table + columns + `social-images` bucket).
+1. Run `supabase/RUN-THIS-social-engine.sql` (table + columns + `social-images`
+   bucket + publish-tracking columns: `ayr_post_id` / `post_url` /
+   `publish_error` / `posted_at`). Idempotent — safe to re-run.
 2. Toggle the **`social`** feature on for each company in Admin → Features.
 3. Ensure `GEMINI_API_KEY` is set in env (images degrade gracefully without it).
 4. Ayrshare must be connected per company (the profileKey fix is already in `main`).
