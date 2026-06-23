@@ -23,6 +23,8 @@ export interface CalendarSlotRow {
   body: string;
   title: string;
   mediaUrl: string;
+  classification: string | null;
+  classFlags: string[];
   calendarBatch: string | null;
 }
 
@@ -152,6 +154,8 @@ export async function listLatestCalendar(): Promise<{ batchId: string | null; sl
     body: (r.body as string) ?? "",
     title: (r.title as string) ?? "",
     mediaUrl: (r.media_url as string) ?? "",
+    classification: r.classification ? String(r.classification) : null,
+    classFlags: (r.class_flags as string[]) ?? [],
     calendarBatch: r.calendar_batch ? String(r.calendar_batch) : null,
   }));
   return { batchId, slots };
