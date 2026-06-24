@@ -43,18 +43,35 @@ export default function Onboarding() {
 
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
-  const runLookup = async () => {
-    if (!tickerInput.trim()) { setError("Enter your ticker to continue."); return; }
+  // Claim flow: /onboarding?ticker=AMFN pre-fills the ticker and auto-runs the
+  // EDGAR lookup so a company arriving from "Claim $TICKER" lands on step 1 with
+  // its details already pulled — no retyping.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const t = new URLSearchParams(window.location.search).get("ticker");
+    if (t && /^[A-Za-z.\-]{1,8}$/.test(t)) {
+      const up = t.toUpperCase();
+      setTickerInput(up);
+      runLookup(up);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const runLookup = async (tickerArg?: string) => {
+    // Guard: onClick passes a MouseEvent here — only honor a real string ticker.
+    const explicit = typeof tickerArg === "string" ? tickerArg : "";
+    const tk = (explicit || tickerInput).trim();
+    if (!tk) { setError("Enter your ticker to continue."); return; }
     setBusy(true); setError("");
     try {
-      const res = await fetch(`/api/onboard/lookup?ticker=${encodeURIComponent(tickerInput)}`);
+      const res = await fetch(`/api/onboard/lookup?ticker=${encodeURIComponent(tk)}`);
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? "Lookup failed."); return; }
       setLookup(data);
       setForm((f) => ({
         ...f,
         name: data.companyName || f.name,
-        ticker: data.ticker || tickerInput.toUpperCase(),
+        ticker: data.ticker || tk.toUpperCase(),
         exchange: data.exchange || f.exchange,
         cik: data.cik || f.cik,
         sector: data.sector || f.sector,

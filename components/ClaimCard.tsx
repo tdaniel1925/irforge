@@ -1,46 +1,11 @@
-"use client";
+import Link from "next/link";
 
-import { useState } from "react";
-
+// Claiming a page = signing up the company and onboarding it with this ticker.
+// We route straight into signup (company type, ticker pre-filled) instead of a
+// separate lead form — onboarding completes the claim. Authority is verified at
+// onboarding via the email domain (see /api/onboard).
 export default function ClaimCard({ ticker }: { ticker: string }) {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [role, setRole] = useState("");
-  const [state, setState] = useState<"idle" | "busy" | "done" | "error">("idle");
-  const [error, setError] = useState("");
-
-  const submit = async () => {
-    setState("busy");
-    setError("");
-    try {
-      const res = await fetch("/api/claim", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ticker, name, email, role }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error ?? "Something went wrong.");
-        setState("error");
-      } else {
-        setState("done");
-      }
-    } catch {
-      setError("Network error — try again.");
-      setState("error");
-    }
-  };
-
-  if (state === "done") {
-    return (
-      <div className="mt-8 rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-6 text-center">
-        <p className="text-lg font-semibold text-emerald-700 dark:text-emerald-300">Request received.</p>
-        <p className="mt-1 text-sm text-muted">
-          We&apos;ll verify you&apos;re with the company and reach out within one business day to activate your page.
-        </p>
-      </div>
-    );
-  }
+  const claimHref = `/login?type=company&mode=signup&next=${encodeURIComponent(`/onboarding?ticker=${ticker}`)}`;
 
   return (
     <div className="mt-8 rounded-xl border border-amber-500/40 bg-amber-500/5 p-6">
@@ -55,35 +20,22 @@ export default function ClaimCard({ ticker }: { ticker: string }) {
             <li>✓ Raise the grade at the top of this page, and watch it move monthly</li>
           </ul>
         </div>
-        <div className="w-full max-w-xs space-y-2">
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Your name"
-            className="w-full rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:border-amber-500 focus:outline-none"
-          />
-          <input
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Work email"
-            type="email"
-            className="w-full rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:border-amber-500 focus:outline-none"
-          />
-          <input
-            value={role}
-            onChange={(e) => setRole(e.target.value)}
-            placeholder="Role (CEO, CFO, IR…)"
-            className="w-full rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:border-amber-500 focus:outline-none"
-          />
-          {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
-          <button
-            onClick={submit}
-            disabled={state === "busy"}
-            className="w-full rounded-lg bg-amber-500 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-amber-400 disabled:opacity-50"
-          >
-            {state === "busy" ? "Sending…" : `Claim $${ticker} →`}
-          </button>
-          <p className="text-center text-[11px] text-faint">Free to claim. Verification required.</p>
+        <div className="w-full max-w-xs">
+          <div className="rounded-xl border border-amber-500/30 bg-surface p-4">
+            <p className="text-sm font-semibold text-app">Claim ${ticker} in about 2 minutes</p>
+            <ol className="mt-2 space-y-1 text-xs text-muted">
+              <li><span className="font-semibold text-app">1.</span> Create your account with your work email</li>
+              <li><span className="font-semibold text-app">2.</span> We pull your profile from SEC EDGAR automatically</li>
+              <li><span className="font-semibold text-app">3.</span> Confirm it&apos;s you — your page goes live</li>
+            </ol>
+            <Link
+              href={claimHref}
+              className="mt-3 block w-full rounded-lg bg-amber-500 px-4 py-2.5 text-center text-sm font-bold text-white transition hover:bg-amber-400"
+            >
+              Claim ${ticker} →
+            </Link>
+            <p className="mt-2 text-center text-[11px] text-faint">Free to claim · verified by your company email</p>
+          </div>
         </div>
       </div>
     </div>

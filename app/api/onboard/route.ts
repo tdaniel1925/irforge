@@ -147,14 +147,25 @@ export async function POST(req: Request) {
   logAudit(db, "system", "ONBOARDED", `${db.company.name} ($${db.company.ticker}) set up on the ${db.company.tier} tier — ${db.filings.length} filings imported, ${db.drafts.length} post(s) drafted`);
   await save();
 
-  // Email the new company a welcome/setup guide (best-effort; never blocks onboarding).
+  // Claim authority signal: a corporate-domain email is a reasonable proof the
+  // claimant works at the company; a free/consumer-provider email gets flagged so
+  // it can be reviewed rather than auto-trusted. We record the signal in the audit
+  // log (and return it) — onboarding still succeeds either way, but the platform
+  // owner can see which claims came from a personal address.
+  let claimVerified = false;
   try {
     const supabase = await createServerSupabase();
     const { data: { user } } = await supabase.auth.getUser();
-    if (user?.email) await sendCompanyWelcomeGuide(user.email, db.company.name);
+    const email = user?.email ?? "";
+    const domain = email.split("@")[1]?.toLowerCase() ?? "";
+    const FREE_PROVIDERS = new Set(["gmail.com", "yahoo.com", "outlook.com", "hotmail.com", "icloud.com", "aol.com", "proton.me", "protonmail.com", "gmx.com", "live.com", "msn.com"]);
+    claimVerified = Boolean(domain) && !FREE_PROVIDERS.has(domain);
+    logAudit(db, "system", claimVerified ? "CLAIM_VERIFIED" : "CLAIM_NEEDS_REVIEW", `$${db.company.ticker} claimed by ${email}${claimVerified ? " (corporate domain)" : " (consumer email — review authority)"}`);
+    await save();
+    if (email) await sendCompanyWelcomeGuide(email, db.company.name);
   } catch (e) {
-    console.error("[onboard] welcome email failed:", e);
+    console.error("[onboard] welcome email / claim check failed:", e);
   }
 
-  return NextResponse.json({ ok: true, company: db.company, filings: db.filings.length, drafts: db.drafts.length });
+  return NextResponse.json({ ok: true, company: db.company, filings: db.filings.length, drafts: db.drafts.length, claimVerified });
 }
