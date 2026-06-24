@@ -48,31 +48,50 @@ export async function POST() {
   // profileKey as missing so it gets recreated.
   const looksLikeProfileKey = (v?: string) => Boolean(v && /^[0-9A-F]{8}(-[0-9A-F]{8}){3}$/.test(v));
 
-  const createFresh = async () => {
+  // Returns null on success, or { error, cap } when create failed. cap=true means
+  // Ayrshare's plan profile limit is full — a distinct, actionable failure.
+  const createFresh = async (): Promise<{ error: string; cap: boolean } | null> => {
     const created = await createAyrshareProfile(uniqueTitle, idSuffix);
-    if (!created.ok || !created.profileKey) return created.error ?? "Couldn't create your social profile.";
+    if (!created.ok || !created.profileKey) {
+      return { error: created.error ?? "Couldn't create your social profile.", cap: created.code === "profile_cap" };
+    }
     db.company.ayrshareProfileKey = created.profileKey;
     logAudit(db, `${db.company.approverName} (${db.company.approverTitle})`, "SOCIAL_PROFILE_CREATED", "Ayrshare profile created");
     await save();
     return null;
   };
 
+  const hadStoredKey = Boolean(db.company.ayrshareProfileKey);
+
   // Create on first connect, or replace a stored value that isn't a valid profileKey
   // (self-heals companies that have a stale refId from an older build).
   if (!looksLikeProfileKey(db.company.ayrshareProfileKey)) {
-    const err = await createFresh();
-    if (err) return NextResponse.json({ error: err }, { status: 502 });
+    const fail = await createFresh();
+    // If creation hit the plan cap but we DO have some stored key, fall through and
+    // try to use it (it may still work / surface the precise error from JWT) rather
+    // than dead-ending — and never spawn more profiles. Otherwise, stop with a
+    // clear cap message.
+    if (fail?.cap && !hadStoredKey) {
+      return NextResponse.json({ error: fail.error, code: "profile_cap" }, { status: 409 });
+    }
+    if (fail && !fail.cap) {
+      return NextResponse.json({ error: fail.error }, { status: 502 });
+    }
   }
 
   let key = db.company.ayrshareProfileKey ?? "";
   let link = await generateAyrshareLinkUrl(key);
 
-  // Self-heal: if Ayrshare still rejects the key as invalid (e.g. the profile was
-  // deleted in the dashboard, or a stale key slipped through), create a fresh one
-  // and retry ONCE.
+  // Self-heal: if Ayrshare still rejects the key as invalid, create a fresh one and
+  // retry ONCE — UNLESS the plan cap is full (then surface that, don't keep trying).
   if (!link.ok && /profile key is invalid/i.test(link.error ?? "")) {
-    const err = await createFresh();
-    if (err) return NextResponse.json({ error: err }, { status: 502 });
+    const fail = await createFresh();
+    if (fail?.cap) {
+      return NextResponse.json({ error: fail.error, code: "profile_cap" }, { status: 409 });
+    }
+    if (fail) {
+      return NextResponse.json({ error: fail.error }, { status: 502 });
+    }
     key = db.company.ayrshareProfileKey ?? "";
     link = await generateAyrshareLinkUrl(key);
   }
