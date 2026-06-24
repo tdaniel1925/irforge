@@ -23,9 +23,28 @@ hard gate — do not take real customers/payments until all three are done.
 
 ## 🟠 Verify before launch
 
-- [ ] **Email delivery works.** Email confirmation is ON in Supabase, so signups
-      must confirm by email. Confirm your domain is verified in Resend and a real
-      signup actually receives the confirmation email.
+- [ ] **Email delivery works (two separate systems).**
+  - **App email** (team invites, welcome, alerts, lead outreach) already runs on
+    Resend via `lib/email.ts` (`RESEND_API_KEY` + `EMAIL_FROM=…@pubcozone.com`).
+    Nothing to change — `pubcozone.com` is verified in Resend.
+  - **Auth email** (signup confirmation, password reset, magic link) is sent by
+    **Supabase**, not our code — by default via Supabase's throttled built-in SMTP
+    (~3–4/hr, spam-prone). **Route it through Resend too** so all email is one
+    provider: Supabase → Project Settings → Authentication → **SMTP Settings →
+    Enable Custom SMTP**:
+    - Host `smtp.resend.com` · Port `587` · Username `resend` ·
+      Password = the `RESEND_API_KEY` · Sender `alerts@pubcozone.com` ·
+      Sender name `PubcoZone`.
+  - Then Supabase → Auth → **URL Configuration**: Site URL `https://pubcozone.com`
+    and add Redirect URL `https://pubcozone.com/auth/callback` (the route that
+    turns the email link into a session; also `http://localhost:3000/auth/callback`
+    for dev).
+  - **Test:** do one real signup → confirm the email arrives from `@pubcozone.com`
+    and the link logs you in (lands on `/member` for investors).
+  - If you'd rather skip email for now: Supabase → Auth → Providers → Email →
+    uncheck **Confirm email** → investors sign up instantly, no email dependency.
+  - ⚠️ The `RESEND_API_KEY` was pasted in chat during setup — **rotate it** in
+    Resend (Settings → API Keys), then update `.env.local` + Vercel.
 - [ ] **Stripe live webhooks** point at:
   - `https://pubcozone.com/api/billing/webhook` (company)
   - `https://pubcozone.com/api/member-billing/webhook` (member)
