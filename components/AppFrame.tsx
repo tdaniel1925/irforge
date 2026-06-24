@@ -8,6 +8,7 @@ import FeatureGate from "./FeatureGate";
 import UserMenu from "./UserMenu";
 import WelcomeModal from "./WelcomeModal";
 import BackButton from "./BackButton";
+import AiChat from "./AiChat";
 import type { Feature } from "@/lib/billing";
 
 // The landing page (/) and other public routes render full-bleed with no app sidebar —
@@ -61,6 +62,7 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
         </div>
       </main>
       <WelcomeModal />
+      <AiChat />
     </div>
   );
 }

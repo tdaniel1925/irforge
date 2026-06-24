@@ -950,3 +950,41 @@ export async function generateSocialPost(
   // Fallback handled by the caller (it has company data for a template).
   return { text: "", engine: "template" };
 }
+
+// Revise a piece of content per a user instruction (the Writing Studio's live-AI
+// edit bar). Returns the full revised text — the model rewrites the whole doc so
+// the editor can replace it wholesale. Compliance guardrails are always applied.
+export async function reviseContent(
+  current: string,
+  instruction: string,
+  company: Company
+): Promise<{ text: string; engine: "claude" | "template" }> {
+  const ai = await claude(
+    `You are an editor helping ${company.name} ($${company.ticker}), a public company, revise investor-relations content. ` +
+      `Apply the user's instruction to the document and return the COMPLETE revised document text (not a diff, not commentary). ` +
+      `STRICT COMPLIANCE — never add: stock-price predictions, "undervalued"/valuation claims, investment advice, guarantees, or any non-public information. Keep it factual and grounded in the public record. ` +
+      `Output ONLY the revised document text.`,
+    `CURRENT DOCUMENT:\n${current.slice(0, 8000)}\n\nINSTRUCTION: ${instruction}`
+  );
+  if (ai && !isRefusal(ai)) return { text: ai.trim(), engine: "claude" };
+  return { text: current, engine: "template" }; // no change if AI unavailable
+}
+
+// The floating in-app AI assistant. Multi-turn, grounded in the company's public
+// context, with the same compliance guardrails. Flattens the short history into a
+// single prompt (the private claude() helper takes one user turn).
+export async function assistantReply(
+  messages: { role: "user" | "assistant"; content: string }[],
+  company: Company
+): Promise<string> {
+  const transcript = messages
+    .map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${String(m.content).slice(0, 1500)}`)
+    .join("\n");
+  const ai = await claude(
+    `You are the in-app AI assistant for ${company.name} ($${company.ticker}), a public company using PubcoZone for investor relations. ` +
+      `Help with IR questions, drafting, and how to use the app. Be concise and practical. ` +
+      `STRICT COMPLIANCE: never give stock-price predictions, valuation claims, investment advice, guarantees, or non-public information; ground anything factual in the public record / SEC filings. If asked for something non-compliant, say so plainly and offer a compliant alternative.`,
+    `${transcript}\nAssistant:`
+  );
+  return ai?.trim() || "I'm having trouble reaching the AI right now — try again in a moment.";
+}

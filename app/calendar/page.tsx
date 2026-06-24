@@ -13,6 +13,12 @@ const TYPE_STYLE: Record<string, { label: string; chip: string }> = {
   lockup: { label: "Lock-up", chip: "bg-orange-500/15 text-orange-600 dark:text-orange-300" },
   quiet_start: { label: "Quiet period", chip: "bg-red-500/15 text-red-600 dark:text-red-300" },
   quiet_end: { label: "Quiet ends", chip: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300" },
+  holiday: { label: "Holiday", chip: "bg-rose-500/15 text-rose-600 dark:text-rose-300" },
+  presentation: { label: "Presentation", chip: "bg-indigo-500/15 text-indigo-600 dark:text-indigo-300" },
+  follow_up_call: { label: "Follow-up call", chip: "bg-cyan-500/15 text-cyan-600 dark:text-cyan-300" },
+  onboarding_session: { label: "Onboarding session", chip: "bg-teal-500/15 text-teal-600 dark:text-teal-300" },
+  team_meeting: { label: "Team meeting", chip: "bg-amber-500/15 text-amber-600 dark:text-amber-300" },
+  reminder: { label: "Reminder", chip: "bg-fuchsia-500/15 text-fuchsia-600 dark:text-fuchsia-300" },
   custom: { label: "Event", chip: "bg-slate-500/15 text-faint" },
 };
 
@@ -36,7 +42,7 @@ export default function CalendarPage() {
     const res = await fetch("/api/calendar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ date, title, type }) });
     const data = await res.json();
     if (!res.ok) setNotice({ text: data.error ?? "Failed.", tone: "error" });
-    else { setNotice({ text: type === "earnings" ? "Added — and we auto-scheduled your quiet period 14 days before." : "Added.", tone: "success" }); setDate(""); setTitle(""); setType("custom"); await refresh(); }
+    else { setNotice({ text: "Added.", tone: "success" }); setDate(""); setTitle(""); setType("custom"); await refresh(); }
   };
 
   const remove = async (id: string) => {
@@ -78,7 +84,7 @@ export default function CalendarPage() {
 
   return (
     <div>
-      <PageHeader title="IR Calendar" subtitle="Your earnings dates, filing deadlines, conferences, and lock-ups in one place. Add your earnings date and we automatically schedule the quiet period that locks publishing — so you never post during a blackout by accident." />
+      <PageHeader title="IR Calendar" subtitle="Your earnings dates, filing deadlines, conferences, lock-ups, meetings, and reminders in one place. Set a quiet period whenever you need one to lock publishing during a blackout." />
       {notice && <Banner message={notice.text} tone={notice.tone} onDismiss={() => setNotice(null)} />}
 
       <Card className="mb-6">
@@ -92,6 +98,12 @@ export default function CalendarPage() {
             <option value="filing_deadline">Filing deadline</option>
             <option value="conference">Conference</option>
             <option value="lockup">Lock-up</option>
+            <option value="holiday">Holiday</option>
+            <option value="presentation">Presentation</option>
+            <option value="follow_up_call">Follow-up call</option>
+            <option value="onboarding_session">Onboarding session</option>
+            <option value="team_meeting">Team meeting</option>
+            <option value="reminder">Reminder</option>
           </select>
         </div>
         <div className="mt-3"><Button onClick={add} disabled={!date || !title}>Add to calendar</Button></div>

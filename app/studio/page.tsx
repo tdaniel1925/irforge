@@ -5,10 +5,11 @@ import { useAppState } from "@/components/useAppState";
 import { Banner, Button, Card, ErrorBanner, FlagList, LoadingState, PageHeader, timeAgo } from "@/components/ui";
 import type { Notice } from "@/components/ui";
 import type { DisclosureCheck, PressRelease } from "@/lib/types";
+import StudioEditor from "@/components/StudioEditor";
 
 export default function Studio() {
   const { db, error, refresh } = useAppState();
-  const [tab, setTab] = useState<"press" | "disclosure">("press");
+  const [tab, setTab] = useState<"editor" | "press" | "disclosure">("editor");
 
   if (error) return <ErrorBanner message={error} />;
   if (!db) return <LoadingState />;
@@ -17,15 +18,18 @@ export default function Studio() {
     <div>
       <PageHeader
         title="Writing Studio"
-        subtitle="Draft the documents companies usually pay an agency or lawyer for — a press release, or a check on whether something needs to be disclosed. AI writes the first draft; you and your counsel finish it."
+        subtitle="A live AI editor for your IR content — generate, edit by hand, and tell the AI to revise, all in one place. Plus a press-release builder and a disclosure helper."
       />
 
       <div className="mb-5 flex gap-1 rounded-lg border border-app bg-surface p-1 text-sm">
+        <button onClick={() => setTab("editor")} className={`rounded-md px-3.5 py-1.5 transition ${tab === "editor" ? "bg-surface-2 font-medium text-app" : "text-muted hover:text-app"}`}>AI Editor</button>
         <button onClick={() => setTab("press")} className={`rounded-md px-3.5 py-1.5 transition ${tab === "press" ? "bg-surface-2 font-medium text-app" : "text-muted hover:text-app"}`}>Press release</button>
         <button onClick={() => setTab("disclosure")} className={`rounded-md px-3.5 py-1.5 transition ${tab === "disclosure" ? "bg-surface-2 font-medium text-app" : "text-muted hover:text-app"}`}>Disclosure helper</button>
       </div>
 
-      {tab === "press" ? <PressBuilder db={db} refresh={refresh} /> : <DisclosureHelper db={db} refresh={refresh} />}
+      {tab === "editor" ? <StudioEditor companyTicker={db.company.ticker} />
+        : tab === "press" ? <PressBuilder db={db} refresh={refresh} />
+        : <DisclosureHelper db={db} refresh={refresh} />}
     </div>
   );
 }

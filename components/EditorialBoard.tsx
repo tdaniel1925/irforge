@@ -44,6 +44,47 @@ export default function EditorialBoard({ initialPosts, voices, canPublish = fals
 
   const patchPost = (p: Post) => setPosts((ps) => ps.map((x) => (x.id === p.id ? p : x)));
 
+  // ── Drag-and-drop between columns ──
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dragOverCol, setDragOverCol] = useState<string | null>(null);
+
+  // Which target columns a card may be dragged INTO from its current status.
+  // Mirrors the server-side state machine; RED can't reach approved without counsel.
+  const allowedTargets = (p: Post): string[] => {
+    switch (p.status) {
+      case "draft": return ["reviewed"];
+      case "reviewed": return p.classification === "red" ? [] : ["approved", "draft"];
+      case "approved": return ["scheduled"];
+      default: return [];
+    }
+  };
+
+  const dropOnColumn = async (colKey: string) => {
+    const id = dragId;
+    setDragId(null); setDragOverCol(null);
+    if (!id) return;
+    const p = posts.find((x) => x.id === id);
+    if (!p || p.status === colKey || !allowedTargets(p).includes(colKey)) {
+      if (p && !allowedTargets(p).includes(colKey) && p.status !== colKey) {
+        setError(p.classification === "red" ? "RED posts need counsel sign-off before approval." : "That move isn't allowed.");
+        setTimeout(() => setError(""), 2500);
+      }
+      return;
+    }
+    const prev = p.status;
+    patchPost({ ...p, status: colKey }); // optimistic
+    try {
+      const res = await fetch("/api/iros/posts", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, action: "transition", to: colKey }) });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || "Move failed.");
+      if (d.post) patchPost(d.post);
+    } catch (e) {
+      patchPost({ ...p, status: prev }); // revert
+      setError(e instanceof Error ? e.message : "Couldn't move that card.");
+      setTimeout(() => setError(""), 2500);
+    }
+  };
+
   const aiDraft = async () => {
     if (!topic.trim()) return;
     setBusy("draft"); setError("");
@@ -147,12 +188,25 @@ export default function EditorialBoard({ initialPosts, voices, canPublish = fals
       <div className="grid gap-4 lg:grid-cols-5">
         {COLUMNS.map((col) => {
           const items = posts.filter((p) => p.status === col.key);
+          const canDropHere = dragId ? allowedTargets(posts.find((x) => x.id === dragId) ?? ({} as Post)).includes(col.key) : false;
           return (
-            <div key={col.key} className="rounded-xl border border-app bg-surface-2/40 p-2">
+            <div
+              key={col.key}
+              onDragOver={(e) => { if (dragId) { e.preventDefault(); setDragOverCol(col.key); } }}
+              onDragLeave={() => setDragOverCol((c) => (c === col.key ? null : c))}
+              onDrop={(e) => { e.preventDefault(); dropOnColumn(col.key); }}
+              className={`rounded-xl border bg-surface-2/40 p-2 transition-colors duration-200 ${dragOverCol === col.key && canDropHere ? "border-emerald-500 bg-emerald-500/5" : dragOverCol === col.key ? "border-red-400/50" : "border-app"}`}
+            >
               <p className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-faint">{col.label} · {items.length}</p>
               <div className="space-y-2">
                 {items.map((p) => (
-                  <div key={p.id} className="rounded-lg border border-app bg-surface p-3">
+                  <div
+                    key={p.id}
+                    draggable={allowedTargets(p).length > 0}
+                    onDragStart={() => setDragId(p.id)}
+                    onDragEnd={() => { setDragId(null); setDragOverCol(null); }}
+                    className={`rounded-lg border border-app bg-surface p-3 transition-all duration-200 ${allowedTargets(p).length > 0 ? "cursor-grab active:cursor-grabbing" : ""} ${dragId === p.id ? "scale-95 opacity-40" : ""}`}
+                  >
                     {p.classification && (
                       <span className={`mb-1.5 inline-block rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${CLASS_STYLE[p.classification]}`}>
                         {p.classification === "red" ? "🚨 " : ""}{p.classification}
