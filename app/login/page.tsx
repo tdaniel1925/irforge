@@ -7,10 +7,23 @@ import { createClient, supabaseConfigured } from "@/lib/supabase/client";
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
-  const [accountType, setAccountType] = useState<"investor" | "company">("investor");
+  // Honor ?mode=signup (from the split-hero CTAs); ?mode=reset lands on sign-in.
+  const [mode, setMode] = useState<"signin" | "signup">(() => {
+    if (typeof window === "undefined") return "signin";
+    return new URLSearchParams(window.location.search).get("mode") === "signup" ? "signup" : "signin";
+  });
+  // Honor ?type=investor|company so the split-hero CTAs preselect the right side.
+  const [accountType, setAccountType] = useState<"investor" | "company">(() => {
+    if (typeof window === "undefined") return "investor";
+    return new URLSearchParams(window.location.search).get("type") === "company" ? "company" : "investor";
+  });
   const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  // Surface an ?error= passed back from the /auth/callback route (expired/invalid link).
+  const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(() => {
+    if (typeof window === "undefined") return null;
+    const err = new URLSearchParams(window.location.search).get("error");
+    return err ? { text: err, ok: false } : null;
+  });
 
   const configured = supabaseConfigured();
 
