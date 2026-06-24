@@ -9,6 +9,10 @@
 --   kind 'tech'    — tech / development side
 --   kind 'general' — everyone in the company can see it
 --   kind 'personal'— a single user's own calendar (owner_user_id set)
+-- NOTE: team_calendars and calendar_access reference each other (the read policy
+-- on team_calendars queries calendar_access, and calendar_access FKs to
+-- team_calendars). So we create BOTH tables first, then add the policies — never
+-- a policy that names a table that doesn't exist yet.
 create table if not exists public.team_calendars (
   id            uuid primary key default gen_random_uuid(),
   company_id    uuid not null references public.companies(id) on delete cascade,
@@ -20,6 +24,19 @@ create table if not exists public.team_calendars (
 );
 create index if not exists team_calendars_company_idx on public.team_calendars (company_id);
 alter table public.team_calendars enable row level security;
+
+-- ── calendar_access: which user can see which calendar (admin-assigned) ──
+create table if not exists public.calendar_access (
+  calendar_id uuid not null references public.team_calendars(id) on delete cascade,
+  company_id  uuid not null references public.companies(id) on delete cascade,
+  user_id     uuid not null references auth.users(id) on delete cascade,
+  created_at  timestamptz default now(),
+  primary key (calendar_id, user_id)
+);
+create index if not exists calendar_access_user_idx on public.calendar_access (user_id);
+alter table public.calendar_access enable row level security;
+
+-- Now the policies (both tables exist) --------------------------------------
 drop policy if exists team_calendars_read on public.team_calendars;
 -- A user can read a calendar if: it's general, it's their own personal one, OR
 -- they've been granted access to it (see calendar_access). Admins see all.
@@ -43,16 +60,6 @@ create policy team_calendars_write on public.team_calendars for all using (
   or public.is_super_admin()
 );
 
--- ── calendar_access: which user can see which calendar (admin-assigned) ──
-create table if not exists public.calendar_access (
-  calendar_id uuid not null references public.team_calendars(id) on delete cascade,
-  company_id  uuid not null references public.companies(id) on delete cascade,
-  user_id     uuid not null references auth.users(id) on delete cascade,
-  created_at  timestamptz default now(),
-  primary key (calendar_id, user_id)
-);
-create index if not exists calendar_access_user_idx on public.calendar_access (user_id);
-alter table public.calendar_access enable row level security;
 drop policy if exists calendar_access_read on public.calendar_access;
 create policy calendar_access_read on public.calendar_access for select using (
   user_id = auth.uid() or public.is_company_admin(company_id) or public.is_super_admin()
