@@ -80,17 +80,15 @@ export async function getMyCompany(): Promise<{ id: string; company: Company } |
     if (c) return { id: c.id as string, company: rowToCompany(c) };
   }
 
-  // 2) Back-compat: a company they own directly.
-  const { data } = await supabase.from("companies").select("*").eq("owner_id", user.id).maybeSingle();
-  if (data) return { id: data.id as string, company: rowToCompany(data) };
-
   // Member (investor) accounts must NOT get a phantom company minted.
   if (user.user_metadata?.account_type === "member") return null;
 
-  // 2b) Pending invite for this email (promo/team) that was never accepted via the
-  // /accept-invite link. Auto-accept it here so the user lands on the comped company
-  // they were invited to — NOT a fresh free company. This prevents the "you're on
-  // the Free plan" bug for promo users who signed in without clicking the invite link.
+  // 2) Pending invite for this email (promo/team) that was never accepted via the
+  // /accept-invite link. Auto-accept it here so the user lands on the company they
+  // were invited to — NOT a fresh free company. This MUST run before the owned-
+  // company check below, because the signup trigger mints an EMPTY company for every
+  // company-type signup; without this ordering, that empty company would win over a
+  // real invite (the "landed on a new upgrade page instead of AMFN" bug).
   {
     const svc = createServiceClient();
     const { data: pending } = await svc
@@ -111,12 +109,19 @@ export async function getMyCompany(): Promise<{ id: string; company: Company } |
         const { data: co } = await svc.from("companies").select("owner_id").eq("id", pending.company_id).maybeSingle();
         if (co && !co.owner_id) await svc.from("companies").update({ owner_id: user.id }).eq("id", pending.company_id);
       }
+      // Clean up the empty company the signup trigger minted for this user (if any),
+      // so it doesn't linger or get picked up later. Only delete a truly-empty one.
+      await svc.from("companies").delete().eq("owner_id", user.id).eq("name", "").eq("ticker", "");
       const { data: c } = await supabase.from("companies").select("*").eq("id", pending.company_id).maybeSingle();
       if (c) return { id: c.id as string, company: rowToCompany(c) };
     }
   }
 
-  // 3) Brand-new company account with no row yet — mint one + an admin membership.
+  // 3) Back-compat: a company they own directly (incl. the trigger-minted one).
+  const { data } = await supabase.from("companies").select("*").eq("owner_id", user.id).maybeSingle();
+  if (data) return { id: data.id as string, company: rowToCompany(data) };
+
+  // 4) Brand-new company account with no row yet — mint one + an admin membership.
   const { data: created } = await supabase
     .from("companies")
     .insert({ owner_id: user.id, name: "", ticker: "" })
