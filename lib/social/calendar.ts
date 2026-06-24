@@ -661,3 +661,32 @@ export async function createManualPost(input: {
   await writeAudit({ companyId: cid, actorUserId: user.id, actorEmail: user.email, action: "social.post_created_manual", entityType: "post", entityId: String(row.id), payload: { platform, classification } });
   return { ok: true, postId: String(row.id) };
 }
+
+// Move a post to a new date/time (drag-and-drop on the calendar). Only posts NOT
+// yet handed off to Ayrshare can move — a scheduled/published post already lives
+// at Ayrshare and can't be silently re-dated here.
+export async function reschedulePost(postId: string, newScheduledAt: string): Promise<{ ok: boolean; error?: string }> {
+  const supabase = await createServerSupabase();
+  const { data: { user } } = await supabase.auth.getUser();
+  const cid = await myCompanyId();
+  if (!cid || !user) return { ok: false, error: "Sign in." };
+
+  const { data: post } = await supabase
+    .from("iros_posts")
+    .select("id, status, scheduled_at")
+    .eq("id", postId)
+    .eq("company_id", cid)
+    .maybeSingle();
+  if (!post) return { ok: false, error: "Post not found." };
+
+  if (post.status === "scheduled" || post.status === "published") {
+    return { ok: false, error: "This post is already scheduled with your channels — pull it first to change the date." };
+  }
+
+  const when = new Date(newScheduledAt);
+  if (Number.isNaN(when.getTime())) return { ok: false, error: "Invalid date." };
+
+  await supabase.from("iros_posts").update({ scheduled_at: when.toISOString(), updated_at: new Date().toISOString() }).eq("id", postId);
+  await writeAudit({ companyId: cid, actorUserId: user.id, actorEmail: user.email, action: "social.post_rescheduled", entityType: "post", entityId: postId, payload: { from: post.scheduled_at, to: when.toISOString() } });
+  return { ok: true };
+}
