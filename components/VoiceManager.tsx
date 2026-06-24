@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import MicDictate from "./MicDictate";
 
 interface Voice {
   id: string;
@@ -77,10 +78,11 @@ export default function VoiceManager({ initial }: { initial: Voice[] }) {
               className="w-full rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:border-emerald-500 focus:outline-none" />
           </Field>
         </div>
-        <Field label="How they sound" hint="Plain description — tone, what they care about, how formal.">
+        <Field label="How they sound" hint="Plain description — tone, what they care about, how formal. Or tap Speak and just describe them out loud.">
           <textarea value={editing.guidance} onChange={(e) => setEditing({ ...editing, guidance: e.target.value })} rows={3}
             placeholder="Direct and humble. Leads with the customer. Avoids hype. Short sentences."
             className="w-full resize-none rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:border-emerald-500 focus:outline-none" />
+          <div className="mt-1.5"><MicDictate onText={(t) => setEditing((cur) => cur ? { ...cur, guidance: (cur.guidance + " " + t).trim() } : cur)} /></div>
         </Field>
         <Field label="Example posts (optional)" hint="Paste 1-3 real posts in their voice, one per line.">
           <textarea value={editing.styleExamples.join("\n")} onChange={(e) => setEditing({ ...editing, styleExamples: e.target.value.split("\n") })} rows={3}

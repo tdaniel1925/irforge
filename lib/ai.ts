@@ -950,3 +950,22 @@ export async function generateSocialPost(
   // Fallback handled by the caller (it has company data for a template).
   return { text: "", engine: "template" };
 }
+
+// Revise a piece of content per a user instruction (the Writing Studio's live-AI
+// edit bar). Returns the full revised text — the model rewrites the whole doc so
+// the editor can replace it wholesale. Compliance guardrails are always applied.
+export async function reviseContent(
+  current: string,
+  instruction: string,
+  company: Company
+): Promise<{ text: string; engine: "claude" | "template" }> {
+  const ai = await claude(
+    `You are an editor helping ${company.name} ($${company.ticker}), a public company, revise investor-relations content. ` +
+      `Apply the user's instruction to the document and return the COMPLETE revised document text (not a diff, not commentary). ` +
+      `STRICT COMPLIANCE — never add: stock-price predictions, "undervalued"/valuation claims, investment advice, guarantees, or any non-public information. Keep it factual and grounded in the public record. ` +
+      `Output ONLY the revised document text.`,
+    `CURRENT DOCUMENT:\n${current.slice(0, 8000)}\n\nINSTRUCTION: ${instruction}`
+  );
+  if (ai && !isRefusal(ai)) return { text: ai.trim(), engine: "claude" };
+  return { text: current, engine: "template" }; // no change if AI unavailable
+}
