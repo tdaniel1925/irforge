@@ -6,6 +6,7 @@ import { planCalendar, generateSocialPost, classifyRegFD } from "../ai";
 import { checkContent } from "../compliance";
 import { generatePostImage, buildImagePrompt } from "../image";
 import { publishToChannels, getPostStatus } from "../ayrshare";
+import { getStore } from "../db";
 import { buildStrategyContext, renderContextForPrompt, getStrategy } from "./strategy";
 
 // Social Content Engine — calendar layer.
@@ -527,4 +528,136 @@ export async function reconcileAllScheduled(deadlineMs: number): Promise<{ check
     }
   }
   return { checked, published, failed };
+}
+
+// ── Visual month calendar (posts + IR events + quiet-period shading) ──
+
+export interface CalendarPost {
+  id: string;
+  platform: string;
+  theme: string;
+  body: string;
+  status: string;            // draft|reviewed|approved|scheduled|published|pulled
+  classification: string | null;
+  scheduledAt: string | null;
+  mediaUrl: string;
+  postUrl: string;
+  manual: boolean;           // created by hand vs AI-generated
+}
+export interface CalendarIrEvent {
+  date: string;              // ISO date
+  title: string;
+  type: string;              // earnings|quiet_start|quiet_end|filing_deadline|...
+}
+export interface MonthCalendar {
+  posts: CalendarPost[];
+  events: CalendarIrEvent[];
+  quietWindows: Array<[string, string | null]>;
+}
+
+// Everything the month grid needs for [startISO, endISO): every social post with
+// a scheduled date in range, the IR events (earnings / quiet markers), and the
+// quiet windows so the grid can shade blackout days.
+export async function getMonthCalendar(startIso: string, endIso: string): Promise<MonthCalendar> {
+  const supabase = await createServerSupabase();
+  const cid = await myCompanyId();
+  if (!cid) return { posts: [], events: [], quietWindows: [] };
+
+  const { data } = await supabase
+    .from("iros_posts")
+    .select("id, platform, theme, body, status, classification, scheduled_at, media_url, post_url, calendar_batch")
+    .eq("company_id", cid)
+    .gte("scheduled_at", startIso)
+    .lt("scheduled_at", endIso)
+    .order("scheduled_at", { ascending: true })
+    .limit(500);
+
+  const posts: CalendarPost[] = (data ?? []).map((r) => ({
+    id: String(r.id),
+    platform: (r.platform as string) ?? "",
+    theme: (r.theme as string) ?? "",
+    body: (r.body as string) ?? "",
+    status: (r.status as string) ?? "draft",
+    classification: r.classification ? String(r.classification) : null,
+    scheduledAt: r.scheduled_at ? String(r.scheduled_at) : null,
+    mediaUrl: (r.media_url as string) ?? "",
+    postUrl: (r.post_url as string) ?? "",
+    manual: !r.calendar_batch, // no batch id = created by hand
+  }));
+
+  // IR events from the local-store calendar (earnings, quiet markers, etc.).
+  let events: CalendarIrEvent[] = [];
+  try {
+    const { db } = await getStore();
+    const cal = (db.calendar ?? []) as { date: string; title: string; type: string }[];
+    events = cal
+      .filter((e) => e.date >= startIso.slice(0, 10) && e.date < endIso.slice(0, 10))
+      .map((e) => ({ date: e.date, title: e.title, type: e.type }));
+  } catch {
+    // events are best-effort context
+  }
+
+  return { posts, events, quietWindows: await quietWindows() };
+}
+
+// Create a single post by hand for a chosen date/platform. Runs the SAME
+// compliance gate as the AI path (banned-claims forces RED; other flags → yellow)
+// so a manual post can't bypass review. Image optional. Status: draft.
+export async function createManualPost(input: {
+  body: string;
+  platform: string;
+  scheduledAt: string;       // ISO
+  theme?: string;
+  withImage?: boolean;
+}): Promise<{ ok: boolean; error?: string; postId?: string }> {
+  const supabase = await createServerSupabase();
+  const { data: { user } } = await supabase.auth.getUser();
+  const mine = await getMyCompany();
+  if (!mine || !user) return { ok: false, error: "Sign in." };
+  const cid = mine.id;
+  const company = mine.company;
+
+  const body = String(input.body ?? "").trim();
+  if (!body) return { ok: false, error: "Write something to post." };
+  const platform = String(input.platform || "linkedin");
+
+  // Compliance gate (same as the AI draft path).
+  const flags = checkContent([body]);
+  const blocked = flags.some((f) => f.severity === "block");
+  const cls = await classifyRegFD(body, company);
+  let classification = cls.classification;
+  if (blocked) classification = "red";
+  else if (flags.length && classification === "green") classification = "yellow";
+  const mergedFlags = Array.from(new Set([...cls.flags, ...flags.map((f) => `claim:${f.rule}`)]));
+
+  const { data: row, error } = await supabase
+    .from("iros_posts")
+    .insert({
+      company_id: cid,
+      title: (input.theme || "Manual post").slice(0, 200),
+      body: body.slice(0, 4000),
+      channels: [platform],
+      platform,
+      theme: (input.theme || "Manual").slice(0, 120),
+      scheduled_at: input.scheduledAt,
+      status: "draft",
+      classification,
+      class_confidence: cls.confidence,
+      class_flags: mergedFlags,
+      class_reason: blocked ? `Blocked language (${flags.map((f) => f.rule).join(", ")}). ${cls.reasoning}` : cls.reasoning,
+      created_by: user.id,
+    })
+    .select("id")
+    .single();
+  if (error || !row) return { ok: false, error: error?.message ?? "Couldn't create the post." };
+
+  // Optional image (best-effort).
+  if (input.withImage) {
+    const prompt = buildImagePrompt({ companyName: company.name, ticker: company.ticker, theme: input.theme || "update", postText: body });
+    const url = await generatePostImage({ companyId: cid, postId: String(row.id), prompt });
+    if (url) await supabase.from("iros_posts").update({ media_url: url }).eq("id", row.id);
+  }
+
+  await writeAudit({ companyId: cid, actorUserId: user.id, actorEmail: user.email, action: "social.post_created_manual", entityType: "post", entityId: String(row.id), payload: { platform, classification } });
+  return { ok: true, postId: String(row.id) };
 }
