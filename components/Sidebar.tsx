@@ -152,13 +152,6 @@ export default function Sidebar() {
         <ThemeToggle />
       </div>
 
-      <Link
-        href="/"
-        className="mx-4 mb-2 inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium text-muted transition hover:bg-app-hover hover:text-app"
-      >
-        <span aria-hidden>←</span> Home
-      </Link>
-
       <nav className="min-h-0 flex-1 space-y-2 overflow-y-auto px-4 pb-4">
         {nav.map((group) => {
           const isCollapsed = collapsed[group.section];

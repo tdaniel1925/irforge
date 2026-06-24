@@ -7,6 +7,7 @@ import FreeTierBanner from "./FreeTierBanner";
 import FeatureGate from "./FeatureGate";
 import UserMenu from "./UserMenu";
 import WelcomeModal from "./WelcomeModal";
+import BackButton from "./BackButton";
 import type { Feature } from "@/lib/billing";
 
 // The landing page (/) and other public routes render full-bleed with no app sidebar —
@@ -49,8 +50,9 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-screen">
       <Sidebar />
       <main className="flex min-w-0 flex-1 flex-col">
-        {/* Top bar with the profile / account dropdown (Settings, Billing, Log out). */}
-        <header className="sticky top-0 z-30 flex items-center justify-end gap-3 border-b border-app bg-app/80 px-8 py-3 backdrop-blur">
+        {/* Top bar: Back to the previous page (left) + account dropdown (right). */}
+        <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-app bg-app/80 px-8 py-3 backdrop-blur">
+          {pathname !== "/app" ? <BackButton fallback="/app" /> : <span />}
           <UserMenu />
         </header>
         <div className="min-w-0 flex-1 p-8">
