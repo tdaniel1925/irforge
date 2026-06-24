@@ -4,6 +4,7 @@ import { getPublicTickerAudit } from "@/lib/tickerCache";
 import { generateTickerExplainer } from "@/lib/ai";
 import { bumpViews, getBoardPosts } from "@/lib/publicStats";
 import { getDb } from "@/lib/db";
+import { isTickerClaimed } from "@/lib/supabase/store";
 import { buildPlainFlags } from "@/lib/flags";
 import ClaimCard from "@/components/ClaimCard";
 import AskCompany from "@/components/AskCompany";
@@ -120,7 +121,12 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
   } catch (e) {
     console.error(`[ticker ${ticker}] getDb failed:`, e);
   }
-  const claimed = db ? db.company.ticker.toUpperCase() === ticker : false;
+  // "Claimed" is authoritative from Supabase (any company that owns this ticker),
+  // so the PUBLIC page shows the right state even though getDb() is empty for
+  // unauthenticated visitors in production. Falls back to the local store's
+  // company ticker for single-tenant/demo mode.
+  const claimedRemote = await isTickerClaimed(ticker).catch(() => false);
+  const claimed = claimedRemote || (db ? db.company.ticker.toUpperCase() === ticker : false);
   // Public questions persist in Supabase public_board (flag='question'); a verified
   // reply to a question is the company's on-the-record answer.
   let tickerQuestions: { id: string; author: string; question: string; ts: string; status: string; answerText?: string }[] = [];

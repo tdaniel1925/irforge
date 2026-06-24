@@ -129,6 +129,28 @@ export async function getMyCompany(): Promise<{ id: string; company: Company } |
   return { id: created.id as string, company: rowToCompany(created) };
 }
 
+// Public, session-less check: has any company actually claimed this ticker?
+// A page is "claimed" when a real company row exists for the ticker with an owner
+// (i.e. someone signed up and onboarded it). Uses the service-role client because
+// the public ticker page has no auth session. Returns false on any error so the
+// page degrades to "unclaimed" rather than crashing.
+export async function isTickerClaimed(ticker: string): Promise<boolean> {
+  const t = String(ticker ?? "").toUpperCase().trim();
+  if (!t) return false;
+  try {
+    const svc = createServiceClient();
+    const { data } = await svc
+      .from("companies")
+      .select("id, owner_id, onboarding_complete")
+      .ilike("ticker", t)
+      .not("owner_id", "is", null)
+      .limit(1);
+    return (data?.length ?? 0) > 0;
+  } catch {
+    return false;
+  }
+}
+
 export async function updateMyCompany(patch: Partial<Company>): Promise<Company | null> {
   const supabase = await createServerSupabase();
   const mine = await getMyCompany();
