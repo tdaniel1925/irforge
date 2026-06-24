@@ -41,12 +41,19 @@ export default function Login() {
     try {
       const supabase = createClient();
       if (mode === "signup") {
+        // If email confirmation is ON, send the user back through /auth/callback
+        // and carry the post-signup destination (e.g. onboarding?ticker=AMFN) in
+        // ?next= so a claim survives the email-link round trip.
+        const emailRedirectTo =
+          typeof window !== "undefined"
+            ? `${window.location.origin}/auth/callback${nextParam ? `?next=${encodeURIComponent(nextParam)}` : ""}`
+            : undefined;
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
           // account_type drives the signup trigger (only 'company' mints a company
           // row) and post-signup routing. Absence defaults to 'company' server-side.
-          options: { data: { account_type: accountType === "investor" ? "member" : "company" } },
+          options: { data: { account_type: accountType === "investor" ? "member" : "company" }, emailRedirectTo },
         });
         if (error) { setMsg({ text: error.message, ok: false }); return; }
         // With email confirmation OFF (current setting), signUp returns a session and
