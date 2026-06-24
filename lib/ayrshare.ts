@@ -46,7 +46,7 @@ export function ayrshareMultiTenant(): boolean {
 
 // Create an Ayrshare user profile for a company. Returns its profileKey, which we
 // store on the company and pass on every post so it goes to THAT company's socials.
-export async function createAyrshareProfile(title: string, idSuffix?: string): Promise<{ ok: boolean; profileKey?: string; error?: string }> {
+export async function createAyrshareProfile(title: string, idSuffix?: string): Promise<{ ok: boolean; profileKey?: string; error?: string; code?: string }> {
   const key = process.env.AYRSHARE_API_KEY;
   if (!key) return { ok: false, error: "Ayrshare not configured." };
 
@@ -75,6 +75,13 @@ export async function createAyrshareProfile(title: string, idSuffix?: string): P
 
       const msg = String(data?.message ?? "");
       lastErr = msg || `Ayrshare profile error (HTTP ${res.status})`;
+
+      // Plan profile/user CAP reached — do NOT keep retrying (each disambiguated
+      // attempt could burn another slot). Return a clear, actionable error and stop.
+      if (/max(imum)?\s+(number\s+of\s+)?(users?|profiles?)|profile\s+limit|user\s+limit|reached.*(limit|maximum)|upgrade your plan/i.test(msg)) {
+        return { ok: false, error: "Your Ayrshare plan's profile limit is reached. Free up a slot by deleting unused profiles in the Ayrshare dashboard (User Profiles), or upgrade the plan — then try connecting again.", code: "profile_cap" };
+      }
+
       // On a duplicate-title collision, try the next disambiguated title.
       if (/already exists/i.test(msg)) continue;
       // Any other error: stop and report.
