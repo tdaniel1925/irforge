@@ -55,9 +55,24 @@ export async function setCompanyFeature(companyId: string, feature: string, enab
   );
 }
 
+// True when the company was given free full access (active subscription_status
+// with no Stripe subscription behind it = comped/promo). Such companies unlock
+// every feature, same as a paid customer would.
+async function isCompedCompany(companyId: string): Promise<boolean> {
+  const svc = createServiceClient();
+  const { data } = await svc
+    .from("companies")
+    .select("subscription_status, stripe_subscription_id")
+    .eq("id", companyId)
+    .maybeSingle();
+  return data?.subscription_status === "active" && !data?.stripe_subscription_id;
+}
+
 export async function companyHasFeature(companyId: string, feature: FeatureKey): Promise<boolean> {
   // Super admins always have every feature, regardless of per-company flags.
   if (await isSuperAdmin()) return true;
+  // Comped/promo companies (free full access) get every feature too.
+  if (await isCompedCompany(companyId)) return true;
   const features = await getCompanyFeatures(companyId);
   return Boolean(features[feature]);
 }

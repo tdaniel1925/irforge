@@ -19,9 +19,15 @@ export async function GET() {
   // Multi-tenant: serve the logged-in user's company from Supabase.
   const mine = await getFullDb();
   if (mine) {
-    // Super admins get every tool unlocked — report the top tier so the
-    // tier-gating (FeatureGate) opens all dashboard features.
-    const company = superAdmin ? { ...(mine.company as Record<string, unknown>), tier: "pro" } : mine.company;
+    // Full-access companies report the top tier so the tier-gating (FeatureGate)
+    // opens every dashboard tool:
+    //  - super admins (platform owners), and
+    //  - COMPED/promo companies (given free full access, no Stripe subscription).
+    // Without this, a comped company shows as tier "free" and hits the upgrade
+    // wall on every tool even though it was granted everything.
+    const co = mine.company as Record<string, unknown>;
+    const fullAccess = superAdmin || co.comped === true;
+    const company = fullAccess ? { ...co, tier: "pro" } : co;
     return NextResponse.json({ ...mine, company, ...flags, authed: true });
   }
 
