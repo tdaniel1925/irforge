@@ -53,6 +53,36 @@ export default function SocialMonthCalendar({ year, month }: { year: number; mon
   const [loading, setLoading] = useState(true);
   const [createFor, setCreateFor] = useState<string | null>(null); // ISO date
   const [openPost, setOpenPost] = useState<Post | null>(null);
+  const [dragId, setDragId] = useState<string | null>(null);     // post being dragged
+  const [dragOver, setDragOver] = useState<string | null>(null); // day key under cursor
+  const [dropError, setDropError] = useState("");
+
+  // Drop a dragged post onto a new day → reschedule (keeps its original time-of-day).
+  const onDropDay = async (dayKey: string) => {
+    const id = dragId;
+    setDragId(null); setDragOver(null);
+    if (!id) return;
+    const post = posts.find((p) => p.id === id);
+    if (!post) return;
+    // Preserve the post's existing time-of-day; just move the date.
+    const old = post.scheduledAt ? new Date(post.scheduledAt) : new Date();
+    const [y, m, d] = dayKey.split("-").map(Number);
+    const next = new Date(old);
+    next.setFullYear(y, m - 1, d);
+    // Optimistic update.
+    setPosts((ps) => ps.map((p) => (p.id === id ? { ...p, scheduledAt: next.toISOString() } : p)));
+    setDropError("");
+    const res = await fetch("/api/social/month", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, scheduledAt: next.toISOString() }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setDropError(data.error || "Couldn't move that post.");
+      load(); // revert optimistic change
+    }
+  };
 
   // Range = first..last day of the viewed month.
   const range = useMemo(() => {
@@ -148,8 +178,11 @@ export default function SocialMonthCalendar({ year, month }: { year: number; mon
           return (
             <div
               key={i}
-              className={`group relative min-h-[92px] cursor-pointer bg-surface p-1.5 transition hover:bg-app-hover ${quietDay ? "ring-1 ring-inset ring-red-500/30" : ""}`}
+              className={`group relative min-h-[92px] cursor-pointer bg-surface p-1.5 transition hover:bg-app-hover ${quietDay ? "ring-1 ring-inset ring-red-500/30" : ""} ${dragOver === key ? "ring-2 ring-inset ring-emerald-500 bg-emerald-500/5" : ""}`}
               onClick={() => setCreateFor(`${key}T15:00:00.000Z`)}
+              onDragOver={(e) => { if (dragId) { e.preventDefault(); setDragOver(key); } }}
+              onDragLeave={() => setDragOver((k) => (k === key ? null : k))}
+              onDrop={(e) => { e.preventDefault(); onDropDay(key); }}
               title={quietDay ? "Quiet period — sensitive posts are blocked" : "Click to add a post"}
             >
               <div className="flex items-center justify-between">
@@ -164,17 +197,24 @@ export default function SocialMonthCalendar({ year, month }: { year: number; mon
                 </div>
               ))}
 
-              {/* Post chips */}
-              {dayPosts.slice(0, 3).map((p) => (
-                <button
-                  key={p.id}
-                  onClick={(ev) => { ev.stopPropagation(); setOpenPost(p); }}
-                  className="mt-1 flex w-full items-center gap-1 truncate rounded bg-app/60 px-1 py-0.5 text-left text-[10px] text-app hover:bg-app"
-                >
-                  <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${STATUS_DOT[p.status] ?? "bg-gray-400"}`} />
-                  <span className="truncate">{platformShort(p.platform)} · {p.theme || "post"}</span>
-                </button>
-              ))}
+              {/* Post chips. Movable (drag) only before they're handed to Ayrshare. */}
+              {dayPosts.slice(0, 3).map((p) => {
+                const movable = p.status !== "scheduled" && p.status !== "published";
+                return (
+                  <button
+                    key={p.id}
+                    draggable={movable}
+                    onDragStart={() => movable && setDragId(p.id)}
+                    onDragEnd={() => { setDragId(null); setDragOver(null); }}
+                    onClick={(ev) => { ev.stopPropagation(); setOpenPost(p); }}
+                    className={`mt-1 flex w-full items-center gap-1 truncate rounded bg-app/60 px-1 py-0.5 text-left text-[10px] text-app hover:bg-app ${movable ? "cursor-grab active:cursor-grabbing" : ""} ${dragId === p.id ? "opacity-40" : ""}`}
+                    title={movable ? "Drag to reschedule · click to open" : "Already scheduled — pull it first to move"}
+                  >
+                    <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${STATUS_DOT[p.status] ?? "bg-gray-400"}`} />
+                    <span className="truncate">{platformShort(p.platform)} · {p.theme || "post"}</span>
+                  </button>
+                );
+              })}
               {dayPosts.length > 3 && <div className="mt-0.5 text-[10px] text-faint">+{dayPosts.length - 3} more</div>}
             </div>
           );
@@ -182,6 +222,8 @@ export default function SocialMonthCalendar({ year, month }: { year: number; mon
       </div>
 
       {loading && <p className="mt-2 text-xs text-faint">Loading…</p>}
+      {dropError && <p className="mt-2 text-xs text-red-600">{dropError}</p>}
+      <p className="mt-2 text-[11px] text-faint">Tip: drag a post to another day to reschedule it (until it&apos;s sent to your channels).</p>
 
       {createFor && <CreateModal date={createFor} onClose={() => setCreateFor(null)} onCreated={() => { setCreateFor(null); load(); }} />}
       {openPost && <PostModal post={openPost} onClose={() => setOpenPost(null)} />}
@@ -199,20 +241,27 @@ function platformShort(p: string): string {
 
 // ── Create-post modal ──
 function CreateModal({ date, onClose, onCreated }: { date: string; onClose: () => void; onCreated: () => void }) {
+  const base = new Date(date);
   const [body, setBody] = useState("");
   const [platform, setPlatform] = useState("linkedin");
   const [withImage, setWithImage] = useState(false);
+  // Local HH:MM the post should go out; default 9:00 AM local.
+  const [time, setTime] = useState("09:00");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const day = new Date(date).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+  const day = base.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
 
   const create = async () => {
     setBusy(true); setError("");
     try {
+      // Combine the chosen day with the chosen local time → ISO.
+      const [hh, mm] = time.split(":").map(Number);
+      const when = new Date(base);
+      when.setHours(hh || 0, mm || 0, 0, 0);
       const res = await fetch("/api/social/month", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ body, platform, scheduledAt: date, withImage }),
+        body: JSON.stringify({ body, platform, scheduledAt: when.toISOString(), withImage }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Couldn't create the post.");
@@ -232,6 +281,9 @@ function CreateModal({ date, onClose, onCreated }: { date: string; onClose: () =
           <select className="ml-2 rounded border border-app bg-surface-2 p-1 text-sm" value={platform} onChange={(e) => setPlatform(e.target.value)}>
             {PLATFORMS.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}
           </select>
+        </label>
+        <label className="text-sm text-muted">Time
+          <input type="time" className="ml-2 rounded border border-app bg-surface-2 p-1 text-sm" value={time} onChange={(e) => setTime(e.target.value)} />
         </label>
         <label className="inline-flex items-center gap-1.5 text-sm text-muted">
           <input type="checkbox" checked={withImage} onChange={(e) => setWithImage(e.target.checked)} /> Generate an image

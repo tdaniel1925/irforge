@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getMyCompany } from "@/lib/supabase/store";
 import { companyHasFeature } from "@/lib/platform";
-import { getMonthCalendar, createManualPost } from "@/lib/social/calendar";
+import { getMonthCalendar, createManualPost, reschedulePost } from "@/lib/social/calendar";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -40,3 +40,15 @@ export async function POST(req: Request) {
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: 422 });
   return NextResponse.json({ ok: true, postId: result.postId });
 }
+
+// PATCH — drag-and-drop reschedule. Body: { id, scheduledAt }.
+export async function PATCH(req: Request) {
+  const g = await guard();
+  if (g.error) return g.error;
+  const b = await req.json().catch(() => ({}));
+  if (!b.id || !b.scheduledAt) return NextResponse.json({ error: "Missing id or scheduledAt." }, { status: 422 });
+  const result = await reschedulePost(String(b.id), String(b.scheduledAt));
+  if (!result.ok) return NextResponse.json({ error: result.error }, { status: 422 });
+  return NextResponse.json({ ok: true });
+}
+
