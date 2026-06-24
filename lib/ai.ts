@@ -969,3 +969,22 @@ export async function reviseContent(
   if (ai && !isRefusal(ai)) return { text: ai.trim(), engine: "claude" };
   return { text: current, engine: "template" }; // no change if AI unavailable
 }
+
+// The floating in-app AI assistant. Multi-turn, grounded in the company's public
+// context, with the same compliance guardrails. Flattens the short history into a
+// single prompt (the private claude() helper takes one user turn).
+export async function assistantReply(
+  messages: { role: "user" | "assistant"; content: string }[],
+  company: Company
+): Promise<string> {
+  const transcript = messages
+    .map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${String(m.content).slice(0, 1500)}`)
+    .join("\n");
+  const ai = await claude(
+    `You are the in-app AI assistant for ${company.name} ($${company.ticker}), a public company using PubcoZone for investor relations. ` +
+      `Help with IR questions, drafting, and how to use the app. Be concise and practical. ` +
+      `STRICT COMPLIANCE: never give stock-price predictions, valuation claims, investment advice, guarantees, or non-public information; ground anything factual in the public record / SEC filings. If asked for something non-compliant, say so plainly and offer a compliant alternative.`,
+    `${transcript}\nAssistant:`
+  );
+  return ai?.trim() || "I'm having trouble reaching the AI right now — try again in a moment.";
+}

@@ -29,7 +29,7 @@ export interface CalendarEvent {
   id: string;
   date: string; // ISO date
   title: string;
-  type: "earnings" | "filing_deadline" | "conference" | "lockup" | "quiet_start" | "quiet_end" | "custom";
+  type: "earnings" | "filing_deadline" | "conference" | "lockup" | "quiet_start" | "quiet_end" | "holiday" | "presentation" | "follow_up_call" | "onboarding_session" | "team_meeting" | "reminder" | "custom";
   note?: string;
 }
 

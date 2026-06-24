@@ -29,7 +29,20 @@ export async function POST(req: Request) {
     aiEngine: engine,
   };
   db.drafts.unshift(draft);
-  logAudit(db, "threat-radar", "REBUTTAL_DRAFTED", `Filing-cited rebuttal drafted for: ${title}`);
+
+  // Close Dru's loop: also drop a reminder on the IR calendar (today) so the
+  // drafted response is tracked on the calendar, not just the approval queue.
+  db.calendar = db.calendar ?? [];
+  db.calendar.push({
+    id: newId("cal"),
+    date: new Date().toISOString().slice(0, 10),
+    title: `Respond: ${title.slice(0, 60)}`,
+    type: "reminder",
+    note: "AI drafted a filing-cited response — review & approve it in Social Media Approvals.",
+  });
+  db.calendar.sort((a, b) => a.date.localeCompare(b.date));
+
+  logAudit(db, "threat-radar", "REBUTTAL_DRAFTED", `Filing-cited rebuttal drafted for: ${title} (added to IR calendar)`);
   await save();
 
   return NextResponse.json(draft);
