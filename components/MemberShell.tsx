@@ -47,6 +47,9 @@ export default function MemberShell({ children }: { children: React.ReactNode })
           })}
         </nav>
         <div className="space-y-0.5 border-t border-app px-2 py-3">
+          <Link href="/" className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-muted transition hover:bg-app-hover hover:text-app">
+            ← Home
+          </Link>
           <Link href="/discover" className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-muted transition hover:bg-app-hover hover:text-app">
             🔥 Discover
           </Link>
