@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import InlineConfirm from "@/components/InlineConfirm";
 
 interface Note { id: string; title: string; body: string; pinned: boolean; updatedAt: string }
 
@@ -42,10 +43,10 @@ export default function WorkspacePage() {
   };
 
   const del = async (id: string) => {
-    if (!confirm("Delete this note?")) return;
+    setSaveError("");
     const res = await fetch(`/api/workspace?id=${encodeURIComponent(id)}`, { method: "DELETE" });
     if (res.ok) setNotes((ns) => ns.filter((n) => n.id !== id));
-    else alert("Couldn't delete that note — try again.");
+    else setSaveError("Couldn't delete that note — try again.");
   };
 
   const togglePin = async (n: Note) => {
@@ -101,7 +102,7 @@ export default function WorkspacePage() {
                 <div className="flex shrink-0 gap-1.5 text-xs">
                   <button onClick={() => togglePin(n)} className="rounded px-2 py-1 text-muted hover:bg-app-hover hover:text-app">{n.pinned ? "Unpin" : "Pin"}</button>
                   <button onClick={() => setEditing(n)} className="rounded px-2 py-1 text-muted hover:bg-app-hover hover:text-app">Edit</button>
-                  <button onClick={() => del(n.id)} className="rounded px-2 py-1 text-red-600 hover:bg-red-500/10 dark:text-red-400">Delete</button>
+                  <InlineConfirm onConfirm={() => del(n.id)} label="Delete" confirmLabel="Delete note" className="rounded px-2 py-1 text-red-600 hover:bg-red-500/10 dark:text-red-400" />
                 </div>
               </div>
               {n.body && <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-muted">{n.body}</p>}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import InlineConfirm from "./InlineConfirm";
 
 // ── shared types (mirror lib/crm.ts) ──
 interface Contact { id: string; crmCompanyId: string | null; fullName: string; title: string; email: string; phone: string; category: string; stage: string; topics: string[]; aum: string; peersHeld: string[]; notes: string; nextFollowup: string | null; lastTouchAt: string | null; ownerEmail?: string }
@@ -109,20 +110,21 @@ function Contacts({ contacts, setContacts, companies }: { contacts: Contact[]; s
   const [cat, setCat] = useState("");
   const [editing, setEditing] = useState<Partial<Contact> | null>(null);
   const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
 
   const save = async () => {
     if (!editing?.fullName?.trim()) return;
-    setBusy(true);
+    setBusy(true); setErr("");
     try {
       const d = await api({ entity: "contact", action: "save", data: editing });
       setContacts((cs) => { const ex = cs.some((c) => c.id === d.contact.id); return ex ? cs.map((c) => c.id === d.contact.id ? d.contact : c) : [d.contact, ...cs]; });
       setEditing(null);
-    } catch (e) { alert(e instanceof Error ? e.message : "Couldn't save that contact."); } finally { setBusy(false); }
+    } catch (e) { setErr(e instanceof Error ? e.message : "Couldn't save that contact."); } finally { setBusy(false); }
   };
   const del = async (id: string) => {
-    if (!confirm("Delete this contact? This can't be undone.")) return;
+    setErr("");
     try { await api({ entity: "contact", action: "delete", id }); setContacts((cs) => cs.filter((c) => c.id !== id)); }
-    catch (e) { alert(e instanceof Error ? e.message : "Couldn't delete that contact."); }
+    catch (e) { setErr(e instanceof Error ? e.message : "Couldn't delete that contact."); }
   };
 
   const shown = contacts.filter((c) => (!q || `${c.fullName} ${c.email} ${c.title}`.toLowerCase().includes(q.toLowerCase())) && (!cat || c.category === cat));
@@ -148,6 +150,7 @@ function Contacts({ contacts, setContacts, companies }: { contacts: Contact[]; s
 
   return (
     <div>
+      {err && <p className="mb-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-600 dark:text-red-300">{err}</p>}
       <div className="mb-3 flex flex-wrap gap-2">
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="🔍 Search contacts…" className="flex-1 rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:border-emerald-500 focus:outline-none" />
         <select value={cat} onChange={(e) => setCat(e.target.value)} className="rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:outline-none"><option value="">All categories</option>{CONTACT_CATS.map((c) => <option key={c} value={c}>{c}</option>)}</select>
@@ -163,7 +166,7 @@ function Contacts({ contacts, setContacts, companies }: { contacts: Contact[]; s
                 <td className="px-3 py-2.5 text-muted">{compName(c.crmCompanyId)}</td>
                 <td className="px-3 py-2.5"><span className="rounded bg-surface-2 px-1.5 py-0.5 text-[11px] text-muted">{c.category}</span></td>
                 <td className="px-3 py-2.5 text-muted">{c.email}</td>
-                <td className="px-3 py-2.5 text-right"><button onClick={() => setEditing(c)} className="text-xs text-emerald-600 hover:underline dark:text-emerald-400">Edit</button> <button onClick={() => del(c.id)} className="ml-2 text-xs text-faint hover:text-red-500">Del</button></td>
+                <td className="px-3 py-2.5 text-right"><button onClick={() => setEditing(c)} className="text-xs text-emerald-600 hover:underline dark:text-emerald-400">Edit</button> <span className="ml-2 inline-block"><InlineConfirm onConfirm={() => del(c.id)} label="Del" confirmLabel="Delete" className="text-xs text-faint hover:text-red-500" /></span></td>
               </tr>
             ))}
             {shown.length === 0 && <tr><td colSpan={5} className="px-3 py-8 text-center text-sm text-faint">No contacts. Add one or import a CSV.</td></tr>}
@@ -178,15 +181,16 @@ function Contacts({ contacts, setContacts, companies }: { contacts: Contact[]; s
 function Companies({ companies, setCompanies }: { companies: Company[]; setCompanies: (f: (c: Company[]) => Company[]) => void }) {
   const [editing, setEditing] = useState<Partial<Company> | null>(null);
   const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
   const save = async () => {
     if (!editing?.name?.trim()) return;
-    setBusy(true);
-    try { const d = await api({ entity: "company", action: "save", data: editing }); setCompanies((cs) => { const ex = cs.some((c) => c.id === d.company.id); return ex ? cs.map((c) => c.id === d.company.id ? d.company : c) : [d.company, ...cs]; }); setEditing(null); } catch (e) { alert(e instanceof Error ? e.message : "Couldn't save that company."); } finally { setBusy(false); }
+    setBusy(true); setErr("");
+    try { const d = await api({ entity: "company", action: "save", data: editing }); setCompanies((cs) => { const ex = cs.some((c) => c.id === d.company.id); return ex ? cs.map((c) => c.id === d.company.id ? d.company : c) : [d.company, ...cs]; }); setEditing(null); } catch (e) { setErr(e instanceof Error ? e.message : "Couldn't save that company."); } finally { setBusy(false); }
   };
   const del = async (id: string) => {
-    if (!confirm("Delete this company? This can't be undone.")) return;
+    setErr("");
     try { await api({ entity: "company", action: "delete", id }); setCompanies((cs) => cs.filter((c) => c.id !== id)); }
-    catch (e) { alert(e instanceof Error ? e.message : "Couldn't delete that company."); }
+    catch (e) { setErr(e instanceof Error ? e.message : "Couldn't delete that company."); }
   };
 
   if (editing) {
@@ -204,13 +208,14 @@ function Companies({ companies, setCompanies }: { companies: Company[]; setCompa
   }
   return (
     <div>
+      {err && <p className="mb-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-600 dark:text-red-300">{err}</p>}
       <button onClick={() => setEditing({ type: "fund" })} className="mb-3 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">+ Add company</button>
       {companies.length === 0 ? <div className="rounded-xl border border-dashed border-app p-8 text-center text-sm text-faint">No companies yet.</div> : (
         <div className="space-y-2">
           {companies.map((c) => (
             <div key={c.id} className="flex items-center justify-between rounded-xl border border-app bg-surface px-4 py-3">
               <div><p className="font-medium text-app">{c.name} <span className="ml-1 rounded bg-surface-2 px-1.5 py-0.5 text-[10px] text-faint">{c.type}</span></p>{c.industry && <p className="text-xs text-muted">{c.industry}</p>}</div>
-              <div className="flex gap-3 text-xs"><button onClick={() => setEditing(c)} className="text-emerald-600 hover:underline dark:text-emerald-400">Edit</button><button onClick={() => del(c.id)} className="text-faint hover:text-red-500">Del</button></div>
+              <div className="flex gap-3 text-xs"><button onClick={() => setEditing(c)} className="text-emerald-600 hover:underline dark:text-emerald-400">Edit</button><InlineConfirm onConfirm={() => del(c.id)} label="Del" confirmLabel="Delete" className="text-faint hover:text-red-500" /></div>
             </div>
           ))}
         </div>
@@ -223,14 +228,16 @@ function Companies({ companies, setCompanies }: { companies: Company[]; setCompa
 function Deals({ deals, setDeals, contacts }: { deals: Deal[]; setDeals: (f: (d: Deal[]) => Deal[]) => void; contacts: Contact[] }) {
   const [editing, setEditing] = useState<Partial<Deal> | null>(null);
   const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
   const save = async () => {
     if (!editing?.title?.trim()) return;
-    setBusy(true);
-    try { const d = await api({ entity: "deal", action: "save", data: { ...editing, value: Number(editing.value) || 0 } }); setDeals((ds) => { const ex = ds.some((x) => x.id === d.deal.id); return ex ? ds.map((x) => x.id === d.deal.id ? d.deal : x) : [d.deal, ...ds]; }); setEditing(null); } catch (e) { alert(e instanceof Error ? e.message : "Couldn't save that deal."); } finally { setBusy(false); }
+    setBusy(true); setErr("");
+    try { const d = await api({ entity: "deal", action: "save", data: { ...editing, value: Number(editing.value) || 0 } }); setDeals((ds) => { const ex = ds.some((x) => x.id === d.deal.id); return ex ? ds.map((x) => x.id === d.deal.id ? d.deal : x) : [d.deal, ...ds]; }); setEditing(null); } catch (e) { setErr(e instanceof Error ? e.message : "Couldn't save that deal."); } finally { setBusy(false); }
   };
   const move = async (id: string, stage: string) => {
+    setErr("");
     try { await api({ entity: "deal", action: "move", id, stage }); setDeals((ds) => ds.map((d) => d.id === id ? { ...d, stage, status: stage === "won" ? "won" : stage === "lost" ? "lost" : "open" } : d)); }
-    catch (e) { alert(e instanceof Error ? e.message : "Couldn't move that deal."); }
+    catch (e) { setErr(e instanceof Error ? e.message : "Couldn't move that deal."); }
   };
 
   if (editing) {
@@ -249,6 +256,7 @@ function Deals({ deals, setDeals, contacts }: { deals: Deal[]; setDeals: (f: (d:
   }
   return (
     <div>
+      {err && <p className="mb-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-600 dark:text-red-300">{err}</p>}
       <button onClick={() => setEditing({ stage: "lead", value: 0 })} className="mb-3 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">+ Add deal</button>
       <div className="grid gap-3 lg:grid-cols-6">
         {DEAL_STAGES.map((stage) => {
@@ -283,22 +291,24 @@ function Deals({ deals, setDeals, contacts }: { deals: Deal[]; setDeals: (f: (d:
 // ───────────────────────────── Tasks ─────────────────────────────
 function Tasks({ tasks, setTasks, contacts }: { tasks: Task[]; setTasks: (f: (t: Task[]) => Task[]) => void; contacts: Contact[] }) {
   const [title, setTitle] = useState(""); const [due, setDue] = useState(""); const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
   const add = async () => {
     if (!title.trim()) return;
-    setBusy(true);
-    try { const d = await api({ entity: "task", action: "save", data: { title, dueDate: due || null } }); setTasks((ts) => [...ts, d.task]); setTitle(""); setDue(""); } catch (e) { alert(e instanceof Error ? e.message : "Couldn't add that task."); } finally { setBusy(false); }
+    setBusy(true); setErr("");
+    try { const d = await api({ entity: "task", action: "save", data: { title, dueDate: due || null } }); setTasks((ts) => [...ts, d.task]); setTitle(""); setDue(""); } catch (e) { setErr(e instanceof Error ? e.message : "Couldn't add that task."); } finally { setBusy(false); }
   };
-  const toggle = async (t: Task) => { try { const d = await api({ entity: "task", action: "save", data: { ...t, done: !t.done } }); setTasks((ts) => ts.map((x) => x.id === t.id ? d.task : x)); } catch (e) { alert(e instanceof Error ? e.message : "Couldn't update that task."); } };
+  const toggle = async (t: Task) => { setErr(""); try { const d = await api({ entity: "task", action: "save", data: { ...t, done: !t.done } }); setTasks((ts) => ts.map((x) => x.id === t.id ? d.task : x)); } catch (e) { setErr(e instanceof Error ? e.message : "Couldn't update that task."); } };
   const del = async (id: string) => {
-    if (!confirm("Delete this task?")) return;
+    setErr("");
     try { await api({ entity: "task", action: "delete", id }); setTasks((ts) => ts.filter((t) => t.id !== id)); }
-    catch (e) { alert(e instanceof Error ? e.message : "Couldn't delete that task."); }
+    catch (e) { setErr(e instanceof Error ? e.message : "Couldn't delete that task."); }
   };
   const contactName = (id: string | null) => contacts.find((c) => c.id === id)?.fullName ?? "";
 
   const open = tasks.filter((t) => !t.done), done = tasks.filter((t) => t.done);
   return (
     <div>
+      {err && <p className="mb-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-600 dark:text-red-300">{err}</p>}
       <div className="mb-4 flex flex-wrap gap-2 rounded-xl border border-app bg-surface p-3">
         <input value={title} onChange={(e) => setTitle(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} placeholder="New task…" className="flex-1 rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:border-emerald-500 focus:outline-none" />
         <input type="date" value={due} onChange={(e) => setDue(e.target.value)} className="rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:outline-none" />
@@ -310,7 +320,7 @@ function Tasks({ tasks, setTasks, contacts }: { tasks: Task[]; setTasks: (f: (t:
             <button onClick={() => toggle(t)} className="h-4 w-4 shrink-0 rounded border border-app" aria-label="complete" />
             <span className="flex-1 text-sm text-app">{t.title}{contactName(t.contactId) && <span className="ml-1 text-xs text-faint">· {contactName(t.contactId)}</span>}</span>
             {t.dueDate && <span className={`text-xs ${t.dueDate <= new Date().toISOString().slice(0, 10) ? "text-red-500" : "text-faint"}`}>{t.dueDate}</span>}
-            <button onClick={() => del(t.id)} className="text-xs text-faint hover:text-red-500">✕</button>
+            <InlineConfirm onConfirm={() => del(t.id)} label="✕" confirmLabel="Delete" className="text-xs text-faint hover:text-red-500" />
           </div>
         ))}
         {open.length === 0 && <p className="py-6 text-center text-sm text-faint">No open tasks. 🎉</p>}
@@ -319,7 +329,7 @@ function Tasks({ tasks, setTasks, contacts }: { tasks: Task[]; setTasks: (f: (t:
           <div key={t.id} className="flex items-center gap-3 rounded-lg border border-app bg-surface-2/40 px-3 py-2 opacity-60">
             <button onClick={() => toggle(t)} className="flex h-4 w-4 shrink-0 items-center justify-center rounded border border-emerald-500 bg-emerald-500 text-[10px] text-white">✓</button>
             <span className="flex-1 text-sm text-muted line-through">{t.title}</span>
-            <button onClick={() => del(t.id)} className="text-xs text-faint hover:text-red-500">✕</button>
+            <InlineConfirm onConfirm={() => del(t.id)} label="✕" confirmLabel="Delete" className="text-xs text-faint hover:text-red-500" />
           </div>
         ))}
       </div>
