@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useAppState } from "@/components/useAppState";
 import { Banner, Button, Card, ErrorBanner, LoadingState, PageHeader } from "@/components/ui";
+import InlineConfirm from "@/components/InlineConfirm";
 import type { Notice } from "@/components/ui";
 import type { Company } from "@/lib/types";
 import Term from "@/components/Term";
@@ -307,7 +308,6 @@ function SocialConnections() {
 
   // Disconnect one network from THIS company's profile.
   const disconnect = async (platform: string, label: string) => {
-    if (!confirm(`Disconnect ${label}? Approved posts will no longer publish there until you reconnect.`)) return;
     setErr("");
     setBusy(true);
     try {
@@ -366,14 +366,13 @@ function SocialConnections() {
                 {loading ? (
                   <span className="text-xs text-faint">…</span>
                 ) : on ? (
-                  <button
-                    onClick={() => disconnect(n.key, n.label)}
-                    disabled={busy}
+                  <InlineConfirm
+                    onConfirm={() => disconnect(n.key, n.label)}
+                    label={<>✓ <span className="underline-offset-2 hover:underline">Disconnect</span></>}
+                    confirmLabel={`Disconnect ${n.label}`}
                     title={`Disconnect ${n.label}`}
                     className="text-xs font-semibold text-emerald-600 hover:text-red-500 disabled:opacity-50 dark:text-emerald-400"
-                  >
-                    ✓ <span className="underline-offset-2 hover:underline">Disconnect</span>
-                  </button>
+                  />
                 ) : (
                   <span className="text-xs text-faint">—</span>
                 )}

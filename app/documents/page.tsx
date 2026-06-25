@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useAppState } from "@/components/useAppState";
 import { Banner, Button, Card, ErrorBanner, LoadingState, PageHeader } from "@/components/ui";
+import InlineConfirm from "@/components/InlineConfirm";
 import type { Notice } from "@/components/ui";
 import type { CompanyDoc, DocCategory } from "@/lib/types";
 
@@ -54,7 +55,6 @@ export default function Documents() {
   };
 
   const remove = async (id: string) => {
-    if (!confirm("Remove this document from the vault?")) return;
     setNotice(null);
     try {
       const res = await fetch("/api/documents", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "delete", id }) });
@@ -125,7 +125,7 @@ export default function Documents() {
                   </div>
                   <div className="flex shrink-0 items-center gap-3">
                     {d.url && <a href={d.url} target="_blank" rel="noreferrer" className="text-xs text-emerald-600 hover:underline dark:text-emerald-300">open ↗</a>}
-                    <button onClick={() => remove(d.id)} className="text-xs text-faint hover:text-red-500">remove</button>
+                    <InlineConfirm onConfirm={() => remove(d.id)} label="remove" confirmLabel="Remove" className="text-xs text-faint hover:text-red-500" />
                   </div>
                 </Card>
               ))}

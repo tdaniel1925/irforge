@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Banner, Button, Card, LoadingState, PageHeader } from "@/components/ui";
+import InlineConfirm from "@/components/InlineConfirm";
 
 interface LeadList { id: string; name: string; note: string; count: number; sent: number; created_at: string }
 interface Lead {
@@ -55,6 +56,7 @@ export default function LeadFinder() {
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState<Notice>(null);
   const [busy, setBusy] = useState("");
+  const [confirmSend, setConfirmSend] = useState(false);
 
   // New-list + pull controls
   const [newListName, setNewListName] = useState("");
@@ -124,7 +126,6 @@ export default function LeadFinder() {
   };
 
   const deleteList = async (id: string) => {
-    if (!confirm("Delete this list and all its leads?")) return;
     await post({ action: "delete_list", id });
     if (activeList === id) setActiveList("");
     await loadLists();
@@ -134,7 +135,9 @@ export default function LeadFinder() {
     if (!activeList) return;
     const withEmail = leads.filter((l) => l.email && (l.status === "new" || l.status === "queued"));
     if (withEmail.length === 0) { setNotice({ text: "No leads with an email address and 'new' status to send to. Add verified emails first.", tone: "error" }); return; }
-    if (!confirm(`Send outreach to ${withEmail.length} lead(s) with verified emails? (Daily cap applies.)`)) return;
+    // Inline confirm: first click arms, second click sends. No native confirm().
+    if (!confirmSend) { setConfirmSend(true); setNotice({ text: `Click "Send" again to confirm outreach to ${withEmail.length} lead(s). (Daily cap applies.)`, tone: "info" }); return; }
+    setConfirmSend(false);
     setBusy("send");
     const res = await fetch("/api/admin/leads/send", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ listId: activeList, subject, template }) });
     const d = await res.json().catch(() => ({}));
@@ -223,7 +226,7 @@ export default function LeadFinder() {
                   <div className="flex gap-2">
                     <a href={`/api/admin/leads/export?list=${active.id}`} className="rounded-lg border border-app px-3 py-1.5 text-sm text-app hover:bg-app-hover">⬇ CSV</a>
                     <Button variant="secondary" onClick={() => setComposeOpen((v) => !v)}>{composeOpen ? "Hide compose" : "✉ Compose & send"}</Button>
-                    <Button variant="danger" onClick={() => deleteList(active.id)}>Delete list</Button>
+                    <InlineConfirm onConfirm={() => deleteList(active.id)} label="Delete list" confirmLabel="Delete list & leads" className="rounded-lg border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-500/10" />
                   </div>
                 </div>
 

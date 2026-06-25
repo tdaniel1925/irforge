@@ -117,6 +117,28 @@ export async function deleteTeamUpdate(id: string): Promise<void> {
   await supabase.from("team_updates").delete().eq("id", id);
 }
 
+// ── Per-user dashboard layout (which widgets show + their order) ──
+export interface DashboardLayout { order: string[]; hidden: string[] }
+
+export async function getDashboardLayout(): Promise<DashboardLayout | null> {
+  const { cid, user, supabase } = await ctx();
+  if (!cid || !user) return null;
+  const { data } = await supabase.from("team_profiles").select("dashboard_layout").eq("company_id", cid).eq("user_id", user.id).maybeSingle();
+  const l = data?.dashboard_layout as DashboardLayout | null | undefined;
+  if (!l || !Array.isArray(l.order)) return null;
+  return { order: l.order.map(String), hidden: Array.isArray(l.hidden) ? l.hidden.map(String) : [] };
+}
+
+export async function saveDashboardLayout(layout: DashboardLayout): Promise<{ ok: boolean }> {
+  const { cid, user, supabase } = await ctx();
+  if (!cid || !user) return { ok: false };
+  await supabase.from("team_profiles").upsert(
+    { company_id: cid, user_id: user.id, dashboard_layout: { order: layout.order.slice(0, 20), hidden: layout.hidden.slice(0, 20) }, updated_at: new Date().toISOString() },
+    { onConflict: "company_id,user_id" }
+  );
+  return { ok: true };
+}
+
 // A rotating daily quote (deterministic by date — no external call).
 const QUOTES = [
   "The best way to predict the future is to create it.",
