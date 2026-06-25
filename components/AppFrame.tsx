@@ -10,6 +10,7 @@ import WelcomeModal from "./WelcomeModal";
 import BackButton from "./BackButton";
 import AiChat from "./AiChat";
 import ImpersonationBanner from "./ImpersonationBanner";
+import CommsSidebar from "./CommsSidebar";
 import type { Feature } from "@/lib/billing";
 
 // The landing page (/) and other public routes render full-bleed with no app sidebar —
@@ -63,6 +64,8 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
           {feature ? <FeatureGate feature={feature}>{children}</FeatureGate> : children}
         </div>
       </main>
+      {/* Right comms rail: who's on/off + team chat — the team's home base. */}
+      <CommsSidebar />
       <WelcomeModal />
       <AiChat />
     </div>

@@ -117,6 +117,47 @@ export async function deleteTeamUpdate(id: string): Promise<void> {
   await supabase.from("team_updates").delete().eq("id", id);
 }
 
+// ── Team chat (right comms sidebar) ──
+export interface ChatMessage {
+  id: string;
+  authorName: string;
+  body: string;
+  createdAt: string;
+  mine: boolean;
+}
+
+export async function listChat(limit = 60): Promise<ChatMessage[]> {
+  const { cid, user, supabase } = await ctx();
+  if (!cid) return [];
+  const { data } = await supabase.from("team_chat").select("*").eq("company_id", cid).order("created_at", { ascending: false }).limit(limit);
+  // newest-first from the query; return oldest-first for natural chat order.
+  return (data ?? []).reverse().map((r) => ({
+    id: String(r.id),
+    authorName: (r.author_name as string) || "Teammate",
+    body: (r.body as string) ?? "",
+    createdAt: String(r.created_at ?? ""),
+    mine: Boolean(user && r.user_id === user.id),
+  }));
+}
+
+export async function postChat(body: string): Promise<{ ok: boolean; error?: string }> {
+  const { cid, user, supabase } = await ctx();
+  if (!cid || !user) return { ok: false, error: "Sign in." };
+  const text = body.trim().slice(0, 1000);
+  if (!text) return { ok: false, error: "Empty message." };
+  // Name: saved profile name, else email local part.
+  const { data: prof } = await supabase.from("team_profiles").select("display_name").eq("company_id", cid).eq("user_id", user.id).maybeSingle();
+  const name = (prof?.display_name as string) || user.email?.split("@")[0] || "Teammate";
+  const { error } = await supabase.from("team_chat").insert({ company_id: cid, user_id: user.id, author_name: name, body: text });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+export async function deleteChat(id: string): Promise<void> {
+  const { supabase } = await ctx();
+  await supabase.from("team_chat").delete().eq("id", id);
+}
+
 // ── Per-user dashboard layout (which widgets show + their order) ──
 export interface DashboardLayout { order: string[]; hidden: string[] }
 

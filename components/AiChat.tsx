@@ -40,7 +40,7 @@ export default function AiChat() {
       {/* Launcher */}
       <button
         onClick={() => setOpen((o) => !o)}
-        className="fixed bottom-5 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600 text-2xl text-white shadow-lg transition hover:bg-emerald-500"
+        className="fixed bottom-5 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600 text-2xl text-white shadow-lg transition hover:bg-emerald-500 lg:right-[19rem]"
         aria-label="AI assistant"
       >
         {open ? "✕" : "💬"}
@@ -48,7 +48,7 @@ export default function AiChat() {
 
       {/* Panel */}
       {open && (
-        <div className="fixed bottom-24 right-5 z-40 flex h-[28rem] w-[22rem] max-w-[calc(100vw-2.5rem)] flex-col rounded-2xl border border-app bg-surface shadow-2xl">
+        <div className="fixed bottom-24 right-5 z-40 flex h-[28rem] w-[22rem] max-w-[calc(100vw-2.5rem)] flex-col rounded-2xl border border-app bg-surface shadow-2xl lg:right-[19rem]">
           <div className="flex items-center gap-2 border-b border-app px-4 py-3">
             <span className="text-lg">✨</span>
             <span className="text-sm font-semibold text-app">IR Assistant</span>
