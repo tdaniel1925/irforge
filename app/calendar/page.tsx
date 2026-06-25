@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useAppState } from "@/components/useAppState";
 import { Banner, Button, Card, ErrorBanner, LoadingState, PageHeader } from "@/components/ui";
 import type { Notice } from "@/components/ui";
+import InlineConfirm from "@/components/InlineConfirm";
 import type { CalendarEvent } from "@/lib/types";
 
 const TYPE_STYLE: Record<string, { label: string; chip: string }> = {
@@ -46,7 +47,6 @@ export default function CalendarPage() {
   };
 
   const remove = async (id: string) => {
-    if (!confirm("Remove this event from your calendar?")) return;
     setNotice(null);
     try {
       const res = await fetch(`/api/calendar?id=${id}`, { method: "DELETE" });
@@ -76,7 +76,7 @@ export default function CalendarPage() {
           </div>
         </div>
         {e.type !== "quiet_start" && e.type !== "quiet_end" && (
-          <button onClick={() => remove(e.id)} className="text-xs text-faint hover:text-red-500">remove</button>
+          <InlineConfirm onConfirm={() => remove(e.id)} label="remove" confirmLabel="Remove" className="text-xs text-faint hover:text-red-500" />
         )}
       </div>
     );

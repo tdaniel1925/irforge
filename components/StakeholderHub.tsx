@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import InlineConfirm from "./InlineConfirm";
 
 interface Stakeholder { id: string; fullName: string; title: string; org: string; category: string; topics: string[]; email: string; notes: string }
 interface Interaction { id: string; channel: string; direction: string; summary: string; body: string; status: string; suggestedOwner: string; suggestedReply: string; occurredAt: string }
@@ -123,7 +124,6 @@ function People({ people, setPeople }: { people: Stakeholder[]; setPeople: (f: (
   };
 
   const del = async (id: string) => {
-    if (!confirm("Remove this person? This can't be undone.")) return;
     setError("");
     try {
       const res = await fetch("/api/iros/stakeholders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "delete", id }) });
@@ -180,7 +180,7 @@ function People({ people, setPeople }: { people: Stakeholder[]; setPeople: (f: (
               </div>
               <div className="flex gap-3 text-xs">
                 <button onClick={() => setEditing(p)} className="text-emerald-600 hover:underline dark:text-emerald-400">Edit</button>
-                <button onClick={() => del(p.id)} className="text-faint hover:text-red-500">Del</button>
+                <InlineConfirm onConfirm={() => del(p.id)} label="Del" confirmLabel="Remove" className="text-faint hover:text-red-500" />
               </div>
             </div>
           ))}

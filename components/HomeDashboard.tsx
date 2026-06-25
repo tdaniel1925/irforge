@@ -36,6 +36,9 @@ export default function HomeDashboard(props: {
   const [updates, setUpdates] = useState<Update[]>(props.initialUpdates);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
+  // Inline "Out" reason flow (replaces a native prompt()).
+  const [outOpen, setOutOpen] = useState(false);
+  const [outReason, setOutReason] = useState("");
 
   const calById = Object.fromEntries(props.calendars.map((c) => [c.id, c]));
   const today = todayKey();
@@ -150,9 +153,26 @@ export default function HomeDashboard(props: {
           {/* My status */}
           <Card title="Your status">
             <div className="flex gap-2">
-              <button onClick={() => setStatus("in")} className="flex-1 rounded-lg bg-emerald-500/15 px-3 py-2 text-sm font-medium text-emerald-700 dark:text-emerald-300">🟢 In office</button>
-              <button onClick={() => { const r = prompt("Reason (optional) — e.g. at a wedding"); setStatus("out", r ?? ""); }} className="flex-1 rounded-lg bg-amber-500/15 px-3 py-2 text-sm font-medium text-amber-700 dark:text-amber-300">🌴 Out</button>
+              <button onClick={() => { setOutOpen(false); setStatus("in"); }} className="flex-1 rounded-lg bg-emerald-500/15 px-3 py-2 text-sm font-medium text-emerald-700 dark:text-emerald-300">🟢 In office</button>
+              <button onClick={() => setOutOpen((o) => !o)} className="flex-1 rounded-lg bg-amber-500/15 px-3 py-2 text-sm font-medium text-amber-700 dark:text-amber-300">🌴 Out</button>
             </div>
+            {/* Inline reason — no native prompt. */}
+            {outOpen && (
+              <div className="mt-2 space-y-2">
+                <input
+                  autoFocus
+                  value={outReason}
+                  onChange={(e) => setOutReason(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { setStatus("out", outReason); setOutOpen(false); setOutReason(""); } }}
+                  placeholder="Reason (optional) — e.g. at a wedding"
+                  className="w-full rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:border-amber-500 focus:outline-none"
+                />
+                <div className="flex gap-2">
+                  <button onClick={() => { setStatus("out", outReason); setOutOpen(false); setOutReason(""); }} className="rounded-lg bg-amber-500 px-3 py-1.5 text-sm font-medium text-white">Set out</button>
+                  <button onClick={() => { setOutOpen(false); setOutReason(""); }} className="rounded-lg border border-app px-3 py-1.5 text-sm">Cancel</button>
+                </div>
+              </div>
+            )}
           </Card>
 
           {/* Who's in / out */}

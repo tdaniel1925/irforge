@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useAppState } from "@/components/useAppState";
 import { Banner, Button, Card, ErrorBanner, LoadingState, PageHeader } from "@/components/ui";
 import type { Notice } from "@/components/ui";
+import InlineConfirm from "@/components/InlineConfirm";
 import type { CapTableEntry, ConvertibleNote, HolderIntent } from "@/lib/types";
 import { computeDilution, noteShares } from "@/lib/capMath";
 
@@ -109,7 +110,7 @@ function CapHolders({ db, cap, refresh, setNotice }: { db: { capTable: CapTableE
                     {INTENT.map((i) => <option key={i.key} value={i.key}>{i.label}</option>)}
                   </select>
                 </td>
-                <td className="px-4 py-3 text-right"><button onClick={() => { if (confirm(`Remove ${e.holder} from the cap table?`)) patch({ id: e.id, action: "delete" }); }} className="text-xs text-faint hover:text-red-500" title="Remove holder">×</button></td>
+                <td className="px-4 py-3 text-right"><InlineConfirm onConfirm={() => patch({ id: e.id, action: "delete" })} label="×" confirmLabel="Remove" className="text-xs text-faint hover:text-red-500" title="Remove holder" /></td>
               </tr>
             ))}
             {cap.length === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-faint">No holders yet. Click &quot;+ Add holder&quot; to start your cap table.</td></tr>}
@@ -170,7 +171,7 @@ function Notes({ db, notes, marketPrice, refresh, setNotice }: { db: object; not
                 <select value={n.status} onChange={(e) => patch({ id: n.id, action: "status", status: e.target.value })} className="rounded border border-app bg-surface-2 px-2 py-1 text-xs text-app focus:outline-none">
                   <option value="outstanding">Outstanding</option><option value="converted">Converted</option><option value="repaid">Repaid</option>
                 </select>
-                <button onClick={() => { if (confirm(`Delete the convertible note for ${n.holder}?`)) patch({ id: n.id, action: "delete" }); }} className="text-xs text-faint hover:text-red-500">delete</button>
+                <InlineConfirm onConfirm={() => patch({ id: n.id, action: "delete" })} label="delete" confirmLabel="Delete" className="text-xs text-faint hover:text-red-500" />
               </div>
             </Card>
           );
