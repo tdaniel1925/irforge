@@ -9,6 +9,7 @@ import UserMenu from "./UserMenu";
 import WelcomeModal from "./WelcomeModal";
 import BackButton from "./BackButton";
 import AiChat from "./AiChat";
+import ImpersonationBanner from "./ImpersonationBanner";
 import type { Feature } from "@/lib/billing";
 
 // The landing page (/) and other public routes render full-bleed with no app sidebar —
@@ -51,6 +52,7 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-screen">
       <Sidebar />
       <main className="flex min-w-0 flex-1 flex-col">
+        <ImpersonationBanner />
         {/* Top bar: Back to the previous page (left) + account dropdown (right). */}
         <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-app bg-app/80 px-8 py-3 backdrop-blur">
           {pathname !== "/app" ? <BackButton fallback="/app" /> : <span />}
