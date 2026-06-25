@@ -66,6 +66,25 @@ export async function getMyCompany(): Promise<{ id: string; company: Company } |
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
+  // ── Admin impersonation ──
+  // A super-admin can "log in as" any company by setting the impersonate_company
+  // cookie (via /api/admin/impersonate). When present AND the caller is a verified
+  // super admin, every getMyCompany() call resolves to that company — so the whole
+  // app (settings, socials, content) acts on the impersonated company. Anyone who
+  // isn't a super admin is ignored, so the cookie alone grants nothing.
+  try {
+    const { cookies } = await import("next/headers");
+    const impersonateId = (await cookies()).get("impersonate_company")?.value;
+    if (impersonateId) {
+      const { data: admin } = await supabase.from("platform_admins").select("super_admin").eq("user_id", user.id).maybeSingle();
+      if (admin?.super_admin) {
+        const svc = createServiceClient();
+        const { data: c } = await svc.from("companies").select("*").eq("id", impersonateId).maybeSingle();
+        if (c) return { id: c.id as string, company: rowToCompany(c) };
+      }
+    }
+  } catch { /* impersonation is best-effort; fall through to normal resolution */ }
+
   // 1) Active team membership (admin or member). RLS lets a user read their own rows.
   const { data: membership } = await supabase
     .from("company_users")

@@ -93,6 +93,17 @@ export default function AdminCustomers() {
 
   const comp = async (c: Company) => { setBusy(c.id + "comp"); await act({ action: "comp", companyId: c.id, tier: c.tier }, `${c.name} comped to active.`); setBusy(""); };
   const compFull = async (c: Company) => { setBusy(c.id + "full"); await act({ action: "comp_full", companyId: c.id }, `${c.name || "Company"} now has everything free (Command tier + all features).`); setBusy(""); };
+  // Start impersonating a company, then go to their dashboard. Everything in the app
+  // then acts as that company until you click "Exit" in the impersonation banner.
+  const impersonate = async (c: Company) => {
+    setBusy(c.id + "imp");
+    try {
+      const res = await fetch("/api/admin/impersonate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId: c.id }) });
+      const d = await res.json();
+      if (!res.ok) { setNotice({ text: d.error ?? "Couldn't start impersonation.", tone: "error" }); setBusy(""); return; }
+      window.location.href = "/app";
+    } catch { setNotice({ text: "Network error.", tone: "error" }); setBusy(""); }
+  };
   const cancel = async (c: Company) => { setBusy(c.id + "cancel"); await act({ action: "cancel_sub", subscriptionId: c.stripe_subscription_id, companyId: c.id }, "Subscription canceled."); setBusy(""); };
 
   const invitePromo = async () => {
@@ -258,6 +269,7 @@ export default function AdminCustomers() {
                   <Button variant="secondary" onClick={() => setupFee(c)} disabled={busy === c.id + "fee"}>Setup fee</Button>
                   <Button variant="secondary" onClick={() => comp(c)} disabled={busy === c.id + "comp"}>Comp</Button>
                   <Button variant="secondary" onClick={() => compFull(c)} disabled={busy === c.id + "full"} title="Command tier + every feature, free">{busy === c.id + "full" ? "…" : "🎁 Comp full (free)"}</Button>
+                  <Button variant="secondary" onClick={() => impersonate(c)} disabled={busy === c.id + "imp"} title="Log in as this company to make changes">{busy === c.id + "imp" ? "…" : "👁 Act as"}</Button>
                   {c.stripe_subscription_id && <Button variant="danger" onClick={() => cancel(c)} disabled={busy === c.id + "cancel"}>Cancel</Button>}
                 </div>
               </div>
