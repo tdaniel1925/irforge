@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getMyCompany } from "@/lib/supabase/store";
-import { listTeamProfiles, saveMyProfile, listTeamUpdates, postTeamUpdate, deleteTeamUpdate } from "@/lib/dashboard";
+import { listTeamProfiles, saveMyProfile, listTeamUpdates, postTeamUpdate, deleteTeamUpdate, saveDashboardLayout } from "@/lib/dashboard";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -34,6 +34,11 @@ export async function POST(req: Request) {
   if (b.action === "deleteUpdate") {
     if (b.id) await deleteTeamUpdate(String(b.id));
     return NextResponse.json({ ok: true, updates: await listTeamUpdates() });
+  }
+
+  if (b.action === "layout") {
+    await saveDashboardLayout({ order: Array.isArray(b.order) ? b.order.map(String) : [], hidden: Array.isArray(b.hidden) ? b.hidden.map(String) : [] });
+    return NextResponse.json({ ok: true });
   }
 
   // status / profile save (in/out, reason, name, birthday)

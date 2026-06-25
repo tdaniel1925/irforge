@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getMyCompany } from "@/lib/supabase/store";
-import { listTeamProfiles, listTeamUpdates, todaysBirthdays, dailyQuote } from "@/lib/dashboard";
+import { listTeamProfiles, listTeamUpdates, todaysBirthdays, dailyQuote, getDashboardLayout } from "@/lib/dashboard";
 import { listMyCalendars, listCalendarEvents } from "@/lib/calendars";
 import { getQuotes } from "@/lib/quotes";
 import { listPosts, getMetrics } from "@/lib/iros";
-import { getMorningRead } from "@/lib/morningRead";
+import { getMorningRead, getPodcastEpisode } from "@/lib/morningRead";
 import HomeDashboard from "@/components/HomeDashboard";
 
 export const dynamic = "force-dynamic";
@@ -56,6 +56,10 @@ export default async function Home() {
   } catch { /* card degrades */ }
   try { metrics = await getMetrics(); } catch { /* stats degrade */ }
 
+  // Per-user saved widget layout (null = default).
+  let layout: Awaited<ReturnType<typeof getDashboardLayout>> = null;
+  try { layout = await getDashboardLayout(); } catch { /* default */ }
+
   // Company ticker + peers for the stock widget.
   const tickers = [mine.company.ticker, ...(mine.company.peers ?? [])].filter(Boolean).slice(0, 4);
   let quotes: Record<string, { price: number; changePct: number }> = {};
@@ -64,9 +68,15 @@ export default async function Home() {
     quotes = Object.fromEntries(Object.entries(q).map(([t, v]) => [t, { price: (v as { price?: number }).price ?? 0, changePct: (v as { changePct?: number }).changePct ?? 0 }]));
   } catch { /* widget degrades gracefully */ }
 
-  // Morning read (recent news) — best-effort.
+  // Morning read (recent news) + a podcast episode — both best-effort.
   let morningRead: Awaited<ReturnType<typeof getMorningRead>> = [];
-  try { morningRead = await getMorningRead(mine.company.ticker, mine.company.name); } catch { /* degrades */ }
+  let podcast: Awaited<ReturnType<typeof getPodcastEpisode>> = null;
+  try {
+    [morningRead, podcast] = await Promise.all([
+      getMorningRead(mine.company.ticker, mine.company.name),
+      getPodcastEpisode(),
+    ]);
+  } catch { /* degrades */ }
 
   return (
     <HomeDashboard
@@ -82,6 +92,8 @@ export default async function Home() {
       approvals={approvals}
       metrics={metrics}
       morningRead={morningRead}
+      podcast={podcast}
+      layout={layout}
     />
   );
 }
