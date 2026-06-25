@@ -4,6 +4,8 @@ import { getMyCompany } from "@/lib/supabase/store";
 import { listTeamProfiles, listTeamUpdates, todaysBirthdays, dailyQuote } from "@/lib/dashboard";
 import { listMyCalendars, listCalendarEvents } from "@/lib/calendars";
 import { getQuotes } from "@/lib/quotes";
+import { listPosts, getMetrics } from "@/lib/iros";
+import { getMorningRead } from "@/lib/morningRead";
 import HomeDashboard from "@/components/HomeDashboard";
 
 export const dynamic = "force-dynamic";
@@ -42,6 +44,18 @@ export default async function Home() {
     listCalendarEvents({ from: monthStart, to: monthEnd }),
   ]);
 
+  // Posts awaiting approval (the hero card) + Intelligence stats (folded in).
+  let approvals: { id: string; platform: string; theme: string; body: string; classification: string | null }[] = [];
+  let metrics: Awaited<ReturnType<typeof getMetrics>> | null = null;
+  try {
+    const posts = await listPosts();
+    approvals = posts
+      .filter((p) => p.body && (p.status === "draft" || p.status === "reviewed"))
+      .slice(0, 6)
+      .map((p) => ({ id: p.id, platform: p.platform, theme: p.theme, body: p.body, classification: p.classification }));
+  } catch { /* card degrades */ }
+  try { metrics = await getMetrics(); } catch { /* stats degrade */ }
+
   // Company ticker + peers for the stock widget.
   const tickers = [mine.company.ticker, ...(mine.company.peers ?? [])].filter(Boolean).slice(0, 4);
   let quotes: Record<string, { price: number; changePct: number }> = {};
@@ -49,6 +63,10 @@ export default async function Home() {
     const q = await getQuotes(tickers);
     quotes = Object.fromEntries(Object.entries(q).map(([t, v]) => [t, { price: (v as { price?: number }).price ?? 0, changePct: (v as { changePct?: number }).changePct ?? 0 }]));
   } catch { /* widget degrades gracefully */ }
+
+  // Morning read (recent news) — best-effort.
+  let morningRead: Awaited<ReturnType<typeof getMorningRead>> = [];
+  try { morningRead = await getMorningRead(mine.company.ticker, mine.company.name); } catch { /* degrades */ }
 
   return (
     <HomeDashboard
@@ -61,6 +79,9 @@ export default async function Home() {
       calendars={calendars}
       events={events}
       quotes={quotes}
+      approvals={approvals}
+      metrics={metrics}
+      morningRead={morningRead}
     />
   );
 }
