@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import InlineConfirm from "@/components/InlineConfirm";
 
 interface TeamMember {
   id: string;
@@ -55,7 +56,6 @@ export default function TeamAdminPage() {
   };
 
   const remove = async (id: string, email: string) => {
-    if (!confirm(`Remove ${email} from the team? They'll lose access to this company.`)) return;
     setBusy(true); setNotice(null);
     const res = await fetch(`/api/team?id=${encodeURIComponent(id)}`, { method: "DELETE" });
     const d = await res.json();
@@ -137,9 +137,7 @@ export default function TeamAdminPage() {
                     <option value="admin">Admin</option>
                   </select>
                 )}
-                <button onClick={() => remove(m.id, m.email)} disabled={busy} className="rounded-lg border border-app px-3 py-1 text-xs font-medium text-red-600 transition hover:bg-red-500/10 dark:text-red-400">
-                  {m.status === "invited" ? "Cancel" : "Remove"}
-                </button>
+                <InlineConfirm onConfirm={() => remove(m.id, m.email)} label={m.status === "invited" ? "Cancel" : "Remove"} confirmLabel={m.status === "invited" ? "Cancel invite" : "Remove"} className="rounded-lg border border-app px-3 py-1 text-xs font-medium text-red-600 transition hover:bg-red-500/10 dark:text-red-400" />
               </div>
             )}
           </div>

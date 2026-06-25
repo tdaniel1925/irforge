@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import MicDictate from "./MicDictate";
+import InlineConfirm from "./InlineConfirm";
 
 interface Voice {
   id: string;
@@ -50,7 +51,6 @@ export default function VoiceManager({ initial }: { initial: Voice[] }) {
   };
 
   const remove = async (id: string) => {
-    if (!confirm("Delete this voice? This can't be undone.")) return;
     setError("");
     try {
       const res = await fetch("/api/iros/voices", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
@@ -117,7 +117,7 @@ export default function VoiceManager({ initial }: { initial: Voice[] }) {
               </div>
               <div className="flex shrink-0 gap-3 text-xs">
                 <button onClick={() => setEditing(v)} className="text-emerald-600 hover:underline dark:text-emerald-400">Edit</button>
-                <button onClick={() => remove(v.id)} className="text-muted hover:text-red-500">Delete</button>
+                <InlineConfirm onConfirm={() => remove(v.id)} label="Delete" confirmLabel="Delete voice" className="text-muted hover:text-red-500" />
               </div>
             </div>
           ))}
