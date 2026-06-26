@@ -100,7 +100,18 @@ export async function generateAyrshareLinkUrl(profileKey: string, platform: stri
 // (GET /accounts); we filter to the ones belonging to this profile. Each entry has
 // its accountId (needed to target publishing) + a normalized platform key.
 interface LinkedAccount { platform: string; accountId: string }
-async function listProfileAccounts(profileKey: string): Promise<LinkedAccount[]> {
+
+// Zernio returns profileId as EITHER a bare id string OR a populated object
+// { _id, name }. Pull the id out of either shape (the old String(profileId)
+// comparison stringified the object to "[object Object]" and silently dropped
+// every account — a real bug that hid connections from the UI).
+function profileIdOf(a: any): string {
+  const p = a?.profileId;
+  if (!p) return "";
+  return String(typeof p === "object" ? (p._id ?? p.id ?? "") : p);
+}
+
+async function fetchAccounts(profileKey: string): Promise<any[]> {
   if (!apiKey() || !profileKey) return [];
   try {
     const res = await fetch(`${ZERNIO}/accounts?profileId=${encodeURIComponent(profileKey)}`, {
@@ -109,15 +120,122 @@ async function listProfileAccounts(profileKey: string): Promise<LinkedAccount[]>
     });
     const data = await res.json().catch(() => ({}));
     const arr: any[] = data?.accounts ?? data?.data ?? (Array.isArray(data) ? data : []);
-    return arr
-      .filter((a) => !a.profileId || String(a.profileId) === String(profileKey)) // scope to this profile
-      .map((a) => ({
-        platform: normalizePlatform(String(a.platform ?? a.provider ?? a.network ?? "")),
-        accountId: String(a.accountId ?? a._id ?? a.id ?? ""),
-      }))
-      .filter((a) => a.platform && a.accountId);
+    // Scope to this profile when the server didn't already filter. Accept accounts
+    // whose profileId matches OR that carry no profileId at all.
+    return arr.filter((a) => { const pid = profileIdOf(a); return !pid || pid === String(profileKey); });
   } catch {
     return [];
+  }
+}
+
+async function listProfileAccounts(profileKey: string): Promise<LinkedAccount[]> {
+  const arr = await fetchAccounts(profileKey);
+  return arr
+    .map((a) => ({
+      platform: normalizePlatform(String(a.platform ?? a.provider ?? a.network ?? "")),
+      accountId: String(a.accountId ?? a._id ?? a.id ?? ""),
+    }))
+    .filter((a) => a.platform && a.accountId);
+}
+
+// Rich, UI-facing view of one connected account: who it is, whether it's live, and
+// whether it can actually post. Surfaced in Settings so a connection is CONFIRMED
+// (handle + avatar) and its health is visible (active / token / post-capable).
+export interface SocialAccount {
+  platform: string;          // normalized channel key (twitter, linkedin, …)
+  accountId: string;
+  displayName?: string;      // "AmericanFusion"
+  username?: string;         // "FusionAMFN"
+  profilePicture?: string;
+  followersCount?: number;
+  isActive: boolean;         // Zernio isActive && enabled
+  platformStatus?: string;   // "active" | … (platform-level)
+  tokenExpiresAt?: string;   // ISO; null/absent when N/A
+  tokenValid: boolean;       // best-effort from active + non-expired (refined by /health)
+  canPost: boolean;          // has the write scope + active (refined by /health)
+}
+
+function deriveCanPost(a: any): boolean {
+  const perms: string[] = a?.permissions ?? (a?.metadata?.scope ? String(a.metadata.scope).split(/\s+/) : []);
+  const plat = normalizePlatform(String(a.platform ?? ""));
+  // Per-platform "can publish" scope. Default: any "*.write" / "publish" grant.
+  const writeNeedle = plat === "twitter" ? /tweet\.write/i : /publish|write|manage|content/i;
+  return Boolean(a.isActive) && Boolean(a.enabled) && perms.some((p) => writeNeedle.test(p));
+}
+
+// Detailed accounts for a profile — the confirmation + status the Settings UI shows.
+export async function getLinkedAccountsDetailed(profileKey?: string): Promise<SocialAccount[]> {
+  if (!profileKey) return [];
+  const arr = await fetchAccounts(profileKey);
+  return arr
+    .map((a) => {
+      const expIso = a.tokenExpiresAt ?? null;
+      const expMs = expIso ? Date.parse(expIso) : NaN;
+      const notExpired = Number.isNaN(expMs) ? true : expMs > Date.now();
+      return {
+        platform: normalizePlatform(String(a.platform ?? a.provider ?? a.network ?? "")),
+        accountId: String(a.accountId ?? a._id ?? a.id ?? ""),
+        displayName: a.displayName ?? a.metadata?.profileData?.displayName ?? a.name ?? undefined,
+        username: a.username ?? a.metadata?.profileData?.username ?? a.handle ?? undefined,
+        profilePicture: a.profilePicture ?? a.metadata?.profileData?.profilePicture ?? undefined,
+        followersCount: typeof a.followersCount === "number" ? a.followersCount : undefined,
+        isActive: Boolean(a.isActive) && a.enabled !== false,
+        platformStatus: a.platformStatus ?? undefined,
+        tokenExpiresAt: expIso ?? undefined,
+        tokenValid: Boolean(a.isActive) && notExpired,
+        canPost: deriveCanPost(a),
+      } as SocialAccount;
+    })
+    .filter((a) => a.platform && a.accountId);
+}
+
+// Result of a live "Test connection" check for one account.
+export interface AccountHealth {
+  ok: boolean;               // reachable + healthy enough to post
+  status?: string;           // "healthy" | "degraded" | …
+  canPost: boolean;
+  tokenValid: boolean;
+  tokenExpiresAt?: string;
+  needsRefresh?: boolean;
+  username?: string;
+  displayName?: string;
+  missingScopes?: string[];  // required posting scopes not granted
+  error?: string;
+}
+
+// Live health check via Zernio's GET /accounts/{id}/health — used by "Test
+// connection". Returns a clear pass/fail with the reason, so the UI can say
+// exactly why an account can't post (token expired, missing write scope, etc.).
+export async function getAccountHealth(accountId: string): Promise<AccountHealth> {
+  if (!apiKey()) return { ok: false, canPost: false, tokenValid: false, error: "Publishing isn't configured." };
+  if (!accountId) return { ok: false, canPost: false, tokenValid: false, error: "No account to test." };
+  try {
+    const res = await fetch(`${ZERNIO}/accounts/${encodeURIComponent(accountId)}/health`, {
+      headers: authHeaders(),
+      signal: AbortSignal.timeout(15000),
+    });
+    if (res.status === 404) return { ok: false, canPost: false, tokenValid: false, error: "This account is no longer connected. Reconnect it." };
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok) return { ok: false, canPost: false, tokenValid: false, error: String(d?.message ?? d?.error ?? `Health check failed (${res.status}).`) };
+
+    const tokenStatus = d?.tokenStatus ?? {};
+    const tokenValid = tokenStatus.valid !== false;
+    const posting: any[] = d?.permissions?.posting ?? [];
+    const missingScopes = posting.filter((p) => p?.required && !p?.granted).map((p) => String(p.scope));
+    const canPost = tokenValid && missingScopes.length === 0 && String(d?.status ?? "").toLowerCase() !== "disconnected";
+    return {
+      ok: canPost,
+      status: d?.status,
+      canPost,
+      tokenValid,
+      tokenExpiresAt: tokenStatus.expiresAt,
+      needsRefresh: tokenStatus.needsRefresh,
+      username: d?.username,
+      displayName: d?.displayName,
+      missingScopes: missingScopes.length ? missingScopes : undefined,
+    };
+  } catch (e) {
+    return { ok: false, canPost: false, tokenValid: false, error: e instanceof Error ? e.message : "Couldn't reach the publishing service." };
   }
 }
 

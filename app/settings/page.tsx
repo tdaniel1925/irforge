@@ -256,22 +256,42 @@ const SOCIAL_NETWORKS: { key: string; label: string; icon: string }[] = [
   { key: "reddit", label: "Reddit", icon: "r/" },
 ];
 
+// A connected account's rich detail (matches lib/ayrshare SocialAccount).
+interface SocialAccount {
+  platform: string;
+  accountId: string;
+  displayName?: string;
+  username?: string;
+  profilePicture?: string;
+  followersCount?: number;
+  isActive: boolean;
+  platformStatus?: string;
+  tokenExpiresAt?: string;
+  tokenValid: boolean;
+  canPost: boolean;
+}
+type TestResult = { ok: boolean; canPost: boolean; tokenValid: boolean; status?: string; needsRefresh?: boolean; missingScopes?: string[]; error?: string; testedAt: number };
+
 function SocialConnections() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
-  const [status, setStatus] = useState<{ configured: boolean; multiTenant: boolean; hasProfile?: boolean; accounts: string[] }>({
-    configured: false,
-    multiTenant: false,
-    accounts: [],
-  });
+  const [multiTenant, setMultiTenant] = useState(false);
+  const [configured, setConfigured] = useState(false);
+  const [accounts, setAccounts] = useState<SocialAccount[]>([]);
+  const [tests, setTests] = useState<Record<string, TestResult | "running">>({});
+  const [noticeJustConnected, setNoticeJustConnected] = useState(false);
 
   const load = async () => {
     try {
-      const res = await fetch("/api/social/connect");
-      const d = await res.json();
-      setStatus(d);
+      // status (configured/multiTenant) from the connect endpoint…
+      const s = await fetch("/api/social/connect").then((r) => r.json()).catch(() => ({}));
+      setConfigured(Boolean(s.configured));
+      setMultiTenant(Boolean(s.multiTenant));
+      // …and the DETAILED account list (handle/avatar/health) from the new endpoint.
+      const a = await fetch("/api/social/accounts").then((r) => r.json()).catch(() => ({ accounts: [] }));
+      setAccounts(Array.isArray(a.accounts) ? a.accounts : []);
     } catch {
       /* leave defaults */
     } finally {
@@ -281,6 +301,35 @@ function SocialConnections() {
   useEffect(() => {
     load();
   }, []);
+
+  // When the connect popup redirects back to /settings?connected=1, auto-refresh so
+  // a just-linked account is CONFIRMED immediately (no manual refresh needed).
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("connected") === "1") {
+      load();
+      params.delete("connected");
+      const q = params.toString();
+      window.history.replaceState({}, "", window.location.pathname + (q ? `?${q}` : ""));
+      setNoticeJustConnected(true);
+      setTimeout(() => setNoticeJustConnected(false), 6000);
+    }
+  }, []);
+
+  // Run a live "Test connection" for one account.
+  const testConnection = async (acct: SocialAccount) => {
+    setTests((t) => ({ ...t, [acct.accountId]: "running" }));
+    try {
+      const d = await fetch("/api/social/accounts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accountId: acct.accountId }),
+      }).then((r) => r.json());
+      setTests((t) => ({ ...t, [acct.accountId]: { ...d, testedAt: Date.now() } }));
+    } catch {
+      setTests((t) => ({ ...t, [acct.accountId]: { ok: false, canPost: false, tokenValid: false, error: "Couldn't reach the test service.", testedAt: Date.now() } }));
+    }
+  };
 
   // Open the connect page in a SECURE WINDOW from inside our modal. To dodge popup
   // blockers we open a blank window synchronously on the click, then redirect it to
@@ -316,7 +365,8 @@ function SocialConnections() {
       const res = await fetch("/api/social/connect", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ platform }) });
       const d = await res.json();
       if (!res.ok) throw new Error(d.error ?? "Couldn't disconnect.");
-      setStatus((s) => ({ ...s, accounts: d.accounts ?? [] }));
+      // Reload the detailed list so the row reflects reality immediately.
+      await load();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Failed.");
     } finally {
@@ -324,7 +374,8 @@ function SocialConnections() {
     }
   };
 
-  const connected = new Set((status.accounts ?? []).map((a) => a.toLowerCase()));
+  const byPlatform = new Map(accounts.map((a) => [a.platform, a] as const));
+  const connected = new Set(accounts.map((a) => a.platform.toLowerCase()));
 
   return (
     <Card className="mb-6">
@@ -336,56 +387,55 @@ function SocialConnections() {
             disclosures are always attached.
           </p>
         </div>
-        {status.multiTenant && (
+        {multiTenant && (
           <Button onClick={() => { setErr(""); setModalOpen(true); }} disabled={busy}>
             {connected.size > 0 ? "Manage connections" : "Connect accounts"}
           </Button>
         )}
       </div>
 
+      {noticeJustConnected && (
+        <p className="mt-3 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm font-medium text-emerald-700 dark:text-emerald-300">
+          ✓ Account authorized. If it doesn&apos;t appear below yet, give it a few seconds and tap refresh.
+        </p>
+      )}
       {err && <p className="mt-3 text-sm text-red-500">{err}</p>}
 
-      {!status.configured ? (
+      {!configured ? (
         <p className="mt-4 rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-muted">
           Publishing isn&apos;t configured on this deployment yet. Posts you approve are marked as posted but not sent to a
           live network.
         </p>
-      ) : !status.multiTenant ? (
+      ) : !multiTenant ? (
         <p className="mt-4 rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-muted">
           Posting is live on a shared account. Per-company account linking will appear here once enabled.
         </p>
+      ) : loading ? (
+        <p className="mt-4 text-sm text-faint">Checking your connections…</p>
+      ) : connected.size === 0 ? (
+        <p className="mt-4 rounded-lg border border-dashed border-app bg-surface-2/40 px-3 py-3 text-sm text-muted">
+          No accounts connected yet. Tap <strong className="text-app">Connect accounts</strong> to link X, LinkedIn, and more.
+        </p>
       ) : (
-        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {SOCIAL_NETWORKS.map((n) => {
-            const on = connected.has(n.key);
+        <div className="mt-4 space-y-2">
+          {/* One rich row per CONNECTED account — confirms who's linked + its health. */}
+          {accounts.map((a) => {
+            const meta = SOCIAL_NETWORKS.find((n) => n.key === a.platform);
+            const label = meta?.label ?? a.platform;
+            const test = tests[a.accountId];
             return (
-              <div
-                key={n.key}
-                className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${on ? "border-emerald-500/40 bg-emerald-500/5" : "border-app bg-surface-2/40"}`}
-              >
-                <span className="flex h-6 w-6 items-center justify-center rounded bg-app-hover text-xs font-bold text-app">{n.icon}</span>
-                <span className="flex-1 text-app">{n.label}</span>
-                {loading ? (
-                  <span className="text-xs text-faint">…</span>
-                ) : on ? (
-                  <InlineConfirm
-                    onConfirm={() => disconnect(n.key, n.label)}
-                    label={<>✓ <span className="underline-offset-2 hover:underline">Disconnect</span></>}
-                    confirmLabel={`Disconnect ${n.label}`}
-                    title={`Disconnect ${n.label}`}
-                    className="text-xs font-semibold text-emerald-600 hover:text-red-500 disabled:opacity-50 dark:text-emerald-400"
-                  />
-                ) : (
-                  <span className="text-xs text-faint">—</span>
-                )}
-              </div>
+              <AccountRow
+                key={a.accountId}
+                acct={a}
+                label={label}
+                icon={meta?.icon ?? "•"}
+                test={test}
+                onTest={() => testConnection(a)}
+                onDisconnect={() => disconnect(a.platform, label)}
+              />
             );
           })}
         </div>
-      )}
-
-      {status.multiTenant && !loading && connected.size === 0 && (
-        <p className="mt-3 text-xs text-faint">No accounts connected yet. Tap &ldquo;Connect accounts&rdquo; to link X, LinkedIn, and more.</p>
       )}
 
       {modalOpen && (
@@ -432,5 +482,110 @@ function SocialConnections() {
         </div>
       )}
     </Card>
+  );
+}
+
+// One connected account: avatar + handle (confirmation it's linked), a health badge,
+// a "Test connection" button with inline result, and disconnect. No popups — the
+// test result renders inline beneath the row.
+function AccountRow({
+  acct,
+  label,
+  icon,
+  test,
+  onTest,
+  onDisconnect,
+}: {
+  acct: SocialAccount;
+  label: string;
+  icon: string;
+  test?: TestResult | "running";
+  onTest: () => void;
+  onDisconnect: () => void;
+}) {
+  const expiresSoon = (() => {
+    if (!acct.tokenExpiresAt) return false;
+    const ms = Date.parse(acct.tokenExpiresAt) - Date.now();
+    return !Number.isNaN(ms) && ms < 24 * 60 * 60 * 1000; // < 24h
+  })();
+  const expired = (() => {
+    if (!acct.tokenExpiresAt) return false;
+    const ms = Date.parse(acct.tokenExpiresAt) - Date.now();
+    return !Number.isNaN(ms) && ms <= 0;
+  })();
+
+  // Status badge: green when active + post-capable, amber when linked but needs
+  // attention, red when it can't post.
+  const tone = !acct.isActive || expired ? "red" : acct.canPost ? "green" : "amber";
+  const badge =
+    tone === "green" ? { cls: "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300", text: "● Active · can post" }
+    : tone === "amber" ? { cls: "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300", text: "● Linked · check posting" }
+    : { cls: "border-red-500/40 bg-red-500/10 text-red-700 dark:text-red-300", text: expired ? "● Token expired" : "● Inactive" };
+
+  const running = test === "running";
+  const result = test && test !== "running" ? test : null;
+
+  return (
+    <div className={`rounded-lg border px-3 py-2.5 ${acct.isActive && !expired ? "border-emerald-500/30 bg-emerald-500/[0.04]" : "border-red-500/30 bg-red-500/[0.04]"}`}>
+      <div className="flex flex-wrap items-center gap-3">
+        {/* avatar (falls back to the network glyph) */}
+        {acct.profilePicture ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={acct.profilePicture} alt="" className="h-8 w-8 rounded-full object-cover" />
+        ) : (
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-app-hover text-xs font-bold text-app">{icon}</span>
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium text-app">
+            {acct.displayName || label}
+            {acct.username && <span className="ml-1.5 text-xs font-normal text-muted">@{acct.username}</span>}
+          </p>
+          <p className="text-[11px] text-faint">
+            {label}
+            {typeof acct.followersCount === "number" && acct.followersCount > 0 && ` · ${acct.followersCount.toLocaleString()} followers`}
+            {acct.tokenExpiresAt && !expired && expiresSoon && " · token renews soon"}
+          </p>
+        </div>
+        <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${badge.cls}`}>{badge.text}</span>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            onClick={onTest}
+            disabled={running}
+            className="rounded-lg border border-app px-2.5 py-1 text-xs font-medium text-app transition hover:bg-app-hover disabled:opacity-50"
+          >
+            {running ? "Testing…" : "Test connection"}
+          </button>
+          <InlineConfirm
+            onConfirm={onDisconnect}
+            label={<span className="underline-offset-2 hover:underline">Disconnect</span>}
+            confirmLabel={`Disconnect ${label}`}
+            title={`Disconnect ${label}`}
+            className="text-xs font-semibold text-muted hover:text-red-500 disabled:opacity-50"
+          />
+        </div>
+      </div>
+
+      {/* Inline test result — no popup. */}
+      {result && (
+        <div
+          className={`mt-2 rounded-md border px-2.5 py-1.5 text-xs ${
+            result.ok ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "border-red-500/40 bg-red-500/10 text-red-700 dark:text-red-300"
+          }`}
+        >
+          {result.error ? (
+            <>✕ {result.error}</>
+          ) : result.ok ? (
+            <>✓ Connection healthy — posts will publish to this account.{result.needsRefresh ? " (Token auto-refreshing.)" : ""}</>
+          ) : (
+            <>
+              ✕ Can&apos;t post yet:
+              {!result.tokenValid && " the access token is invalid or expired — reconnect this account."}
+              {result.missingScopes?.length ? ` missing permission${result.missingScopes.length > 1 ? "s" : ""}: ${result.missingScopes.join(", ")} — reconnect and grant posting access.` : ""}
+              {result.tokenValid && !result.missingScopes?.length ? ` status is "${result.status ?? "unknown"}".` : ""}
+            </>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
