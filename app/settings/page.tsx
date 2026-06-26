@@ -246,14 +246,15 @@ function Field({ label, value, onChange }: { label: string; value: string; onCha
 
 // All networks PubcoZone can publish to. Labels for the status grid.
 // `unavailable` marks a network whose OAuth isn't working through our publishing
-// provider yet (e.g. YouTube needs Google app verification on the provider side) —
-// we show a clear note and disable Connect so clients aren't left confused.
-const SOCIAL_NETWORKS: { key: string; label: string; icon: string; unavailable?: string }[] = [
+// provider yet — when set, we show a "Coming soon" note instead of Connect. Leave it
+// undefined to keep Connect active. (`note` shows a non-blocking hint under an
+// otherwise-working Connect button — e.g. for networks under active troubleshooting.)
+const SOCIAL_NETWORKS: { key: string; label: string; icon: string; unavailable?: string; note?: string }[] = [
   { key: "twitter", label: "X (Twitter)", icon: "𝕏" },
   { key: "linkedin", label: "LinkedIn", icon: "in" },
   { key: "facebook", label: "Facebook", icon: "f" },
   { key: "instagram", label: "Instagram", icon: "◎" },
-  { key: "youtube", label: "YouTube", icon: "▶", unavailable: "YouTube isn't available yet — our publishing provider is completing Google's verification for it. We'll enable it as soon as it's ready." },
+  { key: "youtube", label: "YouTube", icon: "▶", note: "If YouTube doesn't connect after Google sign-in, our publishing provider is finalizing verification — try again or contact support." },
   { key: "tiktok", label: "TikTok", icon: "♪" },
   { key: "telegram", label: "Telegram", icon: "✈" },
   { key: "reddit", label: "Reddit", icon: "r/" },
@@ -498,9 +499,11 @@ function SocialConnections() {
             <div className="mt-4 space-y-2">
               {SOCIAL_NETWORKS.map((n) => {
                 const on = connected.has(n.key);
-                // A network can be unavailable (provider-side OAuth not ready) — but
+                // A network can be fully unavailable (provider OAuth not ready) — but
                 // if it somehow IS connected, still let the user manage it.
                 const blocked = Boolean(n.unavailable) && !on;
+                // A non-blocking hint shows under an otherwise-working Connect button.
+                const hint = !on && !blocked ? n.note : undefined;
                 return (
                   <div key={n.key} className={`rounded-lg border px-2.5 py-2 text-sm ${on ? "border-emerald-500/40 bg-emerald-500/5" : blocked ? "border-app bg-surface-2/20 opacity-75" : "border-app bg-surface-2/40"}`}>
                     <div className="flex items-center gap-2">
@@ -517,6 +520,7 @@ function SocialConnections() {
                       )}
                     </div>
                     {blocked && <p className="mt-1.5 pl-8 text-[11px] leading-snug text-faint">{n.unavailable}</p>}
+                    {hint && <p className="mt-1.5 pl-8 text-[11px] leading-snug text-amber-600/90 dark:text-amber-400/80">{n.note}</p>}
                   </div>
                 );
               })}
