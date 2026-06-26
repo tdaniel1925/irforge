@@ -271,6 +271,7 @@ interface SocialAccount {
   isActive: boolean;
   platformStatus?: string;
   tokenExpiresAt?: string;
+  autoRefreshes?: boolean;
   tokenValid: boolean;
   canPost: boolean;
 }
@@ -559,13 +560,15 @@ function AccountRow({
   onTest: () => void;
   onDisconnect: () => void;
 }) {
+  // Auto-refresh platforms (e.g. X) rotate their token server-side, so a past
+  // tokenExpiresAt is NOT expired — don't show "Token expired"/expiring for them.
   const expiresSoon = (() => {
-    if (!acct.tokenExpiresAt) return false;
+    if (acct.autoRefreshes || !acct.tokenExpiresAt) return false;
     const ms = Date.parse(acct.tokenExpiresAt) - Date.now();
     return !Number.isNaN(ms) && ms < 24 * 60 * 60 * 1000; // < 24h
   })();
   const expired = (() => {
-    if (!acct.tokenExpiresAt) return false;
+    if (acct.autoRefreshes || !acct.tokenExpiresAt) return false;
     const ms = Date.parse(acct.tokenExpiresAt) - Date.now();
     return !Number.isNaN(ms) && ms <= 0;
   })();

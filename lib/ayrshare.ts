@@ -151,6 +151,7 @@ export interface SocialAccount {
   isActive: boolean;         // Zernio isActive && enabled
   platformStatus?: string;   // "active" | … (platform-level)
   tokenExpiresAt?: string;   // ISO; null/absent when N/A
+  autoRefreshes?: boolean;   // token rotates server-side → past expiry ≠ "expired"
   tokenValid: boolean;       // best-effort from active + non-expired (refined by /health)
   canPost: boolean;          // has the write scope + active (refined by /health)
 }
@@ -162,12 +163,20 @@ const POST_SCOPE: Record<string, RegExp> = {
   twitter: /tweet\.write/i,
   linkedin: /w_member_social|w_organization_social/i,
   facebook: /pages_manage_posts|publish_pages|pages_manage_engagement/i,
-  instagram: /instagram_content_publish|instagram_basic/i,
+  // IG returns instagram_business_content_publish (note the _business_ infix) — the
+  // old /instagram_content_publish/ missed it and falsely flagged "check posting".
+  instagram: /content_publish|instagram_(business_)?basic/i,
   youtube: /youtube\.upload|youtube(\.|$)/i,
   tiktok: /video\.publish|video\.upload/i,
   reddit: /submit/i,
   telegram: /.*/i, // bot token posts directly; no per-scope gate
 };
+
+// Platforms whose access token auto-refreshes server-side (the provider rotates it),
+// so a PAST tokenExpiresAt in the list is NOT "expired" — it just means a refresh is
+// due. Showing these as "Token expired" is a false alarm (the live /health check
+// reports them valid + auto-refreshing).
+const AUTO_REFRESH_PLATFORMS = new Set(["twitter"]);
 
 function deriveCanPost(a: any): boolean {
   const perms: string[] = a?.permissions ?? (a?.metadata?.scope ? String(a.metadata.scope).split(/\s+/) : []);
@@ -187,11 +196,16 @@ export async function getLinkedAccountsDetailed(profileKey?: string): Promise<So
   const arr = await fetchAccounts(profileKey);
   return arr
     .map((a) => {
+      const plat = normalizePlatform(String(a.platform ?? a.provider ?? a.network ?? ""));
+      const autoRefreshes = AUTO_REFRESH_PLATFORMS.has(plat);
       const expIso = a.tokenExpiresAt ?? null;
       const expMs = expIso ? Date.parse(expIso) : NaN;
-      const notExpired = Number.isNaN(expMs) ? true : expMs > Date.now();
+      // Auto-refresh platforms are never "expired" from a past timestamp — the token
+      // rotates server-side. Only treat a past expiry as expired for platforms that
+      // DON'T auto-refresh.
+      const notExpired = autoRefreshes || Number.isNaN(expMs) ? true : expMs > Date.now();
       return {
-        platform: normalizePlatform(String(a.platform ?? a.provider ?? a.network ?? "")),
+        platform: plat,
         accountId: String(a.accountId ?? a._id ?? a.id ?? ""),
         displayName: a.displayName ?? a.metadata?.profileData?.displayName ?? a.name ?? undefined,
         username: a.username ?? a.metadata?.profileData?.username ?? a.handle ?? undefined,
@@ -200,6 +214,7 @@ export async function getLinkedAccountsDetailed(profileKey?: string): Promise<So
         isActive: Boolean(a.isActive) && a.enabled !== false,
         platformStatus: a.platformStatus ?? undefined,
         tokenExpiresAt: expIso ?? undefined,
+        autoRefreshes,
         tokenValid: Boolean(a.isActive) && notExpired,
         canPost: deriveCanPost(a),
       } as SocialAccount;
