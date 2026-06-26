@@ -155,12 +155,30 @@ export interface SocialAccount {
   canPost: boolean;          // has the write scope + active (refined by /health)
 }
 
+// Per-platform OAuth scope that grants "can publish a post". Each network names it
+// differently — LinkedIn uses w_member_social (no "write" substring), so a generic
+// /write/ check wrongly flagged it as not-postable. Matched against the granted scopes.
+const POST_SCOPE: Record<string, RegExp> = {
+  twitter: /tweet\.write/i,
+  linkedin: /w_member_social|w_organization_social/i,
+  facebook: /pages_manage_posts|publish_pages|pages_manage_engagement/i,
+  instagram: /instagram_content_publish|instagram_basic/i,
+  youtube: /youtube\.upload|youtube(\.|$)/i,
+  tiktok: /video\.publish|video\.upload/i,
+  reddit: /submit/i,
+  telegram: /.*/i, // bot token posts directly; no per-scope gate
+};
+
 function deriveCanPost(a: any): boolean {
   const perms: string[] = a?.permissions ?? (a?.metadata?.scope ? String(a.metadata.scope).split(/\s+/) : []);
   const plat = normalizePlatform(String(a.platform ?? ""));
-  // Per-platform "can publish" scope. Default: any "*.write" / "publish" grant.
-  const writeNeedle = plat === "twitter" ? /tweet\.write/i : /publish|write|manage|content/i;
-  return Boolean(a.isActive) && Boolean(a.enabled) && perms.some((p) => writeNeedle.test(p));
+  // Match the platform's real publish scope; fall back to a broad write/publish grant.
+  const needle = POST_SCOPE[plat] ?? /publish|write|manage|content|social/i;
+  const active = Boolean(a.isActive) && a.enabled !== false;
+  // If the provider didn't return scopes at all, don't punish an otherwise-active
+  // account — treat active as post-capable (the live /health test is the source of truth).
+  if (perms.length === 0) return active;
+  return active && perms.some((p) => needle.test(String(p)));
 }
 
 // Detailed accounts for a profile — the confirmation + status the Settings UI shows.
@@ -303,14 +321,16 @@ export async function disconnectAccount(platform: string, profileKey?: string): 
   const acct = accounts.find((a) => a.platform === plat);
   if (!acct) return { ok: true }; // already not linked — treat as success
   try {
-    const res = await fetch(`${ZERNIO}/profiles/${encodeURIComponent(profileKey)}/accounts/${encodeURIComponent(acct.accountId)}`, {
+    // Zernio disconnects at the ACCOUNT level: DELETE /accounts/{accountId}. (The
+    // old /profiles/{id}/accounts/{id} path doesn't exist and returned 404.)
+    const res = await fetch(`${ZERNIO}/accounts/${encodeURIComponent(acct.accountId)}`, {
       method: "DELETE",
       headers: authHeaders(),
       signal: AbortSignal.timeout(15000),
     });
-    if (res.ok) return { ok: true };
+    if (res.ok || res.status === 404) return { ok: true }; // 404 = already gone
     const data = await res.json().catch(() => ({}));
-    return { ok: false, error: data?.message ?? `Couldn't disconnect (${res.status}).` };
+    return { ok: false, error: data?.message ?? data?.error ?? `Couldn't disconnect (${res.status}).` };
   } catch {
     return { ok: false, error: "Couldn't reach the publishing service. Try again." };
   }
