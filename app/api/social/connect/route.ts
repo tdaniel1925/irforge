@@ -33,7 +33,7 @@ export async function POST() {
   const { db, save } = await getStore();
   if (!ayrshareMultiTenant()) {
     return NextResponse.json(
-      { error: "Connecting your own social accounts isn't available yet (Ayrshare multi-account isn't configured). Contact support." },
+      { error: "Connecting your own social accounts isn't available yet (publishing isn't configured). Contact support." },
       { status: 400 }
     );
   }
@@ -42,11 +42,12 @@ export async function POST() {
   const idSuffix = String(mine?.id ?? "").slice(0, 8);
   const uniqueTitle = `${db.company.name || "Company"} ($${db.company.ticker || "—"}) · ${idSuffix}`;
 
-  // A real Ayrshare profileKey looks like XXXXXXXX-XXXXXXXX-XXXXXXXX-XXXXXXXX
-  // (uppercase hex groups). Older builds wrongly stored a refId (40-char lowercase
-  // hex) here, which generateJWT/posting REJECT. Treat anything that isn't a real
-  // profileKey as missing so it gets recreated.
-  const looksLikeProfileKey = (v?: string) => Boolean(v && /^[0-9A-F]{8}(-[0-9A-F]{8}){3}$/.test(v));
+  // We're now on Zernio: a valid profile id is a 24-char Mongo ObjectId (hex).
+  // Anything else — including the legacy Ayrshare profileKeys
+  // (XXXXXXXX-XXXXXXXX-…, which have dashes) stored on existing companies — is
+  // treated as missing, so it gets recreated on Zernio. This auto-migrates each
+  // company off Ayrshare on their next Connect click.
+  const looksLikeProfileKey = (v?: string) => Boolean(v && /^[a-f0-9]{24}$/i.test(v));
 
   // Returns null on success, or { error, cap } when create failed. cap=true means
   // Ayrshare's plan profile limit is full — a distinct, actionable failure.
@@ -82,9 +83,10 @@ export async function POST() {
   let key = db.company.ayrshareProfileKey ?? "";
   let link = await generateAyrshareLinkUrl(key);
 
-  // Self-heal: if Ayrshare still rejects the key as invalid, create a fresh one and
-  // retry ONCE — UNLESS the plan cap is full (then surface that, don't keep trying).
-  if (!link.ok && /profile key is invalid/i.test(link.error ?? "")) {
+  // Self-heal: if the provider rejects the profile (invalid / not found — e.g. it
+  // was deleted), create a fresh one and retry ONCE — UNLESS the plan cap is full
+  // (then surface that, don't keep trying).
+  if (!link.ok && /invalid|not\s*found|no\s*such|unknown profile/i.test(link.error ?? "")) {
     const fail = await createFresh();
     if (fail?.cap) {
       return NextResponse.json({ error: fail.error, code: "profile_cap" }, { status: 409 });
