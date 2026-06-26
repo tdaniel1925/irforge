@@ -107,8 +107,10 @@ export default function Sidebar() {
   }, []);
 
   // Who's signed in: drives admin-only nav + "Your Public Page" -> their real page.
+  // no-store so the admin-nav flag is NEVER served stale from a cached response
+  // (a cached superAdmin=true from another session would wrongly show Admin links).
   useEffect(() => {
-    fetch("/api/state")
+    fetch("/api/state", { cache: "no-store" })
       .then((r) => r.json())
       .then((d) => {
         setSuperAdmin(Boolean(d?.superAdmin));
