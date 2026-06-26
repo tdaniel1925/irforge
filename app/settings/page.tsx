@@ -244,13 +244,16 @@ function Field({ label, value, onChange }: { label: string; value: string; onCha
   );
 }
 
-// All networks PubcoZone can publish to (via Ayrshare). Labels for the status grid.
-const SOCIAL_NETWORKS: { key: string; label: string; icon: string }[] = [
+// All networks PubcoZone can publish to. Labels for the status grid.
+// `unavailable` marks a network whose OAuth isn't working through our publishing
+// provider yet (e.g. YouTube needs Google app verification on the provider side) —
+// we show a clear note and disable Connect so clients aren't left confused.
+const SOCIAL_NETWORKS: { key: string; label: string; icon: string; unavailable?: string }[] = [
   { key: "twitter", label: "X (Twitter)", icon: "𝕏" },
   { key: "linkedin", label: "LinkedIn", icon: "in" },
   { key: "facebook", label: "Facebook", icon: "f" },
   { key: "instagram", label: "Instagram", icon: "◎" },
-  { key: "youtube", label: "YouTube", icon: "▶" },
+  { key: "youtube", label: "YouTube", icon: "▶", unavailable: "YouTube isn't available yet — our publishing provider is completing Google's verification for it. We'll enable it as soon as it's ready." },
   { key: "tiktok", label: "TikTok", icon: "♪" },
   { key: "telegram", label: "Telegram", icon: "✈" },
   { key: "reddit", label: "Reddit", icon: "r/" },
@@ -367,6 +370,9 @@ function SocialConnections() {
   // platform and open that network's authorize page in a popup.
   const connect = (platform: string) => {
     setErr("");
+    // Guard: don't start an OAuth flow for a network that isn't available yet.
+    const net = SOCIAL_NETWORKS.find((n) => n.key === platform);
+    if (net?.unavailable) { setErr(net.unavailable); return; }
     // Open a FRESH window per attempt (unique name) so a slow/failed redirect can't
     // strand the previous connect's page in a reused "pzConnect" window — which is
     // what made returns look like "nothing happened". Write an immediate placeholder
@@ -492,17 +498,25 @@ function SocialConnections() {
             <div className="mt-4 space-y-2">
               {SOCIAL_NETWORKS.map((n) => {
                 const on = connected.has(n.key);
+                // A network can be unavailable (provider-side OAuth not ready) — but
+                // if it somehow IS connected, still let the user manage it.
+                const blocked = Boolean(n.unavailable) && !on;
                 return (
-                  <div key={n.key} className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-sm ${on ? "border-emerald-500/40 bg-emerald-500/5" : "border-app bg-surface-2/40"}`}>
-                    <span className="flex h-6 w-6 items-center justify-center rounded bg-app-hover text-[11px] font-bold text-app">{n.icon}</span>
-                    <span className="flex-1 text-app">{n.label}</span>
-                    {on ? (
-                      <InlineConfirm onConfirm={() => disconnect(n.key, n.label)} label="✓ Connected" confirmLabel={`Disconnect ${n.label}`} className="text-xs font-semibold text-emerald-600 hover:text-red-500 dark:text-emerald-400" />
-                    ) : (
-                      <button onClick={() => connect(n.key)} disabled={busy} className="rounded-lg bg-emerald-600 px-3 py-1 text-xs font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-50">
-                        {busy ? "…" : "Connect"}
-                      </button>
-                    )}
+                  <div key={n.key} className={`rounded-lg border px-2.5 py-2 text-sm ${on ? "border-emerald-500/40 bg-emerald-500/5" : blocked ? "border-app bg-surface-2/20 opacity-75" : "border-app bg-surface-2/40"}`}>
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-6 w-6 items-center justify-center rounded bg-app-hover text-[11px] font-bold text-app">{n.icon}</span>
+                      <span className="flex-1 text-app">{n.label}</span>
+                      {on ? (
+                        <InlineConfirm onConfirm={() => disconnect(n.key, n.label)} label="✓ Connected" confirmLabel={`Disconnect ${n.label}`} className="text-xs font-semibold text-emerald-600 hover:text-red-500 dark:text-emerald-400" />
+                      ) : blocked ? (
+                        <span className="rounded-full border border-app px-2.5 py-1 text-[11px] font-semibold text-faint">Coming soon</span>
+                      ) : (
+                        <button onClick={() => connect(n.key)} disabled={busy} className="rounded-lg bg-emerald-600 px-3 py-1 text-xs font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-50">
+                          {busy ? "…" : "Connect"}
+                        </button>
+                      )}
+                    </div>
+                    {blocked && <p className="mt-1.5 pl-8 text-[11px] leading-snug text-faint">{n.unavailable}</p>}
                   </div>
                 );
               })}
