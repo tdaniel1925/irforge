@@ -302,18 +302,47 @@ function SocialConnections() {
     load();
   }, []);
 
-  // When the connect popup redirects back to /settings?connected=1, auto-refresh so
+  // When the connect popup redirects back to /settings?connected=…, auto-refresh so
   // a just-linked account is CONFIRMED immediately (no manual refresh needed).
+  // Zernio appends its OWN params on return (e.g. ?connected=linkedin&profileId=…),
+  // so match ANY truthy `connected` value — not just "1" — and also clear the extra
+  // params Zernio adds. (Matching only "1" is why returns looked like nothing happened.)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("connected") === "1") {
-      load();
-      params.delete("connected");
-      const q = params.toString();
-      window.history.replaceState({}, "", window.location.pathname + (q ? `?${q}` : ""));
-      setNoticeJustConnected(true);
-      setTimeout(() => setNoticeJustConnected(false), 6000);
+    const connected = params.get("connected");
+    if (!connected) return;
+
+    // Case A: this /settings loaded INSIDE the connect popup (it has an opener).
+    // Tell the opener to refresh, then close ourselves so the user lands back on the
+    // real settings page with the new account showing — instead of the OAuth return
+    // page sitting open in a popup looking like nothing happened.
+    if (window.opener && window.opener !== window) {
+      try { window.opener.postMessage({ type: "pz:social-connected", platform: connected }, window.location.origin); } catch { /* ignore */ }
+      window.close();
+      return;
     }
+
+    // Case B: normal tab (popup was blocked, so the redirect replaced this tab).
+    load();
+    ["connected", "profileId", "state", "error", "platform"].forEach((k) => params.delete(k));
+    const q = params.toString();
+    window.history.replaceState({}, "", window.location.pathname + (q ? `?${q}` : ""));
+    setNoticeJustConnected(true);
+    setTimeout(() => setNoticeJustConnected(false), 6000);
+  }, []);
+
+  // Listen for the popup's "connected" signal (Case A above) and refresh + confirm.
+  useEffect(() => {
+    const onMsg = (e: MessageEvent) => {
+      if (e.origin !== window.location.origin) return;
+      if (e.data?.type === "pz:social-connected") {
+        load();
+        setNoticeJustConnected(true);
+        setTimeout(() => setNoticeJustConnected(false), 6000);
+      }
+    };
+    window.addEventListener("message", onMsg);
+    return () => window.removeEventListener("message", onMsg);
   }, []);
 
   // Run a live "Test connection" for one account.
@@ -338,16 +367,25 @@ function SocialConnections() {
   // platform and open that network's authorize page in a popup.
   const connect = (platform: string) => {
     setErr("");
-    const win = window.open("about:blank", "pzConnect", "width=560,height=720");
+    // Open a FRESH window per attempt (unique name) so a slow/failed redirect can't
+    // strand the previous connect's page in a reused "pzConnect" window — which is
+    // what made returns look like "nothing happened". Write an immediate placeholder
+    // so the user never stares at a blank/stale tab while we fetch the auth URL.
+    const win = window.open("about:blank", `pzConnect_${platform}_${Math.random().toString(36).slice(2)}`, "width=560,height=720");
+    if (win) {
+      try {
+        win.document.write(`<!doctype html><title>Connecting…</title><body style="font:16px system-ui;display:grid;place-items:center;height:100vh;margin:0;color:#334155">Opening ${platform} sign-in…</body>`);
+      } catch { /* cross-origin guard — ignore */ }
+    }
     setBusy(true);
     fetch("/api/social/connect", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ platform }) })
       .then((r) => r.json().then((d) => ({ ok: r.ok, d })))
       .then(({ ok, d }) => {
         if (!ok || !d.url) throw new Error(d.error ?? "Couldn't open the connect page.");
-        if (win) win.location.href = d.url;
-        else window.location.href = d.url; // popup blocked entirely — fall back to same-tab
+        if (win && !win.closed) win.location.href = d.url;
+        else window.location.href = d.url; // popup blocked / closed — fall back to same-tab
       })
-      .catch((e) => { if (win) win.close(); setErr(e instanceof Error ? e.message : "Failed."); })
+      .catch((e) => { if (win && !win.closed) win.close(); setErr(e instanceof Error ? e.message : "Failed."); })
       .finally(() => setBusy(false));
   };
 
