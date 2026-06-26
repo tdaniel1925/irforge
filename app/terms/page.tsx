@@ -7,11 +7,11 @@ export default function Terms() {
     <div className="mx-auto max-w-3xl px-6 py-12">
       <Link href="/" className="text-sm text-emerald-600 hover:underline dark:text-emerald-400">← Back to PubcoZone</Link>
       <h1 className="mt-6 text-3xl font-bold text-app">Terms &amp; Conditions</h1>
-      <p className="mt-2 text-sm text-faint">Last updated: June 12, 2026</p>
+      <p className="mt-2 text-sm text-faint">Last updated: June 26, 2026</p>
 
       <div className="mt-8 space-y-6 text-sm leading-relaxed text-muted">
         <Section title="1. Agreement to Terms">
-          <p>These Terms &amp; Conditions (&ldquo;Terms&rdquo;) govern your access to and use of PubcoZone&apos;s website, applications, and services (collectively, the &ldquo;Service&rdquo;), provided by PubcoZone (&ldquo;PubcoZone,&rdquo; &ldquo;we,&rdquo; &ldquo;us&rdquo;). By creating an account or using the Service, you agree to these Terms. If you are using the Service on behalf of a company, you represent that you are authorized to bind that company, and &ldquo;you&rdquo; refers to that company.</p>
+          <p>These Terms &amp; Conditions (&ldquo;Terms&rdquo;) govern your access to and use of the PubcoZone website, applications, and services (collectively, the &ldquo;Service&rdquo;). PubcoZone is a product operated by <strong>Docs2Video, LLC</strong> (&ldquo;Docs2Video,&rdquo; &ldquo;PubcoZone,&rdquo; &ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo;), the company that owns and operates the Service. References to &ldquo;PubcoZone&rdquo; mean the Service; references to &ldquo;we,&rdquo; &ldquo;us,&rdquo; and &ldquo;our&rdquo; mean Docs2Video, LLC as the operating company and your contracting party. By creating an account or using the Service, you agree to these Terms. If you are using the Service on behalf of a company, you represent that you are authorized to bind that company, and &ldquo;you&rdquo; refers to that company.</p>
         </Section>
 
         <Section title="2. Description of Service; Not Professional Advice">
@@ -53,7 +53,7 @@ export default function Terms() {
         </Section>
 
         <Section title="10. Third-Party Services &amp; Data">
-          <p>The Service integrates third-party services (including Stripe, Supabase, Vercel, Anthropic, Google, Ayrshare) and aggregates public data from sources such as SEC EDGAR, FINRA, and exchanges. We are not responsible for third-party services or for the accuracy, completeness, or timeliness of public data, which may be delayed or incomplete. Your use of third-party services may be subject to their terms.</p>
+          <p>The Service integrates third-party services (including Stripe for payments, Supabase for database and authentication, Vercel for hosting, Anthropic and Google for AI, and Zernio for social publishing) and aggregates public data from sources such as SEC EDGAR, FINRA, and exchanges. We are not responsible for third-party services or for the accuracy, completeness, or timeliness of public data, which may be delayed or incomplete. Your use of third-party services may be subject to their terms.</p>
         </Section>
 
         <Section title="11. Disclaimers">
@@ -80,8 +80,9 @@ export default function Terms() {
           <p>We may modify these Terms from time to time. Material changes will be posted here with an updated date and, where appropriate, additional notice. Continued use after changes constitutes acceptance.</p>
         </Section>
 
-        <Section title="17. Contact">
-          <p>Questions about these Terms: legal@pubcozone.com.</p>
+        <Section title="17. Entity &amp; Contact">
+          <p>The Service is owned and operated by <strong>Docs2Video, LLC</strong>, the parent and operating company of PubcoZone. Docs2Video, LLC is also the merchant of record for subscription payments processed through Stripe; charges may appear on your statement under the Docs2Video or PubcoZone name.</p>
+          <p>Questions about these Terms: <a href="mailto:legal@pubcozone.com" className="text-emerald-600 hover:underline dark:text-emerald-400">legal@pubcozone.com</a>.</p>
         </Section>
       </div>
     </div>

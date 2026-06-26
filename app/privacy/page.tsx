@@ -7,11 +7,11 @@ export default function Privacy() {
     <div className="mx-auto max-w-3xl px-6 py-12">
       <Link href="/" className="text-sm text-emerald-600 hover:underline dark:text-emerald-400">← Back to PubcoZone</Link>
       <h1 className="mt-6 text-3xl font-bold text-app">Privacy Policy</h1>
-      <p className="mt-2 text-sm text-faint">Last updated: June 12, 2026</p>
+      <p className="mt-2 text-sm text-faint">Last updated: June 26, 2026</p>
 
       <div className="prose-pubco mt-8 space-y-6 text-sm leading-relaxed text-muted">
         <Section title="1. Introduction">
-          <p>PubcoZone (&ldquo;PubcoZone,&rdquo; &ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo;) provides an investor-relations and communications platform for public companies. This Privacy Policy explains what information we collect, how we use it, with whom we share it, and the choices you have. It applies to our website, applications, and services (collectively, the &ldquo;Service&rdquo;). By using the Service you agree to this Policy.</p>
+          <p>PubcoZone is an investor-relations and communications platform for public companies, owned and operated by <strong>Docs2Video, LLC</strong> (&ldquo;Docs2Video,&rdquo; &ldquo;PubcoZone,&rdquo; &ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo;), the parent and operating company of the Service. Docs2Video, LLC is the data controller for personal information processed through the Service. This Privacy Policy explains what information we collect, how we use it, with whom we share it, and the choices you have. It applies to our website, applications, and services (collectively, the &ldquo;Service&rdquo;). By using the Service you agree to this Policy.</p>
         </Section>
 
         <Section title="2. Information We Collect">
@@ -42,7 +42,7 @@ export default function Privacy() {
         <Section title="5. How We Share Information">
           <p>We do not sell your personal information. We share information only as follows:</p>
           <ul className="list-disc space-y-1 pl-5">
-            <li><strong>Service providers</strong> who process data on our behalf under contract — including hosting (Vercel), database and authentication (Supabase), payments (Stripe), AI (Anthropic, Google), email, and social-posting (Ayrshare). They may access data only to perform services for us.</li>
+            <li><strong>Service providers</strong> who process data on our behalf under contract — including hosting (Vercel), database and authentication (Supabase), payments (Stripe), AI (Anthropic, Google), email, and social publishing (Zernio). They may access data only to perform services for us.</li>
             <li><strong>Public disclosure features.</strong> When you approve a post, answer, or release, it is published to the channels you direct (such as X and your public page) and becomes public. This is an intended feature of the Service.</li>
             <li><strong>Legal &amp; safety.</strong> When required by law, legal process, or to protect rights, safety, and the integrity of the Service.</li>
             <li><strong>Business transfers.</strong> In connection with a merger, acquisition, or sale of assets, subject to this Policy.</li>
@@ -74,7 +74,8 @@ export default function Privacy() {
         </Section>
 
         <Section title="12. Contact">
-          <p>Questions about this Policy or your data: privacy@pubcozone.com.</p>
+          <p>The Service is owned and operated by <strong>Docs2Video, LLC</strong>, the parent and operating company of PubcoZone and the controller of personal information described in this Policy.</p>
+          <p>Questions about this Policy or your data, or to exercise a data right: <a href="mailto:privacy@pubcozone.com" className="text-emerald-600 hover:underline dark:text-emerald-400">privacy@pubcozone.com</a>.</p>
         </Section>
       </div>
     </div>
