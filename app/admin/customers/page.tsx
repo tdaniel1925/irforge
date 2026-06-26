@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Banner, Button, Card, LoadingState, PageHeader } from "@/components/ui";
+import CustomerConsole from "@/components/CustomerConsole";
 
 interface Company { id: string; name: string; ticker: string; tier: string; subscription_status: string; stripe_customer_id?: string; stripe_subscription_id?: string }
 interface EmailEvent { id: string; message_id?: string; to_email: string; kind: string; subject: string; status: string; sent_at?: string; delivered_at?: string; opened_at?: string; error?: string }
@@ -124,8 +125,11 @@ export default function AdminCustomers() {
 
   return (
     <div>
-      <PageHeader title="Customer Management" subtitle="Set up customers, send them a subscription invoice they pay via Stripe, charge the setup fee, comp strategic accounts, or cancel. You never handle card numbers — customers pay through Stripe's hosted page." />
+      <PageHeader title="Customer Management" subtitle="Every customer's billing, usage, team, and connections in one place. Archive or delete accounts, comp strategic ones, and run Stripe billing — all from here." />
       {notice && <Banner message={notice.text} tone={notice.tone} onDismiss={() => setNotice(null)} />}
+
+      {/* Comprehensive console: search, billing, usage, archive/delete, drawer. */}
+      <CustomerConsole />
 
       {/* Invite a promo company — everything free */}
       <Card className="mb-6 border-emerald-500/30 bg-emerald-500/[0.04]">
