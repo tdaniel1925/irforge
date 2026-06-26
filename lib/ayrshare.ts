@@ -1,214 +1,204 @@
-// Ayrshare client — real X (Twitter) posting.
-// With AYRSHARE_API_KEY set, publish actually posts; without it, publishing is simulated locally.
+// Social publishing client — backed by Zernio (https://zernio.com).
+// Replaced Ayrshare with Zernio: a unified REST API to connect a company's socials
+// (X / LinkedIn / Facebook / Instagram / + more) and publish/schedule posts.
+//
+// The exported names keep the legacy "ayrshare"/"profileKey" wording so the ~20
+// callers across the app stay unchanged. Internally "profileKey" is now a Zernio
+// PROFILE ID (prof_…), stored in the same companies.ayrshare_profile_key column.
+//
+// Auth: ZERNIO_API_KEY (Bearer sk_…). No private key / domain / JWT needed.
+
+const ZERNIO = "https://zernio.com/api/v1";
 
 export interface PostResult {
   ok: boolean;
   posted: boolean; // true = went to the real network now
-  scheduled?: boolean; // true = accepted by Ayrshare for a future scheduleDate
+  scheduled?: boolean; // true = accepted for a future scheduledFor time
   postUrl?: string;
   externalId?: string;
   error?: string;
 }
 
+function apiKey(): string | undefined {
+  return process.env.ZERNIO_API_KEY;
+}
+
 export function ayrshareConfigured(): boolean {
-  return Boolean(process.env.AYRSHARE_API_KEY);
+  return Boolean(apiKey());
 }
 
-// The Ayrshare private key (PEM). Stored base64 in AYRSHARE_PRIVATE_KEY_B64 to
-// avoid multiline-env mangling on hosts; falls back to the raw AYRSHARE_PRIVATE_KEY.
-function ayrsharePrivateKey(): string {
-  const b64 = process.env.AYRSHARE_PRIVATE_KEY_B64;
-  if (b64) {
-    try {
-      return Buffer.from(b64, "base64").toString("utf8");
-    } catch {
-      /* fall through */
-    }
-  }
-  const raw = process.env.AYRSHARE_PRIVATE_KEY ?? "";
-  // If a host flattened the PEM's newlines into literal "\n", restore them.
-  return raw.includes("\\n") && !raw.includes("\n") ? raw.replace(/\\n/g, "\n") : raw;
-}
-
-// Multi-tenant: each company links its OWN socials via an Ayrshare "User Profile"
-// (Business Plan). Requires both the API key and the private key (JWT SSO).
+// Zernio needs only the API key for the full multi-tenant flow (profiles + hosted
+// connect). No separate private key, so multi-tenant == configured.
 export function ayrshareMultiTenant(): boolean {
-  return Boolean(process.env.AYRSHARE_API_KEY && ayrsharePrivateKey());
+  return Boolean(apiKey());
 }
 
-// NOTE: there is deliberately NO "recover profileKey by title" helper. Ayrshare's
-// GET /profiles list exposes only `refId` (never `profileKey`), and refId is
-// REJECTED by generateJWT and /post ("Profile Key is invalid"). The usable
-// profileKey is returned ONLY in the create response — so the only correct way to
-// obtain one is to create a profile and persist its key immediately (which we now
-// do; see store.ts ayrshare_profile_key). Recovering by title would only ever
-// yield a refId and silently break connect/posting.
+function authHeaders(): Record<string, string> {
+  return { Authorization: `Bearer ${apiKey()}`, "Content-Type": "application/json" };
+}
 
-// Create an Ayrshare user profile for a company. Returns its profileKey, which we
-// store on the company and pass on every post so it goes to THAT company's socials.
+// Create a Zernio PROFILE for a company. Returns its id (prof_…), which we store on
+// the company and use to scope connect + publishing to THAT company's socials.
 export async function createAyrshareProfile(title: string, idSuffix?: string): Promise<{ ok: boolean; profileKey?: string; error?: string; code?: string }> {
-  const key = process.env.AYRSHARE_API_KEY;
-  if (!key) return { ok: false, error: "Ayrshare not configured." };
-
-  // CRITICAL: Ayrshare's profileKey (used for JWT/posting) is returned ONLY in the
-  // create response. The /profiles LIST exposes only `refId`, which generateJWT and
-  // /post REJECT ("Profile Key is invalid"). So we must NEVER recover a profile by
-  // title from the list (it can only yield refId) — the only source of a usable key
-  // is a fresh create. On a title collision we retry with a disambiguated title so
-  // create always succeeds and returns a real profileKey. Any abandoned empty
-  // profile is harmless (no linked socials) and can be cleaned up in the dashboard.
-  const base = title.slice(0, 90);
-  const attempts = [base, `${base} ·${idSuffix ?? ""}`.slice(0, 100), `${base} ·${idSuffix ?? ""}-2`.slice(0, 100)];
-
-  let lastErr = "";
-  for (const t of attempts) {
-    try {
-      const res = await fetch("https://api.ayrshare.com/api/profiles", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-        signal: AbortSignal.timeout(20000),
-        body: JSON.stringify({ title: t }),
-      });
-      const data = await res.json().catch(() => ({}));
-      // Only profileKey is usable. Do NOT fall back to refId.
-      if (res.ok && data.profileKey) return { ok: true, profileKey: data.profileKey };
-
-      const msg = String(data?.message ?? "");
-      lastErr = msg || `Ayrshare profile error (HTTP ${res.status})`;
-
-      // Plan profile/user CAP reached — do NOT keep retrying (each disambiguated
-      // attempt could burn another slot). Return a clear, actionable error and stop.
-      if (/max(imum)?\s+(number\s+of\s+)?(users?|profiles?)|profile\s+limit|user\s+limit|reached.*(limit|maximum)|upgrade your plan/i.test(msg)) {
-        return { ok: false, error: "Your Ayrshare plan's profile limit is reached. Free up a slot by deleting unused profiles in the Ayrshare dashboard (User Profiles), or upgrade the plan — then try connecting again.", code: "profile_cap" };
-      }
-
-      // On a duplicate-title collision, try the next disambiguated title.
-      if (/already exists/i.test(msg)) continue;
-      // Any other error: stop and report.
-      return { ok: false, error: lastErr };
-    } catch (e) {
-      lastErr = e instanceof Error ? e.message : "Ayrshare unreachable";
-    }
-  }
-  return { ok: false, error: lastErr || "Couldn't create a social profile." };
-}
-
-// Generate a single-use SSO URL to Ayrshare's hosted "connect your socials" page,
-// scoped to one company's profile. The company clicks it and links X/LinkedIn/etc.
-export async function generateAyrshareLinkUrl(profileKey: string): Promise<{ ok: boolean; url?: string; error?: string }> {
-  const key = process.env.AYRSHARE_API_KEY;
-  const privateKey = ayrsharePrivateKey();
-  // Ayrshare's Business Plan assigns a domain ID (e.g. "id-1MW7j"); it's the prefix
-  // on your private-key filename in the integration package.
-  const domain = process.env.AYRSHARE_DOMAIN || "id-1MW7j";
-  if (!key || !privateKey) return { ok: false, error: "Ayrshare multi-account is not configured (missing private key)." };
+  if (!apiKey()) return { ok: false, error: "Publishing isn't configured." };
+  const name = `${title}`.slice(0, 100);
   try {
-    // generateJWT expects an application/x-www-form-urlencoded body, NOT JSON.
-    const form = new URLSearchParams();
-    form.set("domain", domain);
-    form.set("privateKey", privateKey);
-    form.set("profileKey", profileKey);
-    const res = await fetch("https://api.ayrshare.com/api/profiles/generateJWT", {
+    const res = await fetch(`${ZERNIO}/profiles`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/x-www-form-urlencoded" },
+      headers: authHeaders(),
       signal: AbortSignal.timeout(20000),
-      body: form.toString(),
+      body: JSON.stringify({ name, description: idSuffix ? `Company ${idSuffix}` : undefined }),
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data.url) {
-      return { ok: false, error: data?.message ?? `Ayrshare JWT error (HTTP ${res.status})` };
+    const id = data?.profile?._id ?? data?.profile?.id ?? data?._id ?? data?.id ?? data?.profileId;
+    if (res.ok && id) return { ok: true, profileKey: String(id) };
+
+    const msg = String(data?.message ?? data?.error ?? `HTTP ${res.status}`);
+    // Account/plan cap reached — surface a clear, actionable error (mirrors the old
+    // Ayrshare cap handling so the connect route's messaging still works).
+    if (/limit|maximum|max.*(account|profile)|upgrade your plan|quota/i.test(msg)) {
+      return { ok: false, error: "Your Zernio plan's account limit is reached. Upgrade the plan or free up an account, then try connecting again.", code: "profile_cap" };
     }
-    return { ok: true, url: data.url };
+    return { ok: false, error: msg };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Ayrshare unreachable" };
+    return { ok: false, error: e instanceof Error ? e.message : "Publishing service unreachable." };
   }
 }
 
-// Which social networks a company has actually linked (so the UI can show status).
-export async function getLinkedAccounts(profileKey?: string): Promise<string[]> {
-  const key = process.env.AYRSHARE_API_KEY;
-  if (!key) return [];
-  // No per-company profile yet = nothing connected. Without a Profile-Key header
-  // Ayrshare returns the PRIMARY account's socials, which would wrongly show another
-  // company's (or our own) connections on a brand-new account. So bail to [].
-  if (!profileKey) return [];
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://pubcozone.com";
+
+// Start the OAuth connect flow for ONE network and return the authUrl to send the
+// user to. Zernio is per-platform: GET /connect/{platform}?profileId&redirect_url
+// returns { authUrl, state }. After the user authorizes, Zernio redirects back to
+// redirect_url with the connection result. Defaults to X (twitter); pass `platform`
+// to connect a different network. (Signature kept compatible with the old hosted
+// single-link flow; callers that want a specific network pass it.)
+export async function generateAyrshareLinkUrl(profileKey: string, platform: string = "twitter"): Promise<{ ok: boolean; url?: string; error?: string }> {
+  if (!apiKey()) return { ok: false, error: "Publishing isn't configured." };
+  if (!profileKey) return { ok: false, error: "No social profile for this company yet." };
+  const plat = normalizePlatform(platform) === "twitter" ? "twitter" : normalizePlatform(platform);
+  const redirect = `${SITE_URL}/settings?connected=1`;
   try {
-    const res = await fetch("https://api.ayrshare.com/api/user", {
-      headers: { Authorization: `Bearer ${key}`, "Profile-Key": profileKey },
+    const url = new URL(`${ZERNIO}/connect/${plat}`);
+    url.searchParams.set("profileId", profileKey);
+    url.searchParams.set("redirect_url", redirect);
+    const res = await fetch(url.toString(), { headers: authHeaders(), signal: AbortSignal.timeout(20000) });
+    const data = await res.json().catch(() => ({}));
+    const authUrl = data?.authUrl ?? data?.url;
+    if (res.ok && authUrl) return { ok: true, url: String(authUrl) };
+    const msg = String(data?.error ?? data?.message ?? `HTTP ${res.status}`);
+    if (/payment|plan|upgrade|402/i.test(msg) || res.status === 402) {
+      return { ok: false, error: "Connecting accounts requires a paid Zernio plan. Upgrade the plan, then try again." };
+    }
+    return { ok: false, error: msg };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Publishing service unreachable." };
+  }
+}
+
+// The connected accounts for a profile. Zernio exposes a single account-level list
+// (GET /accounts); we filter to the ones belonging to this profile. Each entry has
+// its accountId (needed to target publishing) + a normalized platform key.
+interface LinkedAccount { platform: string; accountId: string }
+async function listProfileAccounts(profileKey: string): Promise<LinkedAccount[]> {
+  if (!apiKey() || !profileKey) return [];
+  try {
+    const res = await fetch(`${ZERNIO}/accounts?profileId=${encodeURIComponent(profileKey)}`, {
+      headers: authHeaders(),
       signal: AbortSignal.timeout(15000),
     });
     const data = await res.json().catch(() => ({}));
-    const accounts: string[] = data?.activeSocialAccounts ?? [];
-    return Array.isArray(accounts) ? accounts : [];
+    const arr: any[] = data?.accounts ?? data?.data ?? (Array.isArray(data) ? data : []);
+    return arr
+      .filter((a) => !a.profileId || String(a.profileId) === String(profileKey)) // scope to this profile
+      .map((a) => ({
+        platform: normalizePlatform(String(a.platform ?? a.provider ?? a.network ?? "")),
+        accountId: String(a.accountId ?? a._id ?? a.id ?? ""),
+      }))
+      .filter((a) => a.platform && a.accountId);
   } catch {
     return [];
   }
 }
 
-// Look up the live status of one previously-submitted post by its Ayrshare id.
-// Used by the delivery dashboard to confirm a scheduled post actually went out.
-// Returns a normalized status + the per-platform live URLs when available.
+// Map our channel keys <-> Zernio platform names. We use "twitter" internally;
+// Zernio may use "x" or "twitter" — accept both.
+function normalizePlatform(p: string): string {
+  const s = p.toLowerCase();
+  if (s === "x" || s === "twitter") return "twitter";
+  return s;
+}
+function toZernioPlatform(channel: string): string {
+  // Zernio's X platform key — send "twitter" (Zernio accepts it; many of their
+  // examples use "twitter").
+  return channel;
+}
+
+// Which social networks a company has actually linked (UI status). Returns the
+// normalized channel keys (twitter, linkedin, …).
+export async function getLinkedAccounts(profileKey?: string): Promise<string[]> {
+  if (!profileKey) return [];
+  const accounts = await listProfileAccounts(profileKey);
+  return Array.from(new Set(accounts.map((a) => a.platform)));
+}
+
 export interface AyrPostStatus {
   found: boolean;
   status: "scheduled" | "pending" | "success" | "error" | "deleted" | "unknown";
   postUrl?: string;
   error?: string;
 }
-export async function getPostStatus(ayrPostId: string, profileKey?: string): Promise<AyrPostStatus> {
-  const key = process.env.AYRSHARE_API_KEY;
-  if (!key) return { found: false, status: "unknown" };
-  if (!ayrPostId) return { found: false, status: "unknown" };
+// Live status of one previously-submitted post by its Zernio post id.
+export async function getPostStatus(ayrPostId: string, _profileKey?: string): Promise<AyrPostStatus> {
+  if (!apiKey() || !ayrPostId) return { found: false, status: "unknown" };
   try {
-    const res = await fetch(`https://api.ayrshare.com/api/post/${encodeURIComponent(ayrPostId)}`, {
-      headers: { Authorization: `Bearer ${key}`, ...(profileKey ? { "Profile-Key": profileKey } : {}) },
+    const res = await fetch(`${ZERNIO}/posts/${encodeURIComponent(ayrPostId)}`, {
+      headers: authHeaders(),
       signal: AbortSignal.timeout(15000),
     });
-    const data = await res.json().catch(() => ({}));
     if (res.status === 404) return { found: false, status: "unknown" };
-    // Ayrshare reports overall `status` plus a postIds[] array once posted.
-    const raw = String(data?.status ?? "").toLowerCase();
-    const first = (data?.postIds ?? [])[0];
-    const postUrl = first?.postUrl ?? data?.postUrl;
+    const data = await res.json().catch(() => ({}));
+    const post = data?.post ?? data;
+    const raw = String(post?.status ?? "").toLowerCase();
+    const plats: any[] = post?.platforms ?? [];
+    const postUrl = plats.find((p) => p?.postUrl || p?.url)?.postUrl ?? plats[0]?.url ?? post?.url;
     let status: AyrPostStatus["status"] = "unknown";
-    if (raw.includes("schedule")) status = "scheduled";
-    else if (raw === "pending" || raw.includes("process")) status = "pending";
-    else if (raw === "success" || raw === "posted" || raw === "completed") status = "success";
+    if (raw.includes("schedul")) status = "scheduled";
+    else if (raw === "pending" || raw.includes("process") || raw === "queued") status = "pending";
+    else if (raw === "published" || raw === "success" || raw === "posted" || raw === "completed") status = "success";
     else if (raw === "error" || raw === "failed") status = "error";
-    else if (raw.includes("delete")) status = "deleted";
-    return { found: true, status, postUrl, error: data?.errors?.[0]?.message ?? undefined };
+    else if (raw.includes("delet")) status = "deleted";
+    return { found: true, status, postUrl, error: post?.error ?? plats.find((p) => p?.error)?.error };
   } catch {
     return { found: false, status: "unknown" };
   }
 }
 
-// Unlink ONE social network from a company's Ayrshare profile.
-// CRITICAL: Ayrshare's DELETE /profiles/social unlinks the PRIMARY profile if no
-// Profile-Key is sent — so we hard-require profileKey and refuse otherwise, to
-// avoid ever disconnecting our own main account.
+// Unlink ONE social network from a company's profile.
 export async function disconnectAccount(platform: string, profileKey?: string): Promise<{ ok: boolean; error?: string }> {
-  const key = process.env.AYRSHARE_API_KEY;
-  if (!key) return { ok: false, error: "Publishing isn't configured." };
+  if (!apiKey()) return { ok: false, error: "Publishing isn't configured." };
   if (!profileKey) return { ok: false, error: "No social profile for this company — nothing to disconnect." };
-  const plat = String(platform || "").trim().toLowerCase();
+  const plat = normalizePlatform(String(platform || "").trim());
   if (!plat) return { ok: false, error: "No platform specified." };
+  // Find the account id for that platform within this profile, then delete it.
+  const accounts = await listProfileAccounts(profileKey);
+  const acct = accounts.find((a) => a.platform === plat);
+  if (!acct) return { ok: true }; // already not linked — treat as success
   try {
-    const res = await fetch("https://api.ayrshare.com/api/profiles/social", {
+    const res = await fetch(`${ZERNIO}/profiles/${encodeURIComponent(profileKey)}/accounts/${encodeURIComponent(acct.accountId)}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", "Profile-Key": profileKey },
-      body: JSON.stringify({ platform: plat }),
+      headers: authHeaders(),
       signal: AbortSignal.timeout(15000),
     });
+    if (res.ok) return { ok: true };
     const data = await res.json().catch(() => ({}));
-    // Ayrshare returns 200 even if the platform wasn't linked — treat that as success.
-    if (res.ok && (data?.status === "success" || data?.status === undefined)) return { ok: true };
     return { ok: false, error: data?.message ?? `Couldn't disconnect (${res.status}).` };
   } catch {
     return { ok: false, error: "Couldn't reach the publishing service. Try again." };
   }
 }
 
-// Channels Ayrshare supports (one integration, many networks). Used by the
-// publishing UI so companies just tick the boxes.
+// Channels we support (subset of Zernio's 15). Used by the publishing UI.
 export const AYRSHARE_CHANNELS = [
   { key: "twitter", label: "X (Twitter)" },
   { key: "linkedin", label: "LinkedIn" },
@@ -220,87 +210,65 @@ export const AYRSHARE_CHANNELS = [
   { key: "reddit", label: "Reddit" },
 ] as const;
 
-// Optional publish controls: a future schedule time (Ayrshare holds + posts at
-// the slot) and image attachments. Additive — existing callers omit them.
 export interface PublishOptions {
-  scheduleDate?: string;  // ISO 8601; when set, Ayrshare schedules instead of posting now
+  scheduleDate?: string;  // ISO 8601; when set, schedules instead of posting now
   mediaUrls?: string[];   // public image/video URLs to attach
 }
 
-// Generic publish: one post text out to any set of Ayrshare channels.
-export async function publishToChannels(text: string, channels: string[], profileKey?: string, opts?: PublishOptions): Promise<PostResult> {
-  const key = process.env.AYRSHARE_API_KEY;
-  const platforms = channels.filter((c) => AYRSHARE_CHANNELS.some((a) => a.key === c));
-  if (platforms.length === 0) return { ok: false, posted: false, error: "No channels selected." };
-  if (!key) return { ok: true, posted: false, scheduled: Boolean(opts?.scheduleDate) }; // simulate when not configured
+// Build the Zernio platforms[] payload (each linked account that matches a chosen
+// channel). Returns [] if none of the chosen channels are linked on this profile.
+async function targetsFor(channels: string[], profileKey?: string): Promise<{ platform: string; accountId: string }[]> {
+  if (!profileKey) return [];
+  const wanted = new Set(channels.map(normalizePlatform));
+  const accounts = await listProfileAccounts(profileKey);
+  return accounts.filter((a) => wanted.has(a.platform)).map((a) => ({ platform: toZernioPlatform(a.platform), accountId: a.accountId }));
+}
 
-  const mediaUrls = (opts?.mediaUrls ?? []).filter(Boolean);
+function mediaItems(urls: string[]): { type: string; url: string }[] {
+  return urls.filter(Boolean).map((url) => ({ type: /\.(mp4|mov|webm)$/i.test(url) ? "video" : "image", url }));
+}
+
+// Generic publish: one post out to any set of channels for a company's profile.
+export async function publishToChannels(text: string, channels: string[], profileKey?: string, opts?: PublishOptions): Promise<PostResult> {
+  const valid = channels.filter((c) => AYRSHARE_CHANNELS.some((a) => a.key === c));
+  if (valid.length === 0) return { ok: false, posted: false, error: "No channels selected." };
+  if (!apiKey()) return { ok: true, posted: false, scheduled: Boolean(opts?.scheduleDate) }; // simulate when not configured
+
   const scheduled = Boolean(opts?.scheduleDate);
+  const platforms = await targetsFor(valid, profileKey);
+  if (platforms.length === 0) {
+    return { ok: false, posted: false, error: "None of the selected networks are connected for this company. Connect them in Settings first." };
+  }
+  const media = mediaItems(opts?.mediaUrls ?? []);
   try {
-    const res = await fetch("https://api.ayrshare.com/api/post", {
+    const res = await fetch(`${ZERNIO}/posts`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", ...(profileKey ? { "Profile-Key": profileKey } : {}) },
+      headers: authHeaders(),
       signal: AbortSignal.timeout(30000),
       body: JSON.stringify({
-        post: text,
+        content: text,
         platforms,
-        ...(mediaUrls.length ? { mediaUrls } : {}),
-        ...(opts?.scheduleDate ? { scheduleDate: opts.scheduleDate } : {}),
+        ...(media.length ? { mediaItems: media } : {}),
+        ...(scheduled ? { scheduledFor: opts!.scheduleDate } : { publishNow: true }),
       }),
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok || data.status === "error") {
-      const detail = data?.errors?.map((e: any) => e?.message ?? JSON.stringify(e)).join("; ") ?? data?.message ?? `HTTP ${res.status}`;
-      return { ok: false, posted: false, error: `Ayrshare: ${detail}` };
+    const post = data?.post ?? data;
+    if (!res.ok || post?.status === "error" || post?.status === "failed") {
+      const detail = post?.error ?? data?.message ?? (post?.platforms ?? []).map((p: any) => p?.error).filter(Boolean).join("; ") ?? `HTTP ${res.status}`;
+      return { ok: false, posted: false, error: `Zernio: ${detail}` };
     }
-    const first = (data.postIds ?? [])[0];
-    // A scheduled post isn't "posted" yet — flag it so the caller records the right status.
-    return { ok: true, posted: !scheduled, scheduled, postUrl: first?.postUrl, externalId: first?.id ?? data.id };
+    const id = post?._id ?? post?.id;
+    const url = (post?.platforms ?? []).find((p: any) => p?.postUrl || p?.url)?.postUrl;
+    return { ok: true, posted: !scheduled, scheduled, postUrl: url, externalId: id ? String(id) : undefined };
   } catch (e) {
-    return { ok: false, posted: false, error: e instanceof Error ? `Ayrshare unreachable: ${e.message}` : "Ayrshare unreachable" };
+    return { ok: false, posted: false, error: e instanceof Error ? `Zernio unreachable: ${e.message}` : "Zernio unreachable" };
   }
 }
 
+// Post an X thread. Zernio takes a single content body; we join the tweets and
+// target the company's linked X account.
 export async function postThreadToX(tweets: string[], profileKey?: string): Promise<PostResult> {
-  const key = process.env.AYRSHARE_API_KEY;
-  if (!key) return { ok: true, posted: false }; // simulate
-
-  try {
-    const res = await fetch("https://api.ayrshare.com/api/post", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${key}`,
-        "Content-Type": "application/json",
-        ...(profileKey ? { "Profile-Key": profileKey } : {}),
-      },
-      signal: AbortSignal.timeout(30000),
-      body: JSON.stringify({
-        post: tweets.join("\n\n"),
-        platforms: ["twitter"],
-        twitterOptions: {
-          thread: true,
-          threadNumber: true,
-        },
-      }),
-    });
-    const data = await res.json().catch(() => ({}));
-
-    if (!res.ok || data.status === "error") {
-      const detail =
-        data?.errors?.map((e: any) => e?.message ?? JSON.stringify(e)).join("; ") ??
-        data?.message ??
-        `HTTP ${res.status}`;
-      return { ok: false, posted: false, error: `Ayrshare: ${detail}` };
-    }
-
-    const twitterPost = (data.postIds ?? []).find((p: any) => p.platform === "twitter");
-    return {
-      ok: true,
-      posted: true,
-      postUrl: twitterPost?.postUrl,
-      externalId: twitterPost?.id ?? data.id,
-    };
-  } catch (e) {
-    return { ok: false, posted: false, error: e instanceof Error ? `Ayrshare unreachable: ${e.message}` : "Ayrshare unreachable" };
-  }
+  if (!apiKey()) return { ok: true, posted: false }; // simulate
+  return publishToChannels(tweets.join("\n\n"), ["twitter"], profileKey);
 }

@@ -14,7 +14,7 @@ export async function GET() {
   const superAdmin = await isSuperAdmin();
   const flags = {
     hasAi: Boolean(process.env.ANTHROPIC_API_KEY),
-    hasAyrshare: Boolean(process.env.AYRSHARE_API_KEY),
+    hasAyrshare: Boolean(process.env.ZERNIO_API_KEY),
     hasSupabase: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL),
     stripeMode: stripeMode(),
     superAdmin,

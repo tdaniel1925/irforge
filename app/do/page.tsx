@@ -135,7 +135,7 @@ export default function DoPage() {
             onToggle={() => setExpanded(expanded === d.id ? null : d.id)}
             actions={
               <Button
-                onClick={() => run(`/api/drafts/${d.id}`, "PATCH", { action: "publish" }, db.hasAyrshare ? "Published to X — disclosures appended." : "Published (simulated — no Ayrshare X link yet).")}
+                onClick={() => run(`/api/drafts/${d.id}`, "PATCH", { action: "publish" }, db.hasAyrshare ? "Published to X — disclosures appended." : "Published (simulated — no X connection yet).")}
                 disabled={busy || db.company.quietMode}
                 title={db.company.quietMode ? "Quiet mode is on" : db.hasAyrshare ? "Posts to your real X account" : undefined}
               >
@@ -146,7 +146,7 @@ export default function DoPage() {
             <Thread tweets={d.tweets} handle={db.company.xHandle} />
             <p className="mt-2 text-xs text-faint">
               Disclosures are appended on publish — can&apos;t be skipped.
-              {db.hasAyrshare && <span className="ml-1 text-amber-600 dark:text-amber-400/80">Ayrshare connected: this posts for real.</span>}
+              {db.hasAyrshare && <span className="ml-1 text-amber-600 dark:text-amber-400/80">Publishing connected: this posts for real.</span>}
             </p>
           </QueueItem>
         ))}
