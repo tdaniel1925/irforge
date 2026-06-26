@@ -27,9 +27,10 @@ export async function GET() {
   });
 }
 
-// POST — start the connect flow: ensure this company has an Ayrshare profile, then
-// return a single-use link to Ayrshare's hosted "connect your socials" page.
-export async function POST() {
+// POST { platform? } — start the connect flow for ONE network (Zernio is
+// per-platform OAuth). Ensures this company has a profile, then returns that
+// network's OAuth authUrl. Defaults to twitter for back-compat.
+export async function POST(req: Request) {
   const { db, save } = await getStore();
   if (!ayrshareMultiTenant()) {
     return NextResponse.json(
@@ -37,6 +38,8 @@ export async function POST() {
       { status: 400 }
     );
   }
+  const body = await req.json().catch(() => ({}));
+  const platform = typeof body.platform === "string" && body.platform ? body.platform : "twitter";
 
   const mine = await getMyCompany();
   const idSuffix = String(mine?.id ?? "").slice(0, 8);
@@ -81,7 +84,7 @@ export async function POST() {
   }
 
   let key = db.company.ayrshareProfileKey ?? "";
-  let link = await generateAyrshareLinkUrl(key);
+  let link = await generateAyrshareLinkUrl(key, platform);
 
   // Self-heal: if the provider rejects the profile (invalid / not found — e.g. it
   // was deleted), create a fresh one and retry ONCE — UNLESS the plan cap is full
@@ -95,7 +98,7 @@ export async function POST() {
       return NextResponse.json({ error: fail.error }, { status: 502 });
     }
     key = db.company.ayrshareProfileKey ?? "";
-    link = await generateAyrshareLinkUrl(key);
+    link = await generateAyrshareLinkUrl(key, platform);
   }
 
   if (!link.ok || !link.url) {
