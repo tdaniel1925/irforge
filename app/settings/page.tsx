@@ -285,11 +285,13 @@ function SocialConnections() {
   // Open the connect page in a SECURE WINDOW from inside our modal. To dodge popup
   // blockers we open a blank window synchronously on the click, then redirect it to
   // the Ayrshare URL once the (async) JWT comes back.
-  const connect = () => {
+  // Connect ONE network. Zernio is per-platform OAuth, so we pass the chosen
+  // platform and open that network's authorize page in a popup.
+  const connect = (platform: string) => {
     setErr("");
     const win = window.open("about:blank", "pzConnect", "width=560,height=720");
     setBusy(true);
-    fetch("/api/social/connect", { method: "POST" })
+    fetch("/api/social/connect", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ platform }) })
       .then((r) => r.json().then((d) => ({ ok: r.ok, d })))
       .then(({ ok, d }) => {
         if (!ok || !d.url) throw new Error(d.error ?? "Couldn't open the connect page.");
@@ -394,19 +396,25 @@ function SocialConnections() {
               <button onClick={() => !busy && setModalOpen(false)} aria-label="Close" className="rounded px-2 text-faint hover:bg-app-hover hover:text-app">✕</button>
             </div>
             <p className="text-sm leading-relaxed text-muted">
-              You&apos;ll link your accounts through our publishing partner <strong className="text-app">Ayrshare</strong> in a secure window.
-              Pick the networks you want (X, LinkedIn, and more), authorize, then come back here and refresh.
+              Connect each network you want to publish to. Click <strong className="text-app">Connect</strong> next to a network,
+              authorize in the secure window, then come back and refresh.
             </p>
 
-            {/* current status inside the modal */}
-            <div className="mt-4 grid grid-cols-2 gap-2">
+            {/* Per-network connect — Zernio links one platform at a time. */}
+            <div className="mt-4 space-y-2">
               {SOCIAL_NETWORKS.map((n) => {
                 const on = connected.has(n.key);
                 return (
-                  <div key={n.key} className={`flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs ${on ? "border-emerald-500/40 bg-emerald-500/5" : "border-app bg-surface-2/40"}`}>
-                    <span className="flex h-5 w-5 items-center justify-center rounded bg-app-hover text-[10px] font-bold text-app">{n.icon}</span>
+                  <div key={n.key} className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-sm ${on ? "border-emerald-500/40 bg-emerald-500/5" : "border-app bg-surface-2/40"}`}>
+                    <span className="flex h-6 w-6 items-center justify-center rounded bg-app-hover text-[11px] font-bold text-app">{n.icon}</span>
                     <span className="flex-1 text-app">{n.label}</span>
-                    <span className={on ? "font-semibold text-emerald-600 dark:text-emerald-400" : "text-faint"}>{on ? "✓" : "—"}</span>
+                    {on ? (
+                      <InlineConfirm onConfirm={() => disconnect(n.key, n.label)} label="✓ Connected" confirmLabel={`Disconnect ${n.label}`} className="text-xs font-semibold text-emerald-600 hover:text-red-500 dark:text-emerald-400" />
+                    ) : (
+                      <button onClick={() => connect(n.key)} disabled={busy} className="rounded-lg bg-emerald-600 px-3 py-1 text-xs font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-50">
+                        {busy ? "…" : "Connect"}
+                      </button>
+                    )}
                   </div>
                 );
               })}
@@ -415,14 +423,11 @@ function SocialConnections() {
             {err && <p className="mt-3 text-sm text-red-600 dark:text-red-400">{err}</p>}
 
             <div className="mt-5 flex flex-wrap items-center gap-2">
-              <button onClick={connect} disabled={busy} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-50">
-                {busy ? "Opening…" : connected.size > 0 ? "Open connect window" : "Connect accounts →"}
-              </button>
               <button onClick={refresh} disabled={busy} className="rounded-lg border border-app px-4 py-2 text-sm font-medium text-app transition hover:bg-app-hover disabled:opacity-50">
                 {busy ? "…" : "↻ I'm done — refresh status"}
               </button>
             </div>
-            <p className="mt-3 text-[11px] text-faint">The connect window opens separately so X / LinkedIn sign-in works reliably. After you finish there, click &ldquo;refresh status&rdquo; to update the checkmarks.</p>
+            <p className="mt-3 text-[11px] text-faint">Each network opens its own secure sign-in window. After you authorize, click &ldquo;refresh status&rdquo; to update the checkmarks. Note: X (Twitter) may require a payment method on the publishing account.</p>
           </div>
         </div>
       )}
