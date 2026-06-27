@@ -52,6 +52,7 @@ export default function QuickPostPage() {
   const [previewTab, setPreviewTab] = useState<string | null>(null);
   const [brandColors, setBrandColors] = useState("");
   const [imgVariant, setImgVariant] = useState(0);
+  const [imgLayout, setImgLayout] = useState<"announcement" | "stat" | "quote" | "filing">("announcement");
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -98,8 +99,8 @@ export default function QuickPostPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         // brandColors biases the palette; variant rotates composition so each
-        // regenerate looks different rather than re-producing the same image.
-        body: JSON.stringify({ generate: true, text, brandColors: brandColors.trim() || undefined, variant: imgVariant }),
+        // regenerate looks different; layout picks the branded template style.
+        body: JSON.stringify({ generate: true, text, brandColors: brandColors.trim() || undefined, variant: imgVariant, layout: imgLayout }),
       });
       const d = await r.json();
       if (r.status === 503) { setAiImageOff(true); return; } // not configured — hide the button, don't alarm
@@ -212,14 +213,36 @@ export default function QuickPostPage() {
           )}
         </div>
         {!aiImageOff && (
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <input
-              value={brandColors}
-              onChange={(e) => setBrandColors(e.target.value)}
-              placeholder="Brand colors (optional) — e.g. navy blue and red"
-              className="w-64 rounded-lg border border-app bg-surface-2 px-3 py-1.5 text-xs text-app focus:border-emerald-500 focus:outline-none"
-            />
-            <span className="text-[11px] text-faint">Cinematic style · click again to regenerate a fresh look</span>
+          <div className="mt-2 space-y-2">
+            {/* Layout picker — the branded template style for the AI image */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-[11px] font-medium text-faint">Image style:</span>
+              {([
+                { key: "announcement", label: "Announcement" },
+                { key: "stat", label: "Stat" },
+                { key: "quote", label: "Quote" },
+                { key: "filing", label: "Filing" },
+              ] as const).map((l) => (
+                <button
+                  key={l.key}
+                  onClick={() => setImgLayout(l.key)}
+                  className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition ${
+                    imgLayout === l.key ? "border-emerald-500/60 bg-emerald-500/10 text-app" : "border-app bg-surface-2/40 text-muted hover:bg-app-hover"
+                  }`}
+                >
+                  {l.label}
+                </button>
+              ))}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                value={brandColors}
+                onChange={(e) => setBrandColors(e.target.value)}
+                placeholder="Brand colors (optional) — e.g. navy blue and red"
+                className="w-64 rounded-lg border border-app bg-surface-2 px-3 py-1.5 text-xs text-app focus:border-emerald-500 focus:outline-none"
+              />
+              <span className="text-[11px] text-faint">Branded template · click again to regenerate a fresh look</span>
+            </div>
           </div>
         )}
         {media.length > 0 && (

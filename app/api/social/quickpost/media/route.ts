@@ -37,9 +37,16 @@ export async function POST(req: Request) {
     const variant = Number.isFinite(body?.variant) ? Number(body.variant) : 0;
     const postId = `quick-${randomId()}`;
 
-    // Branded template: AI background + real logo + crisp text. Use the post's first
-    // line as the headline (kept short so it lays out cleanly).
-    const headline = text.split(/\n/)[0].slice(0, 120) || db.company.name;
+    // Layout picker: announcement | stat | quote | filing. Each uses different
+    // fields; sensible defaults fall back to the post text.
+    const LAYOUTS = ["announcement", "stat", "quote", "filing"] as const;
+    const layout = (LAYOUTS as readonly string[]).includes(body?.layout) ? body.layout : "announcement";
+    const headline = String(body?.title ?? text).split(/\n/)[0].slice(0, 120) || db.company.name;
+    const label = typeof body?.label === "string" && body.label.trim()
+      ? body.label.trim().slice(0, 60)
+      : layout === "filing" ? "8-K" : layout === "stat" ? "Highlight" : "Investor Update";
+    const subBody = typeof body?.body === "string" ? body.body.trim().slice(0, 200) : undefined;
+
     const url = await generateBrandedImage({
       companyId,
       postId,
@@ -47,9 +54,10 @@ export async function POST(req: Request) {
       company: db.company.name,
       theme: db.company.sector || "investor relations",
       brandColors,
-      layout: "announcement",
-      label: "Investor Update",
+      layout,
+      label,
       title: headline,
+      body: subBody,
       variant,
     });
     if (!url) return NextResponse.json({ error: "Couldn't generate an image. Try again or upload one." }, { status: 502 });

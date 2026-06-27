@@ -40,16 +40,18 @@ function svgDataUri(svg: string): string {
   return `data:image/svg+xml;base64,${b64}`;
 }
 
+// Palette tuned to the American Fusion mark: a deep navy crest, a strong brand red,
+// and light steel-blue orbit/accents.
 const AMFN: BrandKit = {
-  navy: "#0d1b3e",
-  navy2: "#13265a",
-  red: "#c8202f",
-  blue: "#2f6fb0",
-  ink: "#f4f7fb",
-  sub: "#c3cde0",
-  panel: "#16264f",
+  navy: "#0a1733",   // deep crest navy (background base)
+  navy2: "#102652",  // lighter navy for gradient/panel
+  red: "#d11f2a",    // brand red (orbit / accents)
+  blue: "#4a7fc0",   // steel-blue accent
+  ink: "#f5f8fc",    // headline
+  sub: "#aebfdc",    // body
+  panel: "#13284f",  // text panel fill
   markSvgDataUri: svgDataUri(
-    atomShieldSvg({ shield: "#13265a", orbitRed: "#c8202f", orbitBlue: "#bcd2f0", star: "#bcd2f0", stroke: "#2f6fb0" })
+    atomShieldSvg({ shield: "#102652", orbitRed: "#d11f2a", orbitBlue: "#cfe0f6", star: "#cfe0f6", stroke: "#4a7fc0" })
   ),
 };
 

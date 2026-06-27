@@ -78,8 +78,8 @@ export async function GET(req: Request) {
   } else {
     // announcement (default)
     Content = (
-      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        {label ? <span style={{ alignSelf: "flex-start", fontSize: 26, fontWeight: 700, color: b.red, textTransform: "uppercase", letterSpacing: 1.5 }}>{label}</span> : null}
+      <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+        {label ? <span style={{ alignSelf: "flex-start", fontSize: 24, fontWeight: 800, color: "#ffffff", background: b.red, padding: "7px 16px", borderRadius: 999, textTransform: "uppercase", letterSpacing: 1.5 }}>{label}</span> : null}
         <span style={{ fontSize: 64, fontWeight: 800, color: b.ink, lineHeight: 1.15 }}>{title}</span>
         {body ? <span style={{ fontSize: 36, color: b.sub, lineHeight: 1.35 }}>{body}</span> : null}
       </div>
@@ -89,11 +89,13 @@ export async function GET(req: Request) {
   return new ImageResponse(
     (
       <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", width: SIZE, height: SIZE, padding: 64, ...Background }}>
-        {/* dark scrim for legibility over photographic/colorful AI art */}
-        <div style={{ position: "absolute", inset: 0, background: `linear-gradient(180deg, ${b.navy}cc 0%, ${b.navy}66 35%, ${b.navy}cc 100%)` }} />
+        {/* LIGHT scrim — just enough to keep the top bar + footer legible while
+            letting the AI tech-pattern background show through. */}
+        <div style={{ position: "absolute", inset: 0, background: `linear-gradient(180deg, ${b.navy}99 0%, ${b.navy}22 30%, ${b.navy}22 65%, ${b.navy}99 100%)` }} />
         <div style={{ display: "flex", position: "relative" }}>{TopBar}</div>
-        {/* content sits in a translucent brand panel for contrast */}
-        <div style={{ display: "flex", position: "relative", background: `${b.panel}e6`, borderLeft: `8px solid ${b.red}`, borderRadius: 18, padding: 40, maxWidth: SIZE - 128 }}>
+        {/* Content sits in a near-SOLID brand panel (with a soft shadow) so the text
+            stays crisp regardless of how busy the background art is. */}
+        <div style={{ display: "flex", position: "relative", background: `${b.panel}f7`, borderLeft: `10px solid ${b.red}`, borderRadius: 18, padding: 44, maxWidth: SIZE - 128, boxShadow: `0 20px 60px ${b.navy}cc` }}>
           {Content}
         </div>
         {/* footer brand strip */}
