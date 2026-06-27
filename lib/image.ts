@@ -73,24 +73,24 @@ export function buildImagePrompt(opts: {
     ? `Color palette: built around the brand colors ${opts.brandColors} — used as dramatic accent light and material color, not flat fills.`
     : `Color palette: a sophisticated, restrained palette with one bold accent color; deep tones with luminous highlights.`;
 
-  // A few composition framings so successive images feel distinct, not cloned.
+  // A few layout framings so successive images feel distinct, not cloned.
   const compositions = [
-    "a single hero subject lit from one dramatic angle, deep shadow falloff",
-    "a sweeping wide establishing shot with strong atmospheric perspective",
-    "an intimate macro detail with extreme shallow depth of field and bokeh",
-    "a bold low-angle hero composition with light streaming from above",
-    "a clean negative-space composition with the subject offset and rim-lit",
+    "a central hero icon motif with clean geometric panels radiating outward",
+    "a balanced grid of related vector icon motifs connected by subtle flow lines",
+    "a single bold iconographic centerpiece on a layered geometric backdrop",
+    "an asymmetric modern layout with one large motif and supporting accent shapes",
+    "a connected node/flow arrangement of sleek icon motifs",
   ];
   const composition = compositions[(opts.variant ?? 0) % compositions.length];
 
   return (
-    `Cinematic, premium, editorial-quality image for ${opts.companyName} ($${opts.ticker}) — the kind of striking visual you'd see in a high-end brand film or Apple keynote. ` +
-    `Concept: evoke the FEELING of "${snippet}" (theme: ${opts.theme}) through atmosphere and metaphor — NOT literal text or logos. ` +
-    `Composition: ${composition}. ` +
-    `Lighting & mood: dramatic directional lighting, volumetric light, soft haze, rich contrast between glowing highlights and deep shadow; a cinematic, slightly moody, aspirational atmosphere. ` +
-    `Craft: shot like premium photography or a high-end 3D render — shallow depth of field, tasteful bokeh, fine texture and material detail (glass, metal, light, natural elements), photorealistic or polished editorial-3D finish, no flat clip-art. ` +
+    `A polished, modern INFOGRAPHIC-STYLE brand graphic for ${opts.companyName} ($${opts.ticker}) — flat/semi-flat vector design, the kind of clean corporate infographic you'd see in a premium pitch deck or SaaS landing page. ` +
+    `Concept: represent the IDEA of "${snippet}" (theme: ${opts.theme}) through sleek symbolic ICONS and abstract shapes — NOT literal text. ` +
+    `Layout: ${composition}. ` +
+    `Style: crisp flat-design vector icons with subtle gradients and soft long shadows, rounded geometric panels/cards, a layered tech-pattern background (thin lines, diamonds, circuit/flow motifs), tasteful highlights — bright, confident, professional, highly polished. ` +
+    `Depth: clean and graphic (vector/illustration), NOT photographic — sharp edges, even studio lighting, no photo grain. ` +
     `${palette} ` +
-    `Hard constraints: absolutely NO words, letters, numbers, charts, graphs, percentages, price figures, tickers, fabricated logos, fake quotes, or anything that states or implies a stock price, valuation, prediction, or financial return. No watermarks, no UI, no stock-photo cliché (no generic handshake/cityscape-with-arrows). ` +
+    `Hard constraints: absolutely NO words, letters, numbers, charts, graphs, percentages, price figures, tickers, fabricated logos, fake quotes, lorem ipsum, or anything that states or implies a stock price, valuation, prediction, or financial return. Icons and shapes ONLY — no readable text anywhere. No watermarks. ` +
     `Square 1:1, crisp and beautiful, optimized for X and LinkedIn feeds.`
   );
 }

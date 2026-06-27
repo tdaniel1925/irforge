@@ -145,6 +145,7 @@ export interface Company {
   quietMode: boolean;
   disclosureText: string; // appended to every published post — never removable at publish time
   flsText: string; // forward-looking statements language
+  brandColors?: string; // free-text brand color hint for AI image generation (e.g. "navy blue and red")
   peers: string[]; // peer tickers used for 13F targeting
   xHandle: string;
   onboarded: boolean;

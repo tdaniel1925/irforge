@@ -23,6 +23,20 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Sign in to set up your company." }, { status: 401 });
   }
 
+  // GUARD: onboarding WIPES all company content (drafts, filings, audit log, cap
+  // table, contacts, documents…) to clear stale seed data. Re-running it on an
+  // already-onboarded company would destroy real data — including the compliance
+  // audit trail. So if this company is already onboarded, refuse unless the caller
+  // explicitly confirms a re-onboard. (The Setup checklist links here for first-time
+  // setup; a "done" company should edit fields in Settings, not re-onboard.)
+  if ((db.company as { onboarding_complete?: boolean }).onboarding_complete && b.confirmReonboard !== true) {
+    return NextResponse.json({
+      error: "This company is already set up. Re-running setup would erase your posts, filings, audit log, and cap table. Edit your details in Settings instead. To deliberately start over, confirm a re-setup.",
+      alreadyOnboarded: true,
+      requiresConfirm: true,
+    }, { status: 409 });
+  }
+
   // CIK comes ONLY from the verified lookup. If the lookup found no CIK (ticker not on
   // EDGAR), we store an EMPTY cik — never inherit a previous company's CIK, or we'd pull
   // the wrong company's filings (the Apple-as-Tonner bug).

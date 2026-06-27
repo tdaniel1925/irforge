@@ -13,19 +13,43 @@ export default function SettingsPage() {
   const { db, error, busy, act } = useAppState();
   const [form, setForm] = useState<Company | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
+  const [dirty, setDirty] = useState(false);
 
   useEffect(() => {
     if (db && !form) setForm(db.company);
   }, [db, form]);
 
+  // Warn before leaving with unsaved edits (covers tab close / hard nav).
+  useEffect(() => {
+    if (!dirty) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [dirty]);
+
   if (error) return <ErrorBanner message={error} />;
   if (!db || !form) return <LoadingState />;
 
-  const set = <K extends keyof Company>(key: K, value: Company[K]) => setForm({ ...form, [key]: value });
+  // Company-wide settings are admin-only (compliance disclosure text, ticker, quiet
+  // mode). Members get a read-only view. `role` is absent in demo mode → treat as admin.
+  const isAdmin = (db as { role?: string }).role !== "member";
+
+  const set = <K extends keyof Company>(key: K, value: Company[K]) => { setForm({ ...form, [key]: value }); setDirty(true); };
+
+  // Inline validation (no toasts) — returns an error string or "" when valid.
+  const validate = (f: Company): string => {
+    if (f.ticker && !/^[A-Z.]{1,8}$/.test(f.ticker)) return "Ticker should be 1–8 letters (e.g. AMFN).";
+    if (f.cik && !/^\d{1,10}$/.test(f.cik)) return "SEC CIK should be digits only (no letters).";
+    if (f.xHandle && !/^@?[A-Za-z0-9_]{1,15}$/.test(f.xHandle)) return "X handle should be letters, numbers, or underscores (max 15).";
+    return "";
+  };
 
   const save = async () => {
     setNotice(null);
+    const vErr = validate(form);
+    if (vErr) { setNotice({ text: vErr, tone: "error" }); return; }
     const err = await act("/api/company", "PUT", form);
+    if (!err) setDirty(false);
     setNotice(err ? { text: err, tone: "error" } : { text: "Settings saved.", tone: "success" });
   };
 
@@ -44,6 +68,11 @@ export default function SettingsPage() {
   return (
     <div className="max-w-3xl">
       <PageHeader title="Settings" subtitle="Company profile, compliance language, and publishing controls." />
+      {!isAdmin && (
+        <div className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-300">
+          You&apos;re a team member — these company settings are view-only. Ask a company admin to make changes.
+        </div>
+      )}
       {notice && <Banner message={notice.text} tone={notice.tone} onDismiss={() => setNotice(null)} />}
 
       <Card className={`mb-6 ${db.company.quietMode ? "border-red-500/40" : "border-emerald-500/20"}`}>
@@ -54,7 +83,7 @@ export default function SettingsPage() {
               One switch suspends ALL publishing — use before earnings, financings, or any <Term id="material">material</Term> announcement window.
             </p>
           </div>
-          <Button variant={db.company.quietMode ? "danger" : "secondary"} onClick={toggleQuiet} disabled={busy}>
+          <Button variant={db.company.quietMode ? "danger" : "secondary"} onClick={toggleQuiet} disabled={busy || !isAdmin} title={!isAdmin ? "Admins only" : undefined}>
             {db.company.quietMode ? "⏸ ON — tap to lift" : "Enable quiet mode"}
           </Button>
         </div>
@@ -73,9 +102,12 @@ export default function SettingsPage() {
           <Field label="Approver title" value={form.approverTitle} onChange={(v) => set("approverTitle", v)} />
         </div>
         <div className="mt-4">
+          <Field label="Brand colors (used by AI image generation — e.g. “navy blue and red”)" value={form.brandColors ?? ""} onChange={(v) => set("brandColors", v)} />
+        </div>
+        <div className="mt-4">
           <Label text="Company description (used by AI drafting — public facts only)" />
           <textarea
-            value={form.description}
+            value={form.description ?? ""}
             onChange={(e) => set("description", e.target.value)}
             rows={3}
             className="w-full rounded-lg border border-app bg-surface-2 p-3 text-sm text-app focus:border-emerald-500 focus:outline-none"
@@ -119,8 +151,8 @@ export default function SettingsPage() {
       <TeamSection />
 
       <div className="flex items-center justify-between">
-        <Button onClick={save} disabled={busy}>
-          Save settings
+        <Button onClick={save} disabled={busy || !isAdmin} title={!isAdmin ? "Admins only" : undefined}>
+          {dirty ? "Save settings •" : "Save settings"}
         </Button>
       </div>
     </div>

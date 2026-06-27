@@ -24,6 +24,7 @@ function rowToCompany(r: Record<string, unknown>): Company {
     quietMode: Boolean(r.quiet_mode),
     disclosureText: (r.disclosure_text as string) ?? "",
     flsText: (r.fls_text as string) ?? "",
+    brandColors: (r.brand_colors as string) ?? "",
     onboarded: Boolean(r.onboarding_complete),
     onboarding_complete: Boolean(r.onboarding_complete),
     // This company's Ayrshare user profile — the handle to their own linked socials.
@@ -51,6 +52,7 @@ function companyToRow(c: Partial<Company>): Record<string, unknown> {
   if (c.quietMode !== undefined) row.quiet_mode = c.quietMode;
   if (c.disclosureText !== undefined) row.disclosure_text = c.disclosureText;
   if (c.flsText !== undefined) row.fls_text = c.flsText;
+  if (c.brandColors !== undefined) row.brand_colors = c.brandColors;
   if (c.onboarding_complete !== undefined) row.onboarding_complete = c.onboarding_complete;
   if (c.ayrshareProfileKey !== undefined) row.ayrshare_profile_key = c.ayrshareProfileKey;
   return row;
@@ -173,6 +175,37 @@ export async function isTickerClaimed(ticker: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+// The signed-in user's role on their resolved company: "admin" | "member" | null.
+// Super-admins (platform staff) and the company owner count as admin. Used to gate
+// company-wide writes (settings / compliance text) to admins only — RLS scopes to
+// the company but does NOT distinguish admin from member.
+export async function getMyRole(): Promise<"admin" | "member" | null> {
+  const supabase = await createServerSupabase();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return "admin"; // demo / no-auth mode: treat as admin so local dev works
+  const mine = await getMyCompany();
+  if (!mine) return null;
+
+  // Platform super-admins can manage any company.
+  try {
+    const svc = createServiceClient();
+    const { data: sa } = await svc.from("platform_admins").select("super_admin").eq("user_id", user.id).maybeSingle();
+    if (sa?.super_admin) return "admin";
+    // Company owner is always an admin.
+    const { data: co } = await svc.from("companies").select("owner_id").eq("id", mine.id).maybeSingle();
+    if (co?.owner_id === user.id) return "admin";
+  } catch { /* fall through to membership */ }
+
+  const { data: membership } = await supabase
+    .from("company_users")
+    .select("role")
+    .eq("user_id", user.id)
+    .eq("company_id", mine.id)
+    .eq("status", "active")
+    .maybeSingle();
+  return membership?.role === "admin" ? "admin" : membership ? "member" : null;
 }
 
 export async function updateMyCompany(patch: Partial<Company>): Promise<Company | null> {

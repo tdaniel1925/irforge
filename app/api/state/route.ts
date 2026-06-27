@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
-import { getFullDb } from "@/lib/supabase/store";
+import { getFullDb, getMyRole } from "@/lib/supabase/store";
 import { stripeMode } from "@/lib/billing";
 import { isSuperAdmin } from "@/lib/platform";
 
@@ -20,6 +20,10 @@ export async function GET() {
     superAdmin,
   };
 
+  // Per-user role on their company — drives admin-only UI (e.g. read-only Settings
+  // for members). Admin in demo/no-auth mode so local dev keeps working.
+  const role = await getMyRole();
+
   // Multi-tenant: serve the logged-in user's company from Supabase.
   const mine = await getFullDb();
   if (mine) {
@@ -32,7 +36,7 @@ export async function GET() {
     const co = mine.company as Record<string, unknown>;
     const fullAccess = superAdmin || co.comped === true;
     const company = fullAccess ? { ...co, tier: "pro" } : co;
-    return NextResponse.json({ ...mine, company, ...flags, authed: true }, { headers: NO_STORE });
+    return NextResponse.json({ ...mine, company, ...flags, role, authed: true }, { headers: NO_STORE });
   }
 
   // Local fallback.

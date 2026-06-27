@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb, logAudit, saveDb } from "@/lib/db";
-import { getMyCompany, updateMyCompany } from "@/lib/supabase/store";
+import { getMyCompany, getMyRole, updateMyCompany } from "@/lib/supabase/store";
 import type { Company } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -11,6 +11,13 @@ export async function PUT(req: Request) {
   // Multi-tenant path: if a user is logged in, write to their company row (RLS-scoped).
   const mine = await getMyCompany();
   if (mine) {
+    // Company-wide settings — including compliance disclosure text, ticker, and quiet
+    // mode — are admin-only. RLS scopes to the company but doesn't gate by role, so a
+    // non-admin member could otherwise rewrite the disclosure language. Block them.
+    const role = await getMyRole();
+    if (role !== "admin") {
+      return NextResponse.json({ error: "Only company admins can change these settings." }, { status: 403 });
+    }
     const updated = await updateMyCompany(patch);
     return NextResponse.json(updated ?? mine.company);
   }

@@ -33,6 +33,7 @@ export interface SetupItem {
   hint: string;
   href: string;
   done: boolean;
+  optional?: boolean; // doesn't count toward completion (e.g. solo admin needn't invite a team)
 }
 export interface SetupStatus {
   isAdmin: boolean;
@@ -82,9 +83,14 @@ export async function getSetupStatus(): Promise<SetupStatus | null> {
     { key: "profile", label: "Confirm company profile", hint: "Name, sector, description", href: "/settings", done: Boolean(c.name?.trim() && c.sector?.trim()) },
     { key: "approver", label: "Set who approves posts", hint: "Nothing publishes without their tap", href: "/settings", done: Boolean(c.approverName?.trim()) },
     { key: "disclosure", label: "Set your disclosure language", hint: "Attached to every published post", href: "/settings", done: Boolean(c.disclosureText?.trim()) },
-    { key: "socials", label: "Connect your social accounts", hint: "Where approved posts publish", href: "/settings", done: socials.length > 0 },
+    // Only show the social-connect step when per-company connecting is actually
+    // available — otherwise it can never complete and blocks 100%.
+    ...(ayrshareMultiTenant()
+      ? [{ key: "socials", label: "Connect your social accounts", hint: "Where approved posts publish", href: "/settings", done: socials.length > 0 }]
+      : []),
     { key: "peers", label: "Add peer tickers", hint: "Powers Fund Finder + comparisons", href: "/settings", done: (c.peers?.filter(Boolean).length ?? 0) > 0 },
-    { key: "team", label: "Invite your team", hint: "Add admins & members (optional)", href: "/admin/team", done: memberCount > 1 || invitedCount > 0 },
+    // Optional: a solo admin shouldn't be stuck below 100% for not inviting anyone.
+    { key: "team", label: "Invite your team", hint: "Add admins & members (optional)", href: "/admin/team", done: memberCount > 1 || invitedCount > 0, optional: true },
   ];
 
   const personal: SetupItem[] = [
@@ -98,9 +104,10 @@ export async function getSetupStatus(): Promise<SetupStatus | null> {
     isAdmin,
     company,
     personal,
-    companyDone: company.filter((i) => i.done).length,
-    companyTotal: company.length,
-    personalDone: personal.filter((i) => i.done).length,
-    personalTotal: personal.length,
+    // Optional items don't count toward completion totals (so 100% is reachable).
+    companyDone: company.filter((i) => i.done && !i.optional).length,
+    companyTotal: company.filter((i) => !i.optional).length,
+    personalDone: personal.filter((i) => i.done && !i.optional).length,
+    personalTotal: personal.filter((i) => !i.optional).length,
   };
 }
