@@ -50,6 +50,8 @@ export default function QuickPostPage() {
   const [done, setDone] = useState<{ posted: boolean; postUrl?: string; channels: string[] } | null>(null);
   const [aiImageOff, setAiImageOff] = useState(false);
   const [previewTab, setPreviewTab] = useState<string | null>(null);
+  const [brandColors, setBrandColors] = useState("");
+  const [imgVariant, setImgVariant] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -95,12 +97,15 @@ export default function QuickPostPage() {
       const r = await fetch("/api/social/quickpost/media", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ generate: true, text }),
+        // brandColors biases the palette; variant rotates composition so each
+        // regenerate looks different rather than re-producing the same image.
+        body: JSON.stringify({ generate: true, text, brandColors: brandColors.trim() || undefined, variant: imgVariant }),
       });
       const d = await r.json();
       if (r.status === 503) { setAiImageOff(true); return; } // not configured — hide the button, don't alarm
       if (!r.ok) throw new Error(d.error ?? "Couldn't generate an image.");
       setMedia((m) => [...m, { url: d.url, kind: "image" }]);
+      setImgVariant((v) => v + 1);
       setPreview(null);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Couldn't generate an image.");
@@ -201,9 +206,22 @@ export default function QuickPostPage() {
           <input ref={fileRef} type="file" accept="image/*,video/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ""; }} />
           <Button variant="secondary" onClick={() => fileRef.current?.click()} disabled={mediaBusy}>{mediaBusy ? "…" : "📎 Add image / video"}</Button>
           {!aiImageOff && (
-            <Button variant="ghost" onClick={generateImage} disabled={mediaBusy || !text.trim()} title={!text.trim() ? "Write some text first" : "Generate an on-brand image from your text"}>✨ AI image</Button>
+            <Button variant="ghost" onClick={generateImage} disabled={mediaBusy || !text.trim()} title={!text.trim() ? "Write some text first" : "Generate a cinematic, on-brand image from your text"}>
+              {mediaBusy ? "Creating…" : media.some((m) => m.kind === "image") ? "✨ Regenerate image" : "✨ AI image"}
+            </Button>
           )}
         </div>
+        {!aiImageOff && (
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <input
+              value={brandColors}
+              onChange={(e) => setBrandColors(e.target.value)}
+              placeholder="Brand colors (optional) — e.g. navy blue and red"
+              className="w-64 rounded-lg border border-app bg-surface-2 px-3 py-1.5 text-xs text-app focus:border-emerald-500 focus:outline-none"
+            />
+            <span className="text-[11px] text-faint">Cinematic style · click again to regenerate a fresh look</span>
+          </div>
+        )}
         {media.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-2">
             {media.map((m) => (
@@ -352,7 +370,7 @@ function Avatar({ account, fallback }: { account?: ConnectedAccount; fallback: s
     // eslint-disable-next-line @next/next/no-img-element
     return <img src={account.profilePicture} alt="" className="h-10 w-10 shrink-0 rounded-full object-cover" />;
   }
-  return <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-300 text-sm font-bold text-slate-700">{fallback.slice(0, 1).toUpperCase()}</div>;
+  return <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-sm font-bold text-white">{fallback.slice(0, 1).toUpperCase()}</div>;
 }
 
 function Media({ urls, rounded = "rounded-xl" }: { urls: string[]; rounded?: string }) {

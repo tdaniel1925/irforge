@@ -30,11 +30,18 @@ export async function POST(req: Request) {
     const { db } = await getStore();
     const body = await req.json().catch(() => ({}));
     const text = String(body?.text ?? "").slice(0, 1500);
+    // Optional brand-color hint from the client (e.g. "navy blue and red"); falls
+    // back to undefined so the prompt uses its sophisticated default palette.
+    const brandColors = typeof body?.brandColors === "string" && body.brandColors.trim() ? body.brandColors.trim().slice(0, 120) : undefined;
+    // `variant` rotates the composition so re-generating gives a different image.
+    const variant = Number.isFinite(body?.variant) ? Number(body.variant) : 0;
     const prompt = buildImagePrompt({
       companyName: db.company.name,
       ticker: db.company.ticker,
       theme: db.company.sector || "investor relations",
       postText: text,
+      brandColors,
+      variant,
     });
     const postId = `quick-${randomId()}`;
     const url = await generatePostImage({ companyId, postId, prompt });
