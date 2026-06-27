@@ -407,12 +407,24 @@ export async function publishToChannels(text: string, channels: string[], profil
     });
     const data = await res.json().catch(() => ({}));
     const post = data?.post ?? data;
-    if (!res.ok || post?.status === "error" || post?.status === "failed") {
-      const detail = post?.error ?? data?.message ?? (post?.platforms ?? []).map((p: any) => p?.error).filter(Boolean).join("; ") ?? `HTTP ${res.status}`;
-      return { ok: false, posted: false, error: `Zernio: ${detail}` };
+    const rawStatus = String(post?.status ?? "").toLowerCase();
+
+    // Hard failure ONLY when the HTTP call failed or Zernio explicitly rejected the
+    // post. Zernio publishes ASYNCHRONOUSLY: it accepts the post (201) and finishes
+    // the actual network publish seconds later. Statuses like "published",
+    // "publishing", "processing", "queued", "scheduled", "pending" all mean ACCEPTED —
+    // not failed. Only "error"/"failed" (or a non-2xx) is a real failure. (Previously
+    // a transient/pending state surfaced "Post created but publishing failed" even
+    // though the post went out fine.)
+    const failed = !res.ok || rawStatus === "error" || rawStatus === "failed" || rawStatus === "rejected";
+    if (failed) {
+      const platformErrors = (post?.platforms ?? []).map((p: any) => p?.error ?? p?.failureReason).filter(Boolean).join("; ");
+      const detail = post?.error ?? platformErrors ?? data?.error ?? data?.message ?? `HTTP ${res.status}`;
+      return { ok: false, posted: false, error: `Couldn't publish: ${detail}` };
     }
     const id = post?._id ?? post?.id;
-    const url = (post?.platforms ?? []).find((p: any) => p?.postUrl || p?.url)?.postUrl;
+    const url = (post?.platforms ?? []).find((p: any) => p?.postUrl || p?.url)?.postUrl ?? (post?.platforms ?? [])[0]?.url;
+    // "posted" = went out (or is going out) now; "scheduled" = future time we set.
     return { ok: true, posted: !scheduled, scheduled, postUrl: url, externalId: id ? String(id) : undefined };
   } catch (e) {
     return { ok: false, posted: false, error: e instanceof Error ? `Zernio unreachable: ${e.message}` : "Zernio unreachable" };

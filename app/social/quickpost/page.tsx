@@ -46,6 +46,7 @@ export default function QuickPostPage() {
   const [preview, setPreview] = useState<Preview | null>(null);
   const [ack, setAck] = useState(false);
   const [done, setDone] = useState<{ posted: boolean; postUrl?: string; channels: string[] } | null>(null);
+  const [aiImageOff, setAiImageOff] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -94,6 +95,7 @@ export default function QuickPostPage() {
         body: JSON.stringify({ generate: true, text }),
       });
       const d = await r.json();
+      if (r.status === 503) { setAiImageOff(true); return; } // not configured — hide the button, don't alarm
       if (!r.ok) throw new Error(d.error ?? "Couldn't generate an image.");
       setMedia((m) => [...m, { url: d.url, kind: "image" }]);
       setPreview(null);
@@ -192,7 +194,9 @@ export default function QuickPostPage() {
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <input ref={fileRef} type="file" accept="image/*,video/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ""; }} />
           <Button variant="secondary" onClick={() => fileRef.current?.click()} disabled={mediaBusy}>{mediaBusy ? "…" : "📎 Add image / video"}</Button>
-          <Button variant="ghost" onClick={generateImage} disabled={mediaBusy || !text.trim()} title={!text.trim() ? "Write some text first" : "Generate an on-brand image from your text"}>✨ AI image</Button>
+          {!aiImageOff && (
+            <Button variant="ghost" onClick={generateImage} disabled={mediaBusy || !text.trim()} title={!text.trim() ? "Write some text first" : "Generate an on-brand image from your text"}>✨ AI image</Button>
+          )}
         </div>
         {media.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-2">
