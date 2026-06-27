@@ -154,11 +154,12 @@ export function buildImagePrompt(opts: {
 }): string {
   const snippet = opts.postText.slice(0, 280).replace(/\s+/g, " ").trim();
 
-  // American Fusion keeps a consistent BRAND STYLE (navy + red, polished, atom motifs),
-  // but the SUBJECT comes from the post: the AI-picked `concept` when available, else a
-  // rotating fallback. Imagery can be a scene, people, objects, or a stylized graphic —
-  // varied — as long as the brand look stays the same.
-  if (opts.ticker.toUpperCase() === "AMFN") {
+  // ── AMFN-ONLY brand style ──────────────────────────────────────────────────
+  // This bespoke American Fusion look (navy + red, atom motifs) is ISOLATED to AMFN
+  // and must NEVER apply to any other company. Normalize the ticker (trim + upper) so
+  // stray whitespace/casing can't leak it. Every other company falls through to the
+  // general style below.
+  if (String(opts.ticker ?? "").trim().toUpperCase() === "AMFN") {
     const fallbacks = [
       "a striking visual that represents this announcement for an electric / fusion energy company",
       "a confident scene symbolizing progress and momentum in clean energy",
@@ -170,6 +171,7 @@ export function buildImagePrompt(opts: {
       `SUBJECT (what to depict, drawn from the post): ${subject}. The post is about: "${snippet}" (theme: ${opts.theme}). ` +
       `BRAND STYLE (keep this consistent across all images): a deep NAVY BLUE palette with strong RED accents and clean light/white space; sleek, polished, modern and professional; subtle atom/orbital motifs woven in as a recurring brand cue; crisp lighting, strong focal point, gallery-grade finish. ` +
       `The subject can be a real scene, people, objects, an illustration, or a stylized graphic — whatever best fits the post — but always rendered in the navy/red American Fusion look. ` +
+      `COMPOSITION: full-bleed, edge-to-edge artwork that fills the ENTIRE frame. Absolutely NO borders, NO frames, NO outlines, NO colored margins or padding around the image, NO inner card/panel framing the whole scene — the artwork must extend to all four edges. ` +
       `HARD CONSTRAINTS: NO readable words, letters, numbers, charts, percentages, price figures, tickers, fake quotes, fabricated logos, or anything implying a stock price, valuation, or return. No text anywhere. No watermarks. ` +
       `Square 1:1, crisp and high-resolution for X and LinkedIn.`
     );
@@ -195,6 +197,7 @@ export function buildImagePrompt(opts: {
     `Art direction: ${style}. ` +
     `${palette} ` +
     `Make it genuinely beautiful: strong focal point, rich detail, professional composition and lighting, clean negative space, gallery-grade finish. ` +
+    `COMPOSITION: full-bleed, edge-to-edge artwork that fills the ENTIRE frame — NO borders, frames, outlines, colored margins, or card framing around the image. ` +
     `HARD CONSTRAINTS (critical): absolutely NO words, letters, numbers, charts, graphs, percentages, price figures, tickers, fabricated logos, fake quotes, or anything that states or implies a stock price, valuation, prediction, or financial return. No readable text anywhere. No watermarks. No real people's faces. ` +
     `Square 1:1, crisp and high-resolution, optimized for X and LinkedIn feeds.`
   );
