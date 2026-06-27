@@ -20,9 +20,10 @@ const NETWORKS: { key: string; label: string; icon: string }[] = [
   { key: "reddit", label: "Reddit", icon: "r/" },
 ];
 
-interface ConnectedAccount { platform: string; displayName?: string; username?: string; canPost: boolean }
+interface ConnectedAccount { platform: string; displayName?: string; username?: string; profilePicture?: string; canPost: boolean }
 interface Preview {
   preview: string;
+  bodies?: Record<string, string>;   // per-channel final text (X differs from the rest)
   channels: string[];
   mediaUrls: string[];
   flags: { level?: string; message?: string; severity?: string }[];
@@ -48,6 +49,7 @@ export default function QuickPostPage() {
   const [ack, setAck] = useState(false);
   const [done, setDone] = useState<{ posted: boolean; postUrl?: string; channels: string[] } | null>(null);
   const [aiImageOff, setAiImageOff] = useState(false);
+  const [previewTab, setPreviewTab] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -120,6 +122,7 @@ export default function QuickPostPage() {
       const d = await r.json();
       if (!r.ok) throw new Error(d.error ?? "Couldn't build preview.");
       setPreview(d);
+      setPreviewTab(Array.isArray(d.channels) ? d.channels[0] : null);
       setAck(false);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Couldn't build preview.");
@@ -247,21 +250,35 @@ export default function QuickPostPage() {
         <Button onClick={doPreview} disabled={!canPreview}>{busy ? "Building preview…" : "Preview post →"}</Button>
       ) : (
         <Card className="border-sky-500/30">
-          <h2 className="mb-2 font-semibold text-app">Preview — approve before it goes out</h2>
-          <div className="rounded-lg border border-app bg-surface-2 p-3">
-            <p className="whitespace-pre-wrap text-sm text-app">{preview.preview}</p>
-            {preview.mediaUrls.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-2">
-                {preview.mediaUrls.map((u) => (
-                  /\.(mp4|mov|webm)$/i.test(u)
-                    ? <video key={u} src={u} className="h-24 w-24 rounded border border-app object-cover" muted />
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    : <img key={u} src={u} alt="" className="h-24 w-24 rounded border border-app object-cover" />
-                ))}
-              </div>
-            )}
-          </div>
-          <p className="mt-2 text-xs text-faint">Going to: {preview.channels.join(", ")}</p>
+          <h2 className="mb-3 font-semibold text-app">Preview — this is how it&apos;ll look on each channel</h2>
+
+          {/* Channel tabs — switch between how the post renders on each network. */}
+          {preview.channels.length > 1 && (
+            <div className="mb-3 flex flex-wrap gap-1.5">
+              {preview.channels.map((c) => (
+                <button
+                  key={c}
+                  onClick={() => setPreviewTab(c)}
+                  className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
+                    (previewTab ?? preview.channels[0]) === c
+                      ? "border-emerald-500/60 bg-emerald-500/10 text-app"
+                      : "border-app bg-surface-2/40 text-muted hover:bg-app-hover"
+                  }`}
+                >
+                  {labelFor(c)}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <ChannelMockup
+            channel={previewTab ?? preview.channels[0]}
+            text={preview.bodies?.[previewTab ?? preview.channels[0]] ?? preview.preview}
+            mediaUrls={preview.mediaUrls}
+            account={accounts.find((a) => a.platform === (previewTab ?? preview.channels[0]))}
+            companyName={db.company.name}
+          />
+          <p className="mt-2 text-xs text-faint">Going to: {preview.channels.map(labelFor).join(", ")}</p>
 
           {/* warnings */}
           {preview.blocked && (
@@ -306,6 +323,153 @@ export default function QuickPostPage() {
           </div>
         </Card>
       )}
+    </div>
+  );
+}
+
+// ── Channel preview mockups ──────────────────────────────────────────────────
+// Render the post the way it'll appear on each network: profile chrome + text with
+// links highlighted + media + that network's footer icons.
+
+const isVideo = (u: string) => /\.(mp4|mov|webm)$/i.test(u);
+
+// Split text into runs, highlighting URLs and $TICKER / #tag / @handle in link color.
+function RichText({ text, color = "#1d9bf0" }: { text: string; color?: string }) {
+  const parts = text.split(/(\bhttps?:\/\/[^\s]+|\b(?:[a-z0-9-]+\.)+[a-z]{2,}(?:\/[^\s]*)?|[$#@][A-Za-z0-9_]+)/g);
+  return (
+    <span className="whitespace-pre-wrap break-words">
+      {parts.map((p, i) =>
+        /^(https?:\/\/|(?:[a-z0-9-]+\.)+[a-z]{2,}|[$#@])/i.test(p) && p.trim()
+          ? <span key={i} style={{ color }}>{p}</span>
+          : <span key={i}>{p}</span>
+      )}
+    </span>
+  );
+}
+
+function Avatar({ account, fallback }: { account?: ConnectedAccount; fallback: string }) {
+  if (account?.profilePicture) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={account.profilePicture} alt="" className="h-10 w-10 shrink-0 rounded-full object-cover" />;
+  }
+  return <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-300 text-sm font-bold text-slate-700">{fallback.slice(0, 1).toUpperCase()}</div>;
+}
+
+function Media({ urls, rounded = "rounded-xl" }: { urls: string[]; rounded?: string }) {
+  if (urls.length === 0) return null;
+  const u = urls[0];
+  return (
+    <div className={`mt-2 overflow-hidden border border-black/10 ${rounded}`}>
+      {isVideo(u)
+        ? <video src={u} className="max-h-80 w-full object-cover" muted controls />
+        /* eslint-disable-next-line @next/next/no-img-element */
+        : <img src={u} alt="" className="max-h-80 w-full object-cover" />}
+    </div>
+  );
+}
+
+function ChannelMockup({
+  channel, text, mediaUrls, account, companyName,
+}: {
+  channel: string;
+  text: string;
+  mediaUrls: string[];
+  account?: ConnectedAccount;
+  companyName: string;
+}) {
+  const name = account?.displayName || companyName || "Your Company";
+  const handle = account?.username ? `@${account.username}` : "";
+
+  // X (Twitter)
+  if (channel === "twitter") {
+    return (
+      <div className="mx-auto max-w-md rounded-2xl bg-black p-4 text-white">
+        <div className="flex gap-3">
+          <Avatar account={account} fallback={name} />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1 text-[15px]">
+              <span className="font-bold">{name}</span>
+              <span className="text-gray-500">{handle} · 1m</span>
+            </div>
+            <div className="mt-0.5 text-[15px] leading-snug"><RichText text={text} color="#1d9bf0" /></div>
+            <Media urls={mediaUrls} />
+            <div className="mt-3 flex max-w-xs justify-between text-gray-500">
+              <span>💬</span><span>🔁</span><span>♡</span><span>📊</span><span>🔖</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // LinkedIn
+  if (channel === "linkedin") {
+    return (
+      <div className="mx-auto max-w-md rounded-lg border border-gray-200 bg-white p-4 text-[#1d2226] shadow-sm">
+        <div className="flex gap-2">
+          <Avatar account={account} fallback={name} />
+          <div>
+            <p className="text-sm font-semibold">{name}</p>
+            <p className="text-xs text-gray-500">Investor Relations · Now</p>
+          </div>
+        </div>
+        <div className="mt-2 text-sm leading-snug"><RichText text={text} color="#0a66c2" /></div>
+        <Media urls={mediaUrls} rounded="rounded-md" />
+        <div className="mt-3 flex justify-around border-t border-gray-100 pt-2 text-xs font-medium text-gray-500">
+          <span>👍 Like</span><span>💬 Comment</span><span>🔁 Repost</span><span>➤ Send</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Instagram
+  if (channel === "instagram") {
+    return (
+      <div className="mx-auto max-w-sm rounded-lg border border-gray-200 bg-white text-[#262626]">
+        <div className="flex items-center gap-2 p-3">
+          <Avatar account={account} fallback={name} />
+          <span className="text-sm font-semibold">{account?.username || name}</span>
+        </div>
+        {mediaUrls.length > 0
+          ? <Media urls={mediaUrls} rounded="rounded-none" />
+          : <div className="flex aspect-square items-center justify-center bg-gray-100 px-4 text-center text-sm text-gray-400">Instagram needs an image or video</div>}
+        <div className="px-3 py-2">
+          <div className="flex gap-3 text-lg">♡ 💬 ➤</div>
+          <p className="mt-1 text-sm leading-snug"><span className="font-semibold">{account?.username || name} </span><RichText text={text} color="#00376b" /></p>
+        </div>
+      </div>
+    );
+  }
+
+  // Facebook
+  if (channel === "facebook") {
+    return (
+      <div className="mx-auto max-w-md rounded-lg border border-gray-200 bg-white p-4 text-[#050505] shadow-sm">
+        <div className="flex gap-2">
+          <Avatar account={account} fallback={name} />
+          <div>
+            <p className="text-sm font-semibold">{name}</p>
+            <p className="text-xs text-gray-500">Just now · 🌐</p>
+          </div>
+        </div>
+        <div className="mt-2 text-sm leading-snug"><RichText text={text} color="#216fdb" /></div>
+        <Media urls={mediaUrls} rounded="rounded-md" />
+        <div className="mt-3 flex justify-around border-t border-gray-100 pt-2 text-xs font-medium text-gray-500">
+          <span>👍 Like</span><span>💬 Comment</span><span>↪ Share</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Generic fallback (YouTube/TikTok/Telegram/Reddit/etc.)
+  return (
+    <div className="mx-auto max-w-md rounded-lg border border-app bg-surface-2 p-4">
+      <div className="flex items-center gap-2">
+        <Avatar account={account} fallback={name} />
+        <span className="text-sm font-semibold text-app">{name} {handle && <span className="font-normal text-muted">{handle}</span>}</span>
+      </div>
+      <div className="mt-2 text-sm text-app"><RichText text={text} color="#10b981" /></div>
+      <Media urls={mediaUrls} />
     </div>
   );
 }
