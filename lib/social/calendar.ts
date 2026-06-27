@@ -242,6 +242,7 @@ export async function draftCalendarBatch(): Promise<{ ok: boolean; error?: strin
   const company = ctx.company;
 
   let drafted = 0;
+  let slotIndex = 0;
   for (const slot of todo) {
     const platform = String(slot.platform || "linkedin");
     const theme = String(slot.theme || "Update");
@@ -273,8 +274,9 @@ export async function draftCalendarBatch(): Promise<{ ok: boolean; error?: strin
       ? `Blocked language detected (${flags.map((f) => f.rule).join(", ")}). ${cls.reasoning}`
       : cls.reasoning;
 
-    // 4) Image (best-effort).
-    const imagePrompt = buildImagePrompt({ companyName: company.name, ticker: company.ticker, theme, postText: text });
+    // 4) Image (best-effort). Vary the composition per slot so a whole month of
+    // posts doesn't come out looking identical.
+    const imagePrompt = buildImagePrompt({ companyName: company.name, ticker: company.ticker, theme, postText: text, variant: slotIndex++ });
     const mediaUrl = await generatePostImage({ companyId: cid, postId: String(slot.id), prompt: imagePrompt });
 
     // 5) Save everything onto the slot row.
@@ -651,9 +653,11 @@ export async function createManualPost(input: {
     .single();
   if (error || !row) return { ok: false, error: error?.message ?? "Couldn't create the post." };
 
-  // Optional image (best-effort).
+  // Optional image (best-effort). Derive a composition variant from the row id so
+  // different posts get different framings (deterministic, no randomness).
   if (input.withImage) {
-    const prompt = buildImagePrompt({ companyName: company.name, ticker: company.ticker, theme: input.theme || "update", postText: body });
+    const variant = String(row.id).split("").reduce((n, c) => n + c.charCodeAt(0), 0);
+    const prompt = buildImagePrompt({ companyName: company.name, ticker: company.ticker, theme: input.theme || "update", postText: body, variant });
     const url = await generatePostImage({ companyId: cid, postId: String(row.id), prompt });
     if (url) await supabase.from("iros_posts").update({ media_url: url }).eq("id", row.id);
   }
