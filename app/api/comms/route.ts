@@ -12,11 +12,13 @@ async function guard() {
 }
 
 // GET — presence (who's in/out) + chat messages for the right comms sidebar.
+// companyId is returned so the client can scope its realtime subscription to this
+// company's rows (RLS also enforces this server-side).
 export async function GET() {
   const g = await guard();
   if (g.error) return g.error;
   const [profiles, chat] = await Promise.all([listTeamProfiles(), listChat()]);
-  return NextResponse.json({ profiles, chat });
+  return NextResponse.json({ profiles, chat, companyId: g.mine!.id });
 }
 
 // POST — { action: "status"|"chat"|"deleteChat", ... }

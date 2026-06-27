@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createClient, supabaseConfigured } from "@/lib/supabase/client";
 
 interface Profile { userId: string; displayName: string; officeStatus: "in" | "out"; statusReason: string }
 interface Chat { id: string; authorName: string; body: string; createdAt: string; mine: boolean }
@@ -30,6 +31,9 @@ export default function CommsSidebar() {
   const endRef = useRef<HTMLDivElement>(null);
   const lastSeenId = useRef<string | null>(null); // newest chat id the user has seen
   const lastCount = useRef(0);                  // to scroll only when new messages arrive
+  const companyId = useRef<string | null>(null); // for scoping the realtime subscription
+  const openRef = useRef(open);                 // current open state inside async callbacks
+  openRef.current = open;
 
   const load = async () => {
     try {
@@ -37,6 +41,7 @@ export default function CommsSidebar() {
       if (!res.ok) { setReady(false); return; }
       const d = await res.json();
       const nextChat: Chat[] = d.chat ?? [];
+      companyId.current = d.companyId ?? companyId.current;
       setProfiles(d.profiles ?? []);
       setChat(nextChat);
       setReady(true);
@@ -50,10 +55,35 @@ export default function CommsSidebar() {
       else if (!lastSeenId.current && nextChat.length) lastSeenId.current = nextChat[nextChat.length - 1].id;
     } catch { /* leave as-is */ }
   };
+  // Initial load, then realtime (Postgres changes) with a slow poll as a fallback.
   useEffect(() => {
-    load();
-    const t = setInterval(load, 8000); // light poll for liveness
-    return () => clearInterval(t);
+    let cancelled = false;
+    const supabase = supabaseConfigured() ? createClient() : null;
+    let channel: ReturnType<NonNullable<typeof supabase>["channel"]> | null = null;
+    // Coalesce bursty events into one reload.
+    let debounce: ReturnType<typeof setTimeout> | null = null;
+    const reload = () => { if (debounce) clearTimeout(debounce); debounce = setTimeout(() => { if (!cancelled) load(); }, 250); };
+
+    (async () => {
+      await load();
+      if (cancelled || !supabase || !companyId.current) return;
+      // Subscribe to this company's chat + presence rows. RLS still scopes what the
+      // anon key can read, so events only arrive for rows the user may see.
+      channel = supabase
+        .channel(`comms:${companyId.current}`)
+        .on("postgres_changes", { event: "*", schema: "public", table: "team_chat", filter: `company_id=eq.${companyId.current}` }, reload)
+        .on("postgres_changes", { event: "*", schema: "public", table: "team_profiles", filter: `company_id=eq.${companyId.current}` }, reload)
+        .subscribe();
+    })();
+
+    // Fallback poll — slow, since realtime carries the load when available.
+    const t = setInterval(load, 30000);
+    return () => {
+      cancelled = true;
+      if (debounce) clearTimeout(debounce);
+      clearInterval(t);
+      if (supabase && channel) supabase.removeChannel(channel);
+    };
   }, []);
   // Scroll to bottom only when the message COUNT grows (not on every poll), so a user
   // scrolled up to read history isn't yanked back down every 8s.
