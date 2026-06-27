@@ -30,6 +30,8 @@ interface Preview {
   notConnected: string[];
   regFd: { classification: string; flags: string[]; reasoning: string } | null;
   quietMode: boolean;
+  xOverBy?: number;
+  finalLength?: number;
 }
 
 export default function QuickPostPage() {
@@ -155,7 +157,8 @@ export default function QuickPostPage() {
 
   const canPreview = text.trim().length > 0 && channels.length > 0 && !busy;
   const regRed = preview?.regFd?.classification === "red";
-  const canPublish = preview && !preview.blocked && !preview.quietMode && preview.notConnected.length === 0 && (!regRed || ack) && !busy;
+  const xTooLong = (preview?.xOverBy ?? 0) > 0;
+  const canPublish = preview && !preview.blocked && !preview.quietMode && preview.notConnected.length === 0 && !xTooLong && (!regRed || ack) && !busy;
 
   return (
     <div className="max-w-2xl">
@@ -269,6 +272,12 @@ export default function QuickPostPage() {
           {preview.notConnected.length > 0 && (
             <div className="mt-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-300">
               ⚠ Not connected for: {preview.notConnected.join(", ")}. Remove those channels or connect them in Settings.
+            </div>
+          )}
+          {xTooLong && (
+            <div className="mt-3 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-300">
+              ✕ Too long for X by {preview.xOverBy} character{preview.xOverBy === 1 ? "" : "s"}. With the required disclosures this is {preview.finalLength}/280 for X.
+              <span className="mt-1 block text-xs">Shorten your text, or uncheck <strong>X (Twitter)</strong> — LinkedIn, Instagram and Facebook allow the full length.</span>
             </div>
           )}
           {preview.flags.length > 0 && !preview.blocked && (

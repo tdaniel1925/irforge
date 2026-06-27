@@ -31,6 +31,13 @@ export async function POST(req: Request) {
   // buildPublishedThread works on a thread; a quick post is a single body.
   const finalText = buildPublishedThread([text], db.company).join("\n\n");
 
+  // X (Twitter) caps a post at 280 chars. The mandatory disclosures alone are long,
+  // so a short post + disclosures usually exceeds it and X rejects the whole thing.
+  // Detect this BEFORE publishing and tell the user exactly how much to trim.
+  const TWITTER_LIMIT = 280;
+  const targetsX = (Array.isArray(body.channels) ? body.channels : []).map(String).includes("twitter");
+  const xOverBy = targetsX ? Math.max(0, finalText.length - TWITTER_LIMIT) : 0;
+
   // Compliance: hard language flags (block), then AI Reg-FD assist.
   const flags = checkContent([text]);
   const blocked = hasBlockingFlags(flags);
@@ -56,6 +63,8 @@ export async function POST(req: Request) {
       notConnected,
       regFd,
       quietMode: Boolean(db.company.quietMode),
+      xOverBy,                       // chars over X's 280 limit (0 = fine)
+      finalLength: finalText.length, // total length incl. disclosures
     });
   }
 
@@ -86,6 +95,14 @@ export async function POST(req: Request) {
   }
   if (notConnected.length > 0) {
     return NextResponse.json({ error: `Not connected for: ${notConnected.join(", ")}. Connect them in Settings or remove them.` }, { status: 422 });
+  }
+  // X length guard — fail fast with a clear, actionable message (X would reject the
+  // whole post otherwise). Disclosures (~350 chars) are mandatory, so the body must
+  // be short for X. Suggest trimming or unchecking X.
+  if (xOverBy > 0) {
+    return NextResponse.json({
+      error: `Too long for X by ${xOverBy} character${xOverBy === 1 ? "" : "s"}. With the required disclosures the post is ${finalText.length}/280 for X. Shorten your text, or uncheck X (Twitter) — LinkedIn, Instagram and Facebook allow the full length.`,
+    }, { status: 422 });
   }
 
   const result = await publishToChannels(finalText, channels, db.company.ayrshareProfileKey, { mediaUrls: body.mediaUrls });

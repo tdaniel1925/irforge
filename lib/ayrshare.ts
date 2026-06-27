@@ -418,8 +418,12 @@ export async function publishToChannels(text: string, channels: string[], profil
     // though the post went out fine.)
     const failed = !res.ok || rawStatus === "error" || rawStatus === "failed" || rawStatus === "rejected";
     if (failed) {
-      const platformErrors = (post?.platforms ?? []).map((p: any) => p?.error ?? p?.failureReason).filter(Boolean).join("; ");
-      const detail = post?.error ?? platformErrors ?? data?.error ?? data?.message ?? `HTTP ${res.status}`;
+      // Zernio stores the real reason per-platform as errorMessage/errorCategory.
+      const platformErrors = (post?.platforms ?? [])
+        .map((p: any) => p?.errorMessage ?? p?.error ?? p?.failureReason)
+        .filter(Boolean)
+        .join("; ");
+      const detail = platformErrors || post?.error || data?.error || data?.message || `HTTP ${res.status}`;
       return { ok: false, posted: false, error: `Couldn't publish: ${detail}` };
     }
     const id = post?._id ?? post?.id;
