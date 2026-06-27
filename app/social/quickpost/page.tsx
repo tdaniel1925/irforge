@@ -226,10 +226,7 @@ export default function QuickPostPage() {
           <div className="mt-3 flex flex-wrap gap-2">
             {media.map((m) => (
               <div key={m.url} className="relative">
-                {m.kind === "video"
-                  ? <video src={m.url} className="h-20 w-20 rounded-lg border border-app object-cover" muted />
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  : <img src={m.url} alt="" className="h-20 w-20 rounded-lg border border-app object-cover" />}
+                <MediaThumb url={m.url} kind={m.kind} />
                 <button onClick={() => removeMedia(m.url)} className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-[11px] text-white">✕</button>
               </div>
             ))}
@@ -350,6 +347,24 @@ export default function QuickPostPage() {
 // links highlighted + media + that network's footer icons.
 
 const isVideo = (u: string) => /\.(mp4|mov|webm)$/i.test(u);
+
+// Self-healing media thumbnail. A just-generated image can 404 for a moment while
+// it propagates on the storage CDN; instead of showing a broken icon forever, this
+// shows a spinner, then retries a few times with cache-busting before giving up.
+function MediaThumb({ url, kind }: { url: string; kind: "image" | "video" }) {
+  const [tries, setTries] = useState(0);
+  const [failed, setFailed] = useState(false);
+  const src = tries === 0 ? url : `${url}${url.includes("?") ? "&" : "?"}r=${tries}`;
+  const onError = () => {
+    if (tries < 4) setTimeout(() => setTries((t) => t + 1), 600 * (tries + 1));
+    else setFailed(true);
+  };
+  const cls = "h-20 w-20 rounded-lg border border-app object-cover bg-surface-2";
+  if (failed) return <div className={`${cls} flex items-center justify-center text-center text-[9px] text-faint`}>image still processing — refresh</div>;
+  if (kind === "video") return <video src={src} className={cls} muted onError={onError} />;
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={src} alt="" className={cls} onError={onError} />;
+}
 
 // Split text into runs, highlighting URLs and $TICKER / #tag / @handle in link color.
 // `inherit` forces plain-text runs to color:inherit via inline style — beating any

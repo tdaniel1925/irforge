@@ -33,26 +33,16 @@ const NAV: NavGroup[] = [
       { href: "/voices", label: "Executive Voices", icon: "🎙", hint: "Teach the AI how each leader sounds", detail: "Set up each leader once — their tone, example posts, and words to never use. Then every AI-drafted post can sound like them, and a built-in voice-check flags anything off-brand before it publishes." },
       { href: "/social/calendar", label: "Posting Calendar", icon: "🗓️", hint: "Visual month view — see & add posts on any day", detail: "Your whole posting schedule as a month grid: AI-pending and manual posts color-coded by status, with earnings and quiet periods shown for context. Click any day to write a new post, or a chip to open one. The visual home for everything you schedule." },
       { href: "/social/outbox", label: "Delivery Status", icon: "📤", hint: "What's scheduled, what posted, to which channel", detail: "Track every approved post end to end: when it's scheduled to go out, which channel it's going to, a preview with its image, and confirmation it actually posted — with a live link to the published post. Check delivery status any time." },
-    ],
-  },
-  {
-    section: "Schedule & events",
-    items: [
       { href: "/calendar", label: "IR Calendar", icon: "📅", hint: "Earnings, deadlines, conferences, lock-ups", detail: "Keep every IR date in one place: earnings, filing deadlines, conferences, lock-ups, meetings, and reminders. Set a quiet period whenever you need one to block sensitive posts during a blackout window." },
-      { href: "/calendars", label: "Team Calendars", icon: "👥", hint: "IR / Tech / General / personal — admin sets who sees what", detail: "All your team's calendars in one view: IR, Tech & Dev, a General calendar everyone sees, and personal ones. Admins choose which calendars each teammate can see; anyone can add events to a calendar they have access to." },
+      { href: "/calendars", label: "Team Calendars", icon: "📆", hint: "IR / Tech / General / personal — admin sets who sees what", detail: "All your team's calendars in one view: IR, Tech & Dev, a General calendar everyone sees, and personal ones. Admins choose which calendars each teammate can see; anyone can add events to a calendar they have access to." },
     ],
   },
   {
-    section: "Stay compliant",
+    section: "Comply & investors",
     items: [
       { href: "/counsel", label: "Counsel Console", icon: "⚖️", hint: "Sign off on Reg FD–flagged posts", detail: "A dedicated queue for counsel: only the posts the AI flagged RED (potential material non-public info) show up here. Counsel reviews, then signs off in one click — capturing a tamper-evident record (hash + IP + device) for your audit trail. Nothing RED publishes without this sign-off." },
       { href: "/analyzer", label: "Doc Analyzer", icon: "🔬", hint: "AI reads any document, flags risks + disclosure", detail: "Upload any document — a contract, agreement, or filing — and AI summarizes it, pulls out the key terms (amounts, dates, parties), flags risks, and tells you whether it likely triggers an 8-K disclosure. Not legal advice; it flags so the right person reviews." },
       { href: "/documents", label: "Document Vault", icon: "🗂", hint: "Filings, board docs, policies, decks", detail: "A secure home for your filings, board documents, policies, and investor decks. Import your SEC filings automatically, and keep everything organized in one place your team can find." },
-    ],
-  },
-  {
-    section: "Investors",
-    items: [
       { href: "/crm", label: "CRM", icon: "👥", hint: "Contacts, companies, deals, tasks — your whole pipeline", detail: "A full CRM built for IR: track contacts and the firms they work at, move deals through a pipeline, log every call/email/meeting, and manage follow-up tasks. Import your existing contacts from a CSV and export anytime. Dashboard shows pipeline value, win rate, and what's due." },
       { href: "/stakeholders", label: "Investor Inbox", icon: "📥", hint: "Paste any inbound message — AI drafts a reply for your review", detail: "Paste any inbound DM, email, or comment and AI tells you who it's likely from, categorizes it, and drafts a reply — grounded in your public record — that you review and approve before sending. Keeps your investor/press relationships organized and your responses on the record." },
       { href: "/investors", label: "Find Investors", icon: "🎯", hint: "Funds that own similar companies", detail: "Discover institutional investors who already hold companies like yours (from public 13F data) — a targeted list of funds most likely to be interested in your story, so your outreach starts warm." },
@@ -60,27 +50,15 @@ const NAV: NavGroup[] = [
     ],
   },
   {
-    section: "Your reputation",
+    section: "Grow & reputation",
     items: [
       { href: "/company", label: "Defend Your Name", icon: "🛡", hint: "Threats to your name + your visibility score", detail: "Monitors what's being said about you across the boards and flags threats — pump-and-dump posts, FUD, misinformation — and helps you respond with a calm, filing-cited rebuttal. Also tracks your Visibility Score so you can see your reach improving." },
       { href: "/proof", label: "Results", icon: "🏆", hint: "Numbers to show your board", detail: "The proof your IR budget is working: your Visibility Score over time, every post you published, and a complete, exportable record of who approved what (the part your lawyers want). Screenshot any of it for your board deck." },
-    ],
-  },
-  {
-    section: "Get the word out",
-    items: [
       { href: "/t", label: "Your Public Page", icon: "🌐", hint: "What investors see when they look you up", detail: "The live, public investor page for your ticker — real SEC filings, financials, insider and short data, an AI bull/bear analysis, a moderated discussion board, and a way for investors to ask you questions on the record. This is what people see when they look you up." },
       { href: "/marketing-kit", label: "Marketing Kit", icon: "📣", hint: "Ready-made posts, graphics & links to share", detail: "Everything you need to tell investors where the real conversation is — free. AI-written announcement posts in your voice, branded share graphics, copy-paste replies for StockTwits/iHub, an investor email template, and your shareable welcome link." },
       { href: "/briefs", label: "Research Brief", icon: "📄", hint: "Order a disclosed, AI-written research brief", detail: "Order a Sponsored Research Brief ($3,500 one-time): AI writes a thorough, balanced, filing-based profile of your company — clearly disclosed as company-sponsored — that you can publish to your feed. You pay us to write it, not to rate it; the independent AI panel stays free." },
       { href: "/embeds", label: "Embeds & Badges", icon: "🔗", hint: "Live widgets for your own website", detail: "Drop live PubcoZone data onto your own IR website: a Visibility Grade badge, a live price chip, a 'Verified' trust seal, a stock snapshot card, or your full investor hub. Copy a snippet, paste it on your site — it updates itself." },
       { href: "/ticker-audit", label: "Look Up a Ticker", icon: "🔎", hint: "Live report on any company", detail: "Run a full live report on any public company — yours or a peer's — built from a dozen public sources in about 15 seconds. Great for sizing up competitors or checking how your own page looks to an investor." },
-    ],
-  },
-  {
-    // Account items (Settings, Billing, Team, Workspace) live in the top-right
-    // profile menu to avoid duplication — the sidebar keeps just the learn library.
-    section: "Learn",
-    items: [
       { href: "/help", label: "Help Center", icon: "❓", hint: "Plain-English guides to every feature", detail: "Short, plain-language help articles for every part of PubcoZone — Approvals, Content Pipeline, CRM, Counsel, and more — plus the setup walkthrough. The same articles you reach from the ⓘ next to each menu item." },
       { href: "/learn", label: "Public Company 101", icon: "📚", hint: "Plain-English IR & filing guides", detail: "A plain-English library on being a public company — IR best practices, what each SEC filing means, disclosure rules, and how to engage investors compliantly. No jargon, written for busy operators." },
     ],
@@ -103,14 +81,19 @@ export default function Sidebar() {
   const [superAdmin, setSuperAdmin] = useState(false);
   const [ticker, setTicker] = useState("");
 
-  // Restore collapsed-section state across navigations/sessions.
+  // Restore collapsed-section state, OR — on first visit (no saved state) — collapse
+  // every section by default EXCEPT the one containing the current page, so the nav
+  // starts compact (headers only) instead of a long wall of items.
   useEffect(() => {
     try {
       const raw = localStorage.getItem(COLLAPSE_KEY);
-      if (raw) setCollapsed(JSON.parse(raw));
-    } catch {
-      /* ignore */
-    }
+      if (raw) { setCollapsed(JSON.parse(raw)); return; }
+    } catch { /* ignore */ }
+    const activeSection = NAV.find((g) => g.items.some((i) => i.href === pathname))?.section;
+    const init: Record<string, boolean> = {};
+    for (const g of NAV) init[g.section] = g.section !== activeSection; // true = collapsed
+    setCollapsed(init);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Who's signed in: drives admin-only nav + "Your Public Page" -> their real page.
@@ -164,7 +147,7 @@ export default function Sidebar() {
         <ThemeToggle />
       </div>
 
-      <nav className="min-h-0 flex-1 space-y-2 overflow-y-auto px-4 pb-4">
+      <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 pb-4">
         {nav.map((group) => {
           const isCollapsed = collapsed[group.section];
           // A section containing the current page stays open even if collapsed in storage,
@@ -191,7 +174,7 @@ export default function Sidebar() {
                         <Link
                           href={item.href}
                           title={item.hint}
-                          className={`flex flex-1 items-center gap-3 rounded-lg px-3 py-1.5 text-sm transition ${
+                          className={`flex flex-1 items-center gap-2.5 rounded-lg px-3 py-1 text-sm transition ${
                             active
                               ? "bg-emerald-500/10 font-medium text-emerald-600 dark:text-emerald-300"
                               : "text-muted hover:bg-app-hover hover:text-app"
