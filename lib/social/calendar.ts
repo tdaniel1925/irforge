@@ -280,6 +280,7 @@ export async function draftCalendarBatch(): Promise<{ ok: boolean; error?: strin
     const mediaUrl = await generateBrandedImage({
       companyId: cid, postId: String(slot.id), ticker: company.ticker, company: company.name,
       theme, brandColors: (company as { brandColors?: string }).brandColors,
+      imageStyle: (company as { imageStyle?: string }).imageStyle, guidance: (company as { postGuidance?: string }).postGuidance,
       layout: "announcement", label: theme, title: headline, variant: slotIndex++,
     });
 
@@ -665,6 +666,7 @@ export async function createManualPost(input: {
     const url = await generateBrandedImage({
       companyId: cid, postId: String(row.id), ticker: company.ticker, company: company.name,
       theme: input.theme || "update", brandColors: (company as { brandColors?: string }).brandColors,
+      imageStyle: (company as { imageStyle?: string }).imageStyle, guidance: (company as { postGuidance?: string }).postGuidance,
       layout: "announcement", label: input.theme || "Update", title: headline, variant,
     });
     if (url) await supabase.from("iros_posts").update({ media_url: url }).eq("id", row.id);

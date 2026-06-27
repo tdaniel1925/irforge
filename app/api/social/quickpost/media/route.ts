@@ -54,6 +54,8 @@ export async function POST(req: Request) {
       company: db.company.name,
       theme: db.company.sector || "investor relations",
       brandColors,
+      imageStyle: db.company.imageStyle,
+      guidance: db.company.postGuidance,
       layout,
       label,
       title: headline,

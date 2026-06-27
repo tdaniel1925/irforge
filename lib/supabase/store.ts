@@ -25,6 +25,9 @@ function rowToCompany(r: Record<string, unknown>): Company {
     disclosureText: (r.disclosure_text as string) ?? "",
     flsText: (r.fls_text as string) ?? "",
     brandColors: (r.brand_colors as string) ?? "",
+    logoUrl: (r.logo_url as string) ?? "",
+    imageStyle: (r.image_style as string) ?? "",
+    postGuidance: (r.post_guidance as string) ?? "",
     onboarded: Boolean(r.onboarding_complete),
     onboarding_complete: Boolean(r.onboarding_complete),
     // This company's Ayrshare user profile — the handle to their own linked socials.
@@ -53,6 +56,9 @@ function companyToRow(c: Partial<Company>): Record<string, unknown> {
   if (c.disclosureText !== undefined) row.disclosure_text = c.disclosureText;
   if (c.flsText !== undefined) row.fls_text = c.flsText;
   if (c.brandColors !== undefined) row.brand_colors = c.brandColors;
+  if (c.logoUrl !== undefined) row.logo_url = c.logoUrl;
+  if (c.imageStyle !== undefined) row.image_style = c.imageStyle;
+  if (c.postGuidance !== undefined) row.post_guidance = c.postGuidance;
   if (c.onboarding_complete !== undefined) row.onboarding_complete = c.onboarding_complete;
   if (c.ayrshareProfileKey !== undefined) row.ayrshare_profile_key = c.ayrshareProfileKey;
   return row;

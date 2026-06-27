@@ -95,6 +95,8 @@ export interface BrandedImageInput {
   company: string;
   theme: string;
   brandColors?: string;
+  imageStyle?: string;   // chosen style key (Setup) — drives the look per company
+  guidance?: string;     // free-text brand guidance (Setup)
   layout?: "announcement" | "stat" | "quote" | "filing";
   title: string;       // headline / stat value / quote
   body?: string;       // supporting line
@@ -127,6 +129,8 @@ export async function generateBrandedImage(input: BrandedImageInput): Promise<st
     theme: input.theme,
     postText,
     brandColors: input.brandColors,
+    imageStyle: input.imageStyle,
+    guidance: input.guidance,
     variant: input.variant,
     concept: concept ?? undefined,
   });
@@ -143,6 +147,31 @@ export async function generateBrandedImage(input: BrandedImageInput): Promise<st
 // `brandColors` biases the palette toward the company's brand (falls back to a
 // sophisticated default). `variant` lets callers vary the composition so repeated
 // generations don't all look identical.
+// Selectable image styles (set per company in Social Media Setup; drives every image).
+// Each value is the art-direction sentence injected into the prompt.
+export const IMAGE_STYLES: Record<string, { label: string; art: string }> = {
+  cinematic: {
+    label: "Cinematic / 3D",
+    art: "a cinematic 3D render — sleek materials (glass, brushed metal, soft matte), dramatic studio lighting, shallow depth of field, premium product-shot feel",
+  },
+  infographic: {
+    label: "Infographic / tech-report",
+    art: "a polished modern infographic / tech-report style — clean flat-with-depth vector design, subtle gradients and soft long shadows, crisp iconography, isometric tech illustration, layered geometric panels",
+  },
+  illustration: {
+    label: "Editorial illustration",
+    art: "a bold editorial illustration — clean confident shapes, modern flat-with-depth vector art, strong focal point, magazine-cover polish",
+  },
+  photographic: {
+    label: "Photographic",
+    art: "a premium photographic look — realistic, naturally lit, shallow depth of field, editorial photography quality",
+  },
+  minimal: {
+    label: "Minimal abstract",
+    art: "a clean minimal abstract composition — flowing forms, generous negative space, one bold accent, elegant and high-end",
+  },
+};
+
 export function buildImagePrompt(opts: {
   companyName: string;
   ticker: string;
@@ -151,54 +180,37 @@ export function buildImagePrompt(opts: {
   brandColors?: string;
   variant?: number;
   concept?: string;   // AI-chosen visual subject for THIS post (so the image is relevant)
+  imageStyle?: string;  // chosen style key (see IMAGE_STYLES); per-company setting
+  guidance?: string;    // free-text brand guidance from Setup
 }): string {
   const snippet = opts.postText.slice(0, 280).replace(/\s+/g, " ").trim();
 
-  // ── AMFN-ONLY brand style ──────────────────────────────────────────────────
-  // This bespoke American Fusion look (navy + red, atom motifs) is ISOLATED to AMFN
-  // and must NEVER apply to any other company. Normalize the ticker (trim + upper) so
-  // stray whitespace/casing can't leak it. Every other company falls through to the
-  // general style below.
-  if (String(opts.ticker ?? "").trim().toUpperCase() === "AMFN") {
-    const fallbacks = [
-      "a striking visual that represents this announcement for an electric / fusion energy company",
-      "a confident scene symbolizing progress and momentum in clean energy",
-      "an aspirational image evoking innovation and forward motion",
-    ];
-    const subject = opts.concept?.trim() || fallbacks[(opts.variant ?? 0) % fallbacks.length];
-    return (
-      `A polished, premium social graphic for American Fusion (electric & fusion energy), in a consistent modern brand style. ` +
-      `SUBJECT (what to depict, drawn from the post): ${subject}. The post is about: "${snippet}" (theme: ${opts.theme}). ` +
-      `BRAND STYLE (keep this consistent across all images): a deep NAVY BLUE palette with strong RED accents and clean light/white space; sleek, polished, modern and professional; subtle atom/orbital motifs woven in as a recurring brand cue; crisp lighting, strong focal point, gallery-grade finish. ` +
-      `The subject can be a real scene, people, objects, an illustration, or a stylized graphic — whatever best fits the post — but always rendered in the navy/red American Fusion look. ` +
-      `COMPOSITION: full-bleed, edge-to-edge artwork that fills the ENTIRE frame. Absolutely NO borders, NO frames, NO outlines, NO colored margins or padding around the image, NO inner card/panel framing the whole scene — the artwork must extend to all four edges. ` +
-      `HARD CONSTRAINTS: NO readable words, letters, numbers, charts, percentages, price figures, tickers, fake quotes, fabricated logos, or anything implying a stock price, valuation, or return. No text anywhere. No watermarks. ` +
-      `Square 1:1, crisp and high-resolution for X and LinkedIn.`
-    );
-  }
+  // SUBJECT: the AI-picked concept for this post (relevant imagery), with a fallback.
+  const fallbacks = [
+    "a striking visual that represents this announcement",
+    "a confident scene symbolizing progress and momentum",
+    "an aspirational image evoking the company's mission",
+  ];
+  const subject = opts.concept?.trim() || fallbacks[(opts.variant ?? 0) % fallbacks.length];
+
+  // STYLE: the company's chosen style (data-driven, no hardcoded company special-case).
+  // Defaults to cinematic when unset.
+  const style = (IMAGE_STYLES[String(opts.imageStyle || "").toLowerCase()] ?? IMAGE_STYLES.cinematic).art;
 
   const palette = opts.brandColors?.trim()
-    ? `Color palette: built around the brand colors ${opts.brandColors} — used as dramatic accent light, glow, and material color (not flat fills).`
+    ? `Color palette: built around the brand colors ${opts.brandColors} — used as accent light, glow, and material color (not flat fills); keep this consistent across all the company's images.`
     : `Color palette: a sophisticated, restrained palette with one bold accent color; deep rich tones with luminous highlights.`;
 
-  // Vary the look so repeated generations don't all look the same.
-  const styles = [
-    "a cinematic 3D render — sleek materials (glass, brushed metal, soft matte), dramatic studio lighting, shallow depth of field, premium product-shot feel",
-    "a bold editorial illustration — clean confident shapes, modern flat-with-depth vector art, strong focal point, magazine-cover polish",
-    "an atmospheric conceptual scene — volumetric light, soft haze, glowing accents, a single striking metaphor, aspirational mood",
-    "a premium isometric/3D scene — crisp geometric forms, gentle gradients, soft long shadows, modern tech aesthetic",
-    "a dynamic abstract composition — flowing forms, light streaks, depth and motion, elegant and high-end",
-  ];
-  const style = styles[(opts.variant ?? 0) % styles.length];
+  const guidance = opts.guidance?.trim() ? `Brand guidance to respect: ${opts.guidance.trim().slice(0, 300)}. ` : "";
 
   return (
-    `Create a STRIKING, premium, scroll-stopping social graphic for ${opts.companyName} ($${opts.ticker}) — the quality of a top brand's hero image or an Apple-keynote visual. ` +
-    `Convey the FEELING and IDEA of "${snippet}" (theme: ${opts.theme}) through evocative imagery and metaphor — confident, modern, aspirational. ` +
-    `Art direction: ${style}. ` +
-    `${palette} ` +
-    `Make it genuinely beautiful: strong focal point, rich detail, professional composition and lighting, clean negative space, gallery-grade finish. ` +
-    `COMPOSITION: full-bleed, edge-to-edge artwork that fills the ENTIRE frame — NO borders, frames, outlines, colored margins, or card framing around the image. ` +
-    `HARD CONSTRAINTS (critical): absolutely NO words, letters, numbers, charts, graphs, percentages, price figures, tickers, fabricated logos, fake quotes, or anything that states or implies a stock price, valuation, prediction, or financial return. No readable text anywhere. No watermarks. No real people's faces. ` +
-    `Square 1:1, crisp and high-resolution, optimized for X and LinkedIn feeds.`
+    `Create a STRIKING, premium, scroll-stopping social graphic for ${opts.companyName} ($${opts.ticker}) — top-brand hero-image quality. ` +
+    `SUBJECT (what to depict, drawn from the post): ${subject}. The post is about: "${snippet}" (theme: ${opts.theme}). ` +
+    `Art direction / STYLE (keep consistent across all this company's images): ${style}. ` +
+    `${palette} ${guidance}` +
+    `The subject may be a scene, people, objects, an illustration, or a stylized graphic — whatever best fits the post — always rendered in the company's consistent style. ` +
+    `COMPOSITION: full-bleed, edge-to-edge artwork that fills the ENTIRE frame — absolutely NO borders, frames, outlines, colored margins, padding, or card framing around the image. ` +
+    `HARD CONSTRAINTS (critical): NO readable words, letters, numbers, charts, graphs, percentages, price figures, tickers, fabricated logos, fake quotes, or anything that states or implies a stock price, valuation, prediction, or financial return. No text anywhere. No watermarks. ` +
+    `Square 1:1, crisp and high-resolution for X and LinkedIn.`
   );
 }

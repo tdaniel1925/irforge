@@ -146,6 +146,9 @@ export interface Company {
   disclosureText: string; // appended to every published post — never removable at publish time
   flsText: string; // forward-looking statements language
   brandColors?: string; // free-text brand color hint for AI image generation (e.g. "navy blue and red")
+  logoUrl?: string; // uploaded company logo (brand reference / avatar)
+  imageStyle?: string; // chosen AI image style key — drives buildImagePrompt per company
+  postGuidance?: string; // free-text brand guidance injected into AI post/image prompts
   peers: string[]; // peer tickers used for 13F targeting
   xHandle: string;
   onboarded: boolean;
