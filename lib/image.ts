@@ -62,11 +62,13 @@ export async function generatePostImage(opts: {
 // and an exact logo — things raw AI image generation can't do.
 
 // Resolve our own origin for the server-to-server call to the template route.
-// Prefer an explicit site URL, then the Vercel deployment URL (preview/prod), then
-// the known prod domain as a last resort.
+// IMPORTANT: do NOT use VERCEL_URL — that's the per-deployment URL, which is behind
+// Vercel's deployment-protection auth wall, so a self-fetch to it returns an HTML
+// login page (saved as a ".png" → broken images). Use the PUBLIC production domain:
+// an explicit site URL, then Vercel's public production URL, then the known domain.
 const SITE =
   process.env.NEXT_PUBLIC_SITE_URL ||
-  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "") ||
+  (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "") ||
   "https://pubcozone.com";
 
 // Background-only prompt: atmospheric, brand-colored backdrop with NO central subject
