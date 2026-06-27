@@ -141,6 +141,30 @@ export function buildImagePrompt(opts: {
   variant?: number;
 }): string {
   const snippet = opts.postText.slice(0, 280).replace(/\s+/g, " ").trim();
+
+  // American Fusion gets a dedicated "tech-report infographic" look that matches the
+  // brand reference: flat vector, navy + red, atom-shield motifs, isometric tech
+  // illustrations (reactor/energy/power), faint watermark atoms. Other companies use
+  // the general cinematic style below.
+  if (opts.ticker.toUpperCase() === "AMFN") {
+    const motifs = [
+      "a large central isometric tokamak/fusion-reactor illustration with glowing core",
+      "an isometric energy/power scene — generator, turbine, transmission towers, flowing energy lines",
+      "a hero atom-shield emblem surrounded by orbiting electrons and connector lines",
+      "an isometric clean-energy facility with subtle process-flow arrows between panels",
+      "a bold abstract fusion-core motif radiating energy across a layered panel grid",
+    ];
+    const motif = motifs[(opts.variant ?? 0) % motifs.length];
+    return (
+      `A polished, modern corporate INFOGRAPHIC-style brand graphic for American Fusion (electric & fusion energy), in the clean "tech report" aesthetic of a premium pitch deck. ` +
+      `Flat / semi-flat VECTOR design with subtle gradients and soft long shadows, crisp geometric icons, rounded panels/cards, thin connector lines and arrows, and faint atom watermarks in the background. ` +
+      `Color palette: deep NAVY BLUE background with strong RED accents and light/white panels (the American Fusion brand). ` +
+      `Visual concept: ${motif}. Include sleek shield-and-atom iconography as recurring accents. Evoke the idea of "${snippet}" (theme: ${opts.theme}) through icons and imagery, not words. ` +
+      `HARD CONSTRAINTS: NO readable words, letters, numbers, charts, percentages, price figures, tickers, fake quotes, or anything implying a stock price or return. Icons, shapes and illustrations only — no text. No real people's faces. ` +
+      `Bright, confident, highly polished, professional. Square 1:1, crisp and high-resolution for X and LinkedIn.`
+    );
+  }
+
   const palette = opts.brandColors?.trim()
     ? `Color palette: built around the brand colors ${opts.brandColors} — used as dramatic accent light, glow, and material color (not flat fills).`
     : `Color palette: a sophisticated, restrained palette with one bold accent color; deep rich tones with luminous highlights.`;
