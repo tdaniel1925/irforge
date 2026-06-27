@@ -4,7 +4,7 @@ import { getMyCompany } from "../supabase/store";
 import { writeAudit } from "../platform";
 import { planCalendar, generateSocialPost, classifyRegFD } from "../ai";
 import { checkContent } from "../compliance";
-import { generatePostImage, buildImagePrompt } from "../image";
+import { generateBrandedImage } from "../image";
 import { publishToChannels, getPostStatus } from "../ayrshare";
 import { getStore } from "../db";
 import { buildStrategyContext, renderContextForPrompt, getStrategy } from "./strategy";
@@ -274,10 +274,14 @@ export async function draftCalendarBatch(): Promise<{ ok: boolean; error?: strin
       ? `Blocked language detected (${flags.map((f) => f.rule).join(", ")}). ${cls.reasoning}`
       : cls.reasoning;
 
-    // 4) Image (best-effort). Vary the composition per slot so a whole month of
-    // posts doesn't come out looking identical.
-    const imagePrompt = buildImagePrompt({ companyName: company.name, ticker: company.ticker, theme, postText: text, variant: slotIndex++ });
-    const mediaUrl = await generatePostImage({ companyId: cid, postId: String(slot.id), prompt: imagePrompt });
+    // 4) Branded template image (best-effort): AI background + real logo + crisp
+    // headline. Vary the bg per slot so a whole month doesn't look identical.
+    const headline = String(text).split(/\n/)[0].slice(0, 120) || theme;
+    const mediaUrl = await generateBrandedImage({
+      companyId: cid, postId: String(slot.id), ticker: company.ticker, company: company.name,
+      theme, brandColors: (company as { brandColors?: string }).brandColors,
+      layout: "announcement", label: theme, title: headline, variant: slotIndex++,
+    });
 
     // 5) Save everything onto the slot row.
     await supabase
@@ -653,12 +657,16 @@ export async function createManualPost(input: {
     .single();
   if (error || !row) return { ok: false, error: error?.message ?? "Couldn't create the post." };
 
-  // Optional image (best-effort). Derive a composition variant from the row id so
-  // different posts get different framings (deterministic, no randomness).
+  // Optional branded image (best-effort). Variant derived from the row id so
+  // different posts get different backgrounds (deterministic, no randomness).
   if (input.withImage) {
     const variant = String(row.id).split("").reduce((n, c) => n + c.charCodeAt(0), 0);
-    const prompt = buildImagePrompt({ companyName: company.name, ticker: company.ticker, theme: input.theme || "update", postText: body, variant });
-    const url = await generatePostImage({ companyId: cid, postId: String(row.id), prompt });
+    const headline = String(body).split(/\n/)[0].slice(0, 120) || (input.theme || "Update");
+    const url = await generateBrandedImage({
+      companyId: cid, postId: String(row.id), ticker: company.ticker, company: company.name,
+      theme: input.theme || "update", brandColors: (company as { brandColors?: string }).brandColors,
+      layout: "announcement", label: input.theme || "Update", title: headline, variant,
+    });
     if (url) await supabase.from("iros_posts").update({ media_url: url }).eq("id", row.id);
   }
 

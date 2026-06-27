@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getStore } from "@/lib/db";
 import { getMyCompany } from "@/lib/supabase/store";
 import { createServiceClient } from "@/lib/supabase/server";
-import { generatePostImage, buildImagePrompt, imageGenConfigured } from "@/lib/image";
+import { generateBrandedImage, imageGenConfigured } from "@/lib/image";
 
 export const dynamic = "force-dynamic";
 
@@ -35,16 +35,23 @@ export async function POST(req: Request) {
     const brandColors = (typeof body?.brandColors === "string" && body.brandColors.trim() ? body.brandColors.trim() : db.company.brandColors || "").slice(0, 120) || undefined;
     // `variant` rotates the composition so re-generating gives a different image.
     const variant = Number.isFinite(body?.variant) ? Number(body.variant) : 0;
-    const prompt = buildImagePrompt({
-      companyName: db.company.name,
+    const postId = `quick-${randomId()}`;
+
+    // Branded template: AI background + real logo + crisp text. Use the post's first
+    // line as the headline (kept short so it lays out cleanly).
+    const headline = text.split(/\n/)[0].slice(0, 120) || db.company.name;
+    const url = await generateBrandedImage({
+      companyId,
+      postId,
       ticker: db.company.ticker,
+      company: db.company.name,
       theme: db.company.sector || "investor relations",
-      postText: text,
       brandColors,
+      layout: "announcement",
+      label: "Investor Update",
+      title: headline,
       variant,
     });
-    const postId = `quick-${randomId()}`;
-    const url = await generatePostImage({ companyId, postId, prompt });
     if (!url) return NextResponse.json({ error: "Couldn't generate an image. Try again or upload one." }, { status: 502 });
     return NextResponse.json({ url, kind: "image" });
   }

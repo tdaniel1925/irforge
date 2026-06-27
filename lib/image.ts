@@ -52,6 +52,86 @@ export async function generatePostImage(opts: {
   }
 }
 
+// ── Branded template images ──────────────────────────────────────────────────
+// A two-layer image: an AI-generated BACKGROUND (no text/logo) composited under a
+// branded template (real logo mark + crisp text) via the next/og /template route.
+// This is how we get the on-brand "infographic/tech report" look with ACCURATE text
+// and an exact logo — things raw AI image generation can't do.
+
+// Resolve our own origin for the server-to-server call to the template route.
+// Prefer an explicit site URL, then the Vercel deployment URL (preview/prod), then
+// the known prod domain as a last resort.
+const SITE =
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "") ||
+  "https://pubcozone.com";
+
+// Background-only prompt: atmospheric, brand-colored backdrop with NO central subject
+// (the template's text panel sits on top), so text stays readable.
+export function buildBackgroundPrompt(opts: { theme: string; brandColors?: string }): string {
+  const palette = opts.brandColors?.trim()
+    ? `built around the brand colors ${opts.brandColors}`
+    : "a deep navy palette with one bold accent and luminous highlights";
+  return (
+    `A clean, modern, infographic-style ABSTRACT BACKGROUND graphic — flat/semi-flat vector with subtle geometric tech patterns (thin connector lines, diamonds, faint circuit/orbit motifs), soft gradients and gentle depth. ` +
+    `Palette: ${palette}. Theme/mood: ${opts.theme}. ` +
+    `Composition: keep the CENTER and LEFT area calm and uncluttered (negative space for an overlay) with visual interest toward the edges/corners. ` +
+    `Hard constraints: NO words, letters, numbers, charts, graphs, logos, people, or recognizable real objects — pure abstract branded backdrop only. No watermarks. ` +
+    `Square 1:1, crisp, optimized as a social-post background.`
+  );
+}
+
+export interface BrandedImageInput {
+  companyId: string;
+  postId: string;
+  ticker: string;
+  company: string;
+  theme: string;
+  brandColors?: string;
+  layout?: "announcement" | "stat" | "quote" | "filing";
+  title: string;       // headline / stat value / quote
+  body?: string;       // supporting line
+  label?: string;      // small label (stat label / attribution / filing form)
+  variant?: number;
+}
+
+// Generate a fully branded template image and upload it. Returns the public URL, or
+// null on any failure (caller falls back to a plain image / no image).
+export async function generateBrandedImage(input: BrandedImageInput): Promise<string | null> {
+  try {
+    // 1) AI background (best-effort — template still renders on a brand gradient if null).
+    let bgUrl: string | null = null;
+    if (imageGenConfigured()) {
+      const prompt = buildBackgroundPrompt({ theme: input.theme, brandColors: input.brandColors });
+      bgUrl = await generatePostImage({ companyId: input.companyId, postId: `${input.postId}-bg`, prompt });
+    }
+
+    // 2) Composite via the next/og template route.
+    const u = new URL(`${SITE}/api/social/template`);
+    if (bgUrl) u.searchParams.set("bg", bgUrl);
+    u.searchParams.set("layout", input.layout ?? "announcement");
+    u.searchParams.set("ticker", input.ticker);
+    u.searchParams.set("company", input.company);
+    u.searchParams.set("title", input.title);
+    if (input.body) u.searchParams.set("body", input.body);
+    if (input.label) u.searchParams.set("label", input.label);
+
+    const res = await fetch(u.toString(), { signal: AbortSignal.timeout(20000) });
+    if (!res.ok) return bgUrl; // fall back to the bare background if compositing fails
+    const png = Buffer.from(await res.arrayBuffer());
+
+    // 3) Upload the final composite.
+    const svc = createServiceClient();
+    const path = `${input.companyId}/${input.postId}-branded.png`;
+    const { error } = await svc.storage.from(BUCKET).upload(path, png, { contentType: "image/png", upsert: true });
+    if (error) return bgUrl;
+    const { data } = svc.storage.from(BUCKET).getPublicUrl(path);
+    return data?.publicUrl ?? bgUrl;
+  } catch {
+    return null;
+  }
+}
+
 // Build a compliant, CINEMATIC, on-brand image prompt from the post text + company.
 // Real art direction (lighting, mood, lens, materials) is what separates a striking
 // image from a stale stock-photo look — while still avoiding charts/numbers/financial
