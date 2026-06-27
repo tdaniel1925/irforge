@@ -10,8 +10,10 @@ type NavItem = { href: string; label: string; icon: string; hint?: string; detai
 type NavGroup = { section: string; items: NavItem[] };
 
 // Grouped by the job to be done, in the order an IR person actually works:
-// create & approve content → stay compliant → manage investors → know your
-// numbers → show up publicly → resources → settings. Plain-English headers.
+// create & schedule content → calendars/events → stay compliant → manage
+// investors → reputation → show up publicly → learn → admin. Plain-English,
+// plain-verb labels (Quick Post / Create a Post / Plan a Month) so it's obvious
+// which tool does what. Home IS the approval inbox (no separate Approvals item).
 const NAV: NavGroup[] = [
   {
     section: "Start here",
@@ -22,18 +24,22 @@ const NAV: NavGroup[] = [
     ],
   },
   {
-    section: "Create & post",
+    section: "Create & schedule",
     items: [
       { href: "/social/quickpost", label: "Quick Post", icon: "⚡", hint: "Write, pick channels, preview & publish now", detail: "Compose a post, choose which connected channels it goes to, and see an exact preview with your disclosures attached. Approve it and it publishes immediately — running the same compliance and Reg FD checks as everything else, so nothing risky goes out by accident. Add an image (upload or AI-generated) or a video." },
-      { href: "/approvals", label: "Social Media Approvals", icon: "✅", hint: "Posts waiting for your tap — approve, edit, or skip", detail: "Your social media approval inbox: every post the AI has drafted and is ready to publish. Nothing goes out without you — review each one, edit if needed, then approve or skip. Disclosures attach automatically on post." },
-      { href: "/social", label: "Content Engine", icon: "✨", hint: "AI builds a month of compliant posts — review & approve in bulk", detail: "Answer a short interview once, then AI builds a full social calendar from your filings and company data, drafts compliant posts (with images) for each platform you choose, and lets you review, edit, and approve them in bulk before they're scheduled out to your channels." },
-      { href: "/social/calendar", label: "Content Calendar", icon: "🗓️", hint: "Visual month view — see & add posts on any day", detail: "Your whole posting schedule as a month grid: AI-pending and manual posts color-coded by status, with earnings and quiet periods shown for context. Click any day to write a new post, or a chip to open one. The visual home for everything the Content Engine schedules." },
-      { href: "/social/outbox", label: "Posting Dashboard", icon: "📤", hint: "What's scheduled, what posted, to which channel", detail: "Track every approved post end to end: when it's scheduled to go out, which channel it's going to, a preview with its image, and confirmation it actually posted — with a live link to the published post. Check delivery status any time." },
-      { href: "/calendar-os", label: "Content Pipeline", icon: "🧩", hint: "Draft → Reg FD check → approve → schedule", detail: "Take any post from idea to published on one board. Type a topic and AI drafts it in an executive's voice, run the 1-click Reg FD check (green/yellow/red), route risky posts to counsel, then approve, schedule, and publish to every channel — all in a couple of clicks." },
-      { href: "/studio", label: "Writing Studio", icon: "📝", hint: "Draft press releases + disclosure checks", detail: "Draft press releases and longer-form content with AI help, then run a disclosure check that flags whether the content is the kind of thing that's typically disclosed on an 8-K — so you can confirm with counsel before it goes out." },
+      { href: "/calendar-os", label: "Create a Post", icon: "🧩", hint: "Draft → Reg FD check → approve → schedule", detail: "Take any post from idea to published on one board. Type a topic and AI drafts it in an executive's voice, run the 1-click Reg FD check (green/yellow/red), route risky posts to counsel, then approve, schedule, and publish to every channel — all in a couple of clicks." },
+      { href: "/social", label: "Plan a Month (AI)", icon: "✨", hint: "AI builds a month of compliant posts — review & approve in bulk", detail: "Answer a short interview once, then AI builds a full social calendar from your filings and company data, drafts compliant posts (with images) for each platform you choose, and lets you review, edit, and approve them in bulk before they're scheduled out to your channels." },
+      { href: "/studio", label: "Press Releases", icon: "📝", hint: "Draft press releases + disclosure checks", detail: "Draft press releases and longer-form content with AI help, then run a disclosure check that flags whether the content is the kind of thing that's typically disclosed on an 8-K — so you can confirm with counsel before it goes out." },
       { href: "/voices", label: "Executive Voices", icon: "🎙", hint: "Teach the AI how each leader sounds", detail: "Set up each leader once — their tone, example posts, and words to never use. Then every AI-drafted post can sound like them, and a built-in voice-check flags anything off-brand before it publishes." },
+      { href: "/social/calendar", label: "Posting Calendar", icon: "🗓️", hint: "Visual month view — see & add posts on any day", detail: "Your whole posting schedule as a month grid: AI-pending and manual posts color-coded by status, with earnings and quiet periods shown for context. Click any day to write a new post, or a chip to open one. The visual home for everything you schedule." },
+      { href: "/social/outbox", label: "Delivery Status", icon: "📤", hint: "What's scheduled, what posted, to which channel", detail: "Track every approved post end to end: when it's scheduled to go out, which channel it's going to, a preview with its image, and confirmation it actually posted — with a live link to the published post. Check delivery status any time." },
+    ],
+  },
+  {
+    section: "Schedule & events",
+    items: [
       { href: "/calendar", label: "IR Calendar", icon: "📅", hint: "Earnings, deadlines, conferences, lock-ups", detail: "Keep every IR date in one place: earnings, filing deadlines, conferences, lock-ups, meetings, and reminders. Set a quiet period whenever you need one to block sensitive posts during a blackout window." },
-      { href: "/calendars", label: "Team Calendars", icon: "🗂️", hint: "IR / Tech / General / personal — admin sets who sees what", detail: "All your team's calendars in one view: IR, Tech & Dev, a General calendar everyone sees, and personal ones. Admins choose which calendars each teammate can see; anyone can add events to a calendar they have access to." },
+      { href: "/calendars", label: "Team Calendars", icon: "👥", hint: "IR / Tech / General / personal — admin sets who sees what", detail: "All your team's calendars in one view: IR, Tech & Dev, a General calendar everyone sees, and personal ones. Admins choose which calendars each teammate can see; anyone can add events to a calendar they have access to." },
     ],
   },
   {
@@ -50,14 +56,14 @@ const NAV: NavGroup[] = [
       { href: "/crm", label: "CRM", icon: "👥", hint: "Contacts, companies, deals, tasks — your whole pipeline", detail: "A full CRM built for IR: track contacts and the firms they work at, move deals through a pipeline, log every call/email/meeting, and manage follow-up tasks. Import your existing contacts from a CSV and export anytime. Dashboard shows pipeline value, win rate, and what's due." },
       { href: "/stakeholders", label: "Investor Inbox", icon: "📥", hint: "Paste any inbound message — AI drafts a reply for your review", detail: "Paste any inbound DM, email, or comment and AI tells you who it's likely from, categorizes it, and drafts a reply — grounded in your public record — that you review and approve before sending. Keeps your investor/press relationships organized and your responses on the record." },
       { href: "/investors", label: "Find Investors", icon: "🎯", hint: "Funds that own similar companies", detail: "Discover institutional investors who already hold companies like yours (from public 13F data) — a targeted list of funds most likely to be interested in your story, so your outreach starts warm." },
-      { href: "/captable", label: "Cap Table", icon: "📈", hint: "Ownership, dilution, convertible notes", detail: "See your ownership fully diluted — common, preferred, insiders, options, warrants — and exactly what your convertible notes turn into at any share price. The fully-diluted number every financing decision hinges on, in one place." },
+      { href: "/captable", label: "Cap Table", icon: "💹", hint: "Ownership, dilution, convertible notes", detail: "See your ownership fully diluted — common, preferred, insiders, options, warrants — and exactly what your convertible notes turn into at any share price. The fully-diluted number every financing decision hinges on, in one place." },
     ],
   },
   {
     section: "Your reputation",
     items: [
       { href: "/company", label: "Defend Your Name", icon: "🛡", hint: "Threats to your name + your visibility score", detail: "Monitors what's being said about you across the boards and flags threats — pump-and-dump posts, FUD, misinformation — and helps you respond with a calm, filing-cited rebuttal. Also tracks your Visibility Score so you can see your reach improving." },
-      { href: "/proof", label: "Results", icon: "📈", hint: "Numbers to show your board", detail: "The proof your IR budget is working: your Visibility Score over time, every post you published, and a complete, exportable record of who approved what (the part your lawyers want). Screenshot any of it for your board deck." },
+      { href: "/proof", label: "Results", icon: "🏆", hint: "Numbers to show your board", detail: "The proof your IR budget is working: your Visibility Score over time, every post you published, and a complete, exportable record of who approved what (the part your lawyers want). Screenshot any of it for your board deck." },
     ],
   },
   {
@@ -83,7 +89,7 @@ const NAV: NavGroup[] = [
     section: "Admin",
     items: [
       { href: "/admin", label: "Back Office", icon: "🛠", hint: "All companies, revenue, claims (admins only)", detail: "Admin-only operations console: every company on the platform, your revenue and subscriptions, the claim-request queue, per-company feature toggles, and the full audit log." },
-      { href: "/admin/leads", label: "Lead Finder", icon: "🎯", hint: "Build outreach lists from SEC EDGAR (admins only)", detail: "Build prospecting lists from live SEC EDGAR filings (company, ticker, phone, address, recent filing), add verified IR emails, export to CSV, and send capped, approved cold outreach tracked back to delivery status." },
+      { href: "/admin/leads", label: "Lead Finder", icon: "🧲", hint: "Build outreach lists from SEC EDGAR (admins only)", detail: "Build prospecting lists from live SEC EDGAR filings (company, ticker, phone, address, recent filing), add verified IR emails, export to CSV, and send capped, approved cold outreach tracked back to delivery status." },
     ],
   },
 ];
