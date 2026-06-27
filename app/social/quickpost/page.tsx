@@ -401,17 +401,17 @@ function ChannelMockup({
   // X (Twitter)
   if (channel === "twitter") {
     return (
-      <div className="mx-auto max-w-md rounded-2xl bg-black p-4 text-white">
+      <div className="mx-auto max-w-md rounded-2xl bg-black p-4">
         <div className="flex gap-3">
           <Avatar account={account} fallback={name} />
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1 text-[15px]">
-              <span className="font-bold">{name}</span>
-              <span className="text-gray-500">{handle} · 1m</span>
+              <span className="font-bold text-white">{name}</span>
+              <span className="text-gray-400">{handle} · 1m</span>
             </div>
-            <div className="mt-0.5 text-[15px] leading-snug"><RichText text={text} color="#1d9bf0" /></div>
+            <div className="mt-0.5 text-[15px] leading-snug text-white"><RichText text={text} color="#1d9bf0" /></div>
             <Media urls={mediaUrls} />
-            <div className="mt-3 flex max-w-xs justify-between text-gray-500">
+            <div className="mt-3 flex max-w-xs justify-between text-gray-400">
               <span>💬</span><span>🔁</span><span>♡</span><span>📊</span><span>🔖</span>
             </div>
           </div>
