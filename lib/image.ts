@@ -11,45 +11,48 @@ export function imageGenConfigured(): boolean {
   return Boolean(process.env.GEMINI_API_KEY);
 }
 
+// Generate raw image bytes from a prompt (Gemini). Returns the PNG Buffer or null.
+export async function generateImageBuffer(prompt: string): Promise<Buffer | null> {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) return null;
+  try {
+    const genai = new GoogleGenAI({ apiKey: key });
+    const response = await genai.models.generateContent({
+      model: "gemini-3-pro-image-preview",
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      config: {
+        // 1K is plenty for social feeds (X/LinkedIn downscale anyway) — faster + cheaper than 2K.
+        responseFormat: { image: { aspectRatio: "1:1", imageSize: "1K" } },
+      } as Record<string, unknown>,
+    });
+    const parts = response.candidates?.[0]?.content?.parts ?? [];
+    for (const p of parts) {
+      if (p.inlineData?.data) return Buffer.from(p.inlineData.data, "base64");
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+// Upload a PNG buffer to the bucket; returns its public URL or null.
+async function uploadPng(companyId: string, postId: string, buffer: Buffer): Promise<string | null> {
+  const svc = createServiceClient();
+  const path = `${companyId}/${postId}.png`;
+  const { error } = await svc.storage.from(BUCKET).upload(path, buffer, { contentType: "image/png", upsert: true });
+  if (error) return null;
+  return svc.storage.from(BUCKET).getPublicUrl(path).data?.publicUrl ?? null;
+}
+
 // Generate an image for a post and upload it; returns the public URL or null.
 export async function generatePostImage(opts: {
   companyId: string;
   postId: string;
   prompt: string;
 }): Promise<string | null> {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) return null;
-
-  try {
-    const genai = new GoogleGenAI({ apiKey: key });
-    const response = await genai.models.generateContent({
-      model: "gemini-3-pro-image-preview",
-      contents: [{ role: "user", parts: [{ text: opts.prompt }] }],
-      config: {
-        // 1K is plenty for social feeds (X/LinkedIn downscale anyway) — faster + cheaper than 2K.
-        responseFormat: { image: { aspectRatio: "1:1", imageSize: "1K" } },
-      } as Record<string, unknown>,
-    });
-
-    const parts = response.candidates?.[0]?.content?.parts ?? [];
-    let buffer: Buffer | null = null;
-    for (const p of parts) {
-      if (p.inlineData?.data) {
-        buffer = Buffer.from(p.inlineData.data, "base64");
-        break;
-      }
-    }
-    if (!buffer) return null;
-
-    const svc = createServiceClient();
-    const path = `${opts.companyId}/${opts.postId}.png`;
-    const { error } = await svc.storage.from(BUCKET).upload(path, buffer, { contentType: "image/png", upsert: true });
-    if (error) return null;
-    const { data } = svc.storage.from(BUCKET).getPublicUrl(path);
-    return data?.publicUrl ?? null;
-  } catch {
-    return null;
-  }
+  const buffer = await generateImageBuffer(opts.prompt);
+  if (!buffer) return null;
+  return uploadPng(opts.companyId, opts.postId, buffer);
 }
 
 // ── Branded template images ──────────────────────────────────────────────────
@@ -99,34 +102,29 @@ export interface BrandedImageInput {
 // null on any failure (caller falls back to a plain image / no image).
 export async function generateBrandedImage(input: BrandedImageInput): Promise<string | null> {
   try {
-    // 1) AI background (best-effort — template still renders on a brand gradient if null).
-    let bgUrl: string | null = null;
-    if (imageGenConfigured()) {
-      const prompt = buildBackgroundPrompt({ theme: input.theme, brandColors: input.brandColors });
-      bgUrl = await generatePostImage({ companyId: input.companyId, postId: `${input.postId}-bg`, prompt });
-    }
-
-    // 2) Composite via the next/og template route.
-    const u = new URL(`${SITE}/api/social/template`);
-    if (bgUrl) u.searchParams.set("bg", bgUrl);
-    u.searchParams.set("layout", input.layout ?? "announcement");
-    u.searchParams.set("ticker", input.ticker);
-    u.searchParams.set("company", input.company);
-    u.searchParams.set("title", input.title);
-    if (input.body) u.searchParams.set("body", input.body);
-    if (input.label) u.searchParams.set("label", input.label);
-
-    const res = await fetch(u.toString(), { signal: AbortSignal.timeout(20000) });
-    if (!res.ok) return bgUrl; // fall back to the bare background if compositing fails
+    // Render the branded template (atom-shield logo + real crisp text on the brand
+    // gradient) via next/og. NOTE: we render on the brand GRADIENT, not an AI photo
+    // backdrop — Satori (next/og) doesn't reliably paint raster background images, and
+    // a clean gradient looks consistent + professional anyway. This also makes the
+    // call fast (no Gemini round-trip) and avoids the just-uploaded-CDN race that was
+    // producing broken thumbnails.
+    const res = await fetch(`${SITE}/api/social/template`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(20000),
+      body: JSON.stringify({
+        layout: input.layout ?? "announcement",
+        ticker: input.ticker,
+        company: input.company,
+        title: input.title,
+        body: input.body ?? undefined,
+        label: input.label ?? undefined,
+      }),
+    });
+    if (!res.ok) return null;
     const png = Buffer.from(await res.arrayBuffer());
-
-    // 3) Upload the final composite.
-    const svc = createServiceClient();
-    const path = `${input.companyId}/${input.postId}-branded.png`;
-    const { error } = await svc.storage.from(BUCKET).upload(path, png, { contentType: "image/png", upsert: true });
-    if (error) return bgUrl;
-    const { data } = svc.storage.from(BUCKET).getPublicUrl(path);
-    return data?.publicUrl ?? bgUrl;
+    if (png.length < 1000) return null; // sanity: a real PNG is far bigger
+    return uploadPng(input.companyId, `${input.postId}-branded`, png);
   } catch {
     return null;
   }

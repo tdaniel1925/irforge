@@ -8,33 +8,47 @@ export const runtime = "edge";
 // garbled text AI produces). next/og (Satori) renders JSX → PNG natively on Vercel,
 // so there's no native image dependency.
 //
-// GET params:
-//   bg        — public URL of the AI background art (optional; falls back to a brand gradient)
+// Inputs (via GET query params for direct previews, or POST JSON for server use):
+//   bg        — AI background: a public URL OR a data:image/...;base64 URI
+//               (optional; falls back to a brand gradient)
 //   layout    — announcement | stat | quote | filing
 //   ticker    — drives the brand kit (e.g. AMFN)
 //   company   — display name (e.g. "American Fusion")
 //   title     — headline / stat value / quote
 //   body      — supporting line(s)
 //   label     — small label (e.g. stat label, attribution, filing form)
+interface TemplateOpts { bg?: string; layout?: string; ticker?: string; company?: string; title?: string; body?: string; label?: string }
+
 export async function GET(req: Request) {
-  const url = new URL(req.url);
-  const p = url.searchParams;
-  const bg = p.get("bg") || "";
-  const layout = (p.get("layout") || "announcement").toLowerCase();
-  const ticker = (p.get("ticker") || "").toUpperCase();
-  const company = p.get("company") || ticker || "Company";
-  const title = (p.get("title") || "").slice(0, 220);
-  const body = (p.get("body") || "").slice(0, 300);
-  const label = (p.get("label") || "").slice(0, 60);
+  const p = new URL(req.url).searchParams;
+  return render({
+    bg: p.get("bg") || "", layout: p.get("layout") || "", ticker: p.get("ticker") || "",
+    company: p.get("company") || "", title: p.get("title") || "", body: p.get("body") || "", label: p.get("label") || "",
+  });
+}
+
+export async function POST(req: Request) {
+  const o = (await req.json().catch(() => ({}))) as TemplateOpts;
+  return render(o);
+}
+
+function render(o: TemplateOpts) {
+  const bg = o.bg || "";
+  const layout = (o.layout || "announcement").toLowerCase();
+  const ticker = (o.ticker || "").toUpperCase();
+  const company = o.company || ticker || "Company";
+  const title = (o.title || "").slice(0, 220);
+  const body = (o.body || "").slice(0, 300);
+  const label = (o.label || "").slice(0, 60);
 
   const b = getBrandKit(ticker);
   const SIZE = 1080;
 
-  // Shared chrome: full-bleed AI background (or brand gradient), a dark scrim for
-  // text legibility, the logo mark + company name top-left, a ticker chip top-right.
-  const Background = bg
-    ? { backgroundImage: `url(${bg})`, backgroundSize: "cover", backgroundPosition: "center" }
-    : { backgroundImage: `linear-gradient(135deg, ${b.navy} 0%, ${b.navy2} 100%)` };
+  // The container ALWAYS gets the brand gradient (Satori renders linear-gradients).
+  // The AI art is layered as a full-bleed <img> below — because Satori does NOT
+  // support raster `backgroundImage: url(...)`; it only paints images via <img>.
+  // (That's why composites were coming out gradient/blank — this is the real fix.)
+  const Background = { backgroundImage: `linear-gradient(135deg, ${b.navy} 0%, ${b.navy2} 100%)` };
 
   const TopBar = (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
@@ -89,6 +103,12 @@ export async function GET(req: Request) {
   return new ImageResponse(
     (
       <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", width: SIZE, height: SIZE, padding: 64, ...Background }}>
+        {/* AI background art as a full-bleed <img> (Satori only paints images this
+            way, not via CSS backgroundImage). Sits below the scrim + content. */}
+        {bg ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={bg} width={SIZE} height={SIZE} alt="" style={{ position: "absolute", top: 0, left: 0, width: SIZE, height: SIZE, objectFit: "cover" }} />
+        ) : null}
         {/* LIGHT scrim — just enough to keep the top bar + footer legible while
             letting the AI tech-pattern background show through. */}
         <div style={{ position: "absolute", inset: 0, background: `linear-gradient(180deg, ${b.navy}99 0%, ${b.navy}22 30%, ${b.navy}22 65%, ${b.navy}99 100%)` }} />
