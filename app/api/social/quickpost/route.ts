@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getStore, logAudit } from "@/lib/db";
-import { buildPublishedThread, checkContent, hasBlockingFlags, publishGate } from "@/lib/compliance";
-import { publishToChannels, getLinkedAccountsDetailed, AYRSHARE_CHANNELS } from "@/lib/ayrshare";
+import { buildChannelPost, CHANNEL_LIMITS, checkContent, hasBlockingFlags, publishGate } from "@/lib/compliance";
+import { publishPerChannel, getLinkedAccountsDetailed, AYRSHARE_CHANNELS } from "@/lib/ayrshare";
 import { tierHasFeature, type Tier } from "@/lib/billing";
 import { classifyRegFD } from "@/lib/ai";
 
@@ -10,9 +10,9 @@ export const dynamic = "force-dynamic";
 type Body = {
   action: "preview" | "publish";
   text: string;
-  channels: string[];          // e.g. ["twitter","linkedin"]
-  mediaUrls?: string[];        // public URLs from /quickpost/media
-  acknowledgeRisk?: boolean;   // bypass the Reg-FD red stop (human took responsibility)
+  channels: string[];
+  mediaUrls?: string[];
+  acknowledgeRisk?: boolean;
 };
 
 const validChannel = (c: string) => AYRSHARE_CHANNELS.some((a) => a.key === c);
@@ -27,60 +27,61 @@ export async function POST(req: Request) {
   const channels = (Array.isArray(body.channels) ? body.channels : []).filter(validChannel);
   if (channels.length === 0) return NextResponse.json({ error: "Pick at least one channel to post to." }, { status: 422 });
 
-  // Disclosures are ALWAYS appended — same machinery as the Do queue, can't be skipped.
-  // buildPublishedThread works on a thread; a quick post is a single body.
-  const finalText = buildPublishedThread([text], db.company).join("\n\n");
+  // Build the per-channel body (company sends its own posts: FLS note only, no
+  // compensated-provider line; X gets a compact FLS + link to its disclosures page).
+  const bodies: Record<string, string> = {};
+  for (const c of channels) bodies[c] = buildChannelPost(text, db.company, c);
 
-  // X (Twitter) caps a post at 280 chars. The mandatory disclosures alone are long,
-  // so a short post + disclosures usually exceeds it and X rejects the whole thing.
-  // Detect this BEFORE publishing and tell the user exactly how much to trim.
-  const TWITTER_LIMIT = 280;
-  const targetsX = (Array.isArray(body.channels) ? body.channels : []).map(String).includes("twitter");
-  const xOverBy = targetsX ? Math.max(0, finalText.length - TWITTER_LIMIT) : 0;
+  // Per-channel length check — a post that's too long for a channel is blocked
+  // (X would reject it; this tells the user up front, per channel).
+  const tooLong = channels
+    .map((c) => ({ channel: c, len: bodies[c].length, limit: CHANNEL_LIMITS[c] ?? 5000 }))
+    .filter((x) => x.len > x.limit)
+    .map((x) => ({ ...x, over: x.len - x.limit }));
 
   // Compliance: hard language flags (block), then AI Reg-FD assist.
   const flags = checkContent([text]);
   const blocked = hasBlockingFlags(flags);
 
-  // Which of the chosen channels are actually connected + can post (so preview can warn).
+  // Which of the chosen channels are actually connected (so preview can warn).
   const accounts = await getLinkedAccountsDetailed(db.company.ayrshareProfileKey);
   const connectedKeys = new Set(accounts.map((a) => a.platform));
   const notConnected = channels.filter((c) => !connectedKeys.has(c));
 
-  // --- PREVIEW: return exactly what would post + every check, for approval ---
+  // --- PREVIEW ---
   if (body.action === "preview") {
     let regFd: { classification: string; flags: string[]; reasoning: string } | null = null;
     if (!blocked) {
       const cls = await classifyRegFD(text, db.company).catch(() => null);
       if (cls) regFd = { classification: cls.classification, flags: cls.flags, reasoning: cls.reasoning };
     }
+    // Show the X body as the preview when X is selected (it differs from the rest);
+    // otherwise show the first channel's body.
+    const previewText = bodies[channels.includes("twitter") ? "twitter" : channels[0]];
     return NextResponse.json({
-      preview: finalText,
+      preview: previewText,
+      bodies,
       channels,
       mediaUrls: body.mediaUrls ?? [],
       flags,
       blocked,
       notConnected,
+      tooLong,
       regFd,
       quietMode: Boolean(db.company.quietMode),
-      xOverBy,                       // chars over X's 280 limit (0 = fine)
-      finalLength: finalText.length, // total length incl. disclosures
     });
   }
 
   // --- PUBLISH NOW ---
-  // Tier gate (publishing is paid).
   if (!tierHasFeature((db.company.tier ?? "free") as Tier, "publishX")) {
     return NextResponse.json({ error: "Posting requires a paid plan. Upgrade to publish." }, { status: 402 });
   }
-  // Same publish gate as drafts: blocks on flags / quiet mode.
   const gate = publishGate({ status: "approved", flags, quietMode: db.company.quietMode });
   if (!gate.ok) {
     logAudit(db, "compliance-engine", "QUICKPOST_REFUSED", gate.reason ?? "blocked");
     await save();
     return NextResponse.json({ error: gate.reason }, { status: 422 });
   }
-  // Reg-FD red stop unless the human acknowledged the risk.
   if (!body.acknowledgeRisk && !blocked) {
     const cls = await classifyRegFD(text, db.company).catch(() => null);
     if (cls && cls.classification === "red") {
@@ -96,16 +97,12 @@ export async function POST(req: Request) {
   if (notConnected.length > 0) {
     return NextResponse.json({ error: `Not connected for: ${notConnected.join(", ")}. Connect them in Settings or remove them.` }, { status: 422 });
   }
-  // X length guard — fail fast with a clear, actionable message (X would reject the
-  // whole post otherwise). Disclosures (~350 chars) are mandatory, so the body must
-  // be short for X. Suggest trimming or unchecking X.
-  if (xOverBy > 0) {
-    return NextResponse.json({
-      error: `Too long for X by ${xOverBy} character${xOverBy === 1 ? "" : "s"}. With the required disclosures the post is ${finalText.length}/280 for X. Shorten your text, or uncheck X (Twitter) — LinkedIn, Instagram and Facebook allow the full length.`,
-    }, { status: 422 });
+  if (tooLong.length > 0) {
+    const t = tooLong.map((x) => `${x.channel} (over by ${x.over})`).join(", ");
+    return NextResponse.json({ error: `Too long for: ${t}. Shorten your text or remove that channel.` }, { status: 422 });
   }
 
-  const result = await publishToChannels(finalText, channels, db.company.ayrshareProfileKey, { mediaUrls: body.mediaUrls });
+  const result = await publishPerChannel(bodies, db.company.ayrshareProfileKey, { mediaUrls: body.mediaUrls });
   if (!result.ok) {
     logAudit(db, "system", "QUICKPOST_FAILED", result.error ?? "publish failed");
     await save();
@@ -115,7 +112,7 @@ export async function POST(req: Request) {
     db,
     `${db.company.approverName} (${db.company.approverTitle})`,
     "QUICKPOST_PUBLISHED",
-    `Immediate post to ${channels.join(", ")}${result.postUrl ? ` (${result.postUrl})` : ""} — disclosures appended`
+    `Immediate post to ${channels.join(", ")}${result.postUrl ? ` (${result.postUrl})` : ""} — FLS note appended`
   );
   await save();
   return NextResponse.json({ ok: true, posted: result.posted, postUrl: result.postUrl, channels });

@@ -435,6 +435,41 @@ export async function publishToChannels(text: string, channels: string[], profil
   }
 }
 
+// Publish where each channel may carry DIFFERENT text (e.g. X gets a short
+// disclosure, others get the full one). Groups channels by identical body so we
+// make as few Zernio calls as possible, and aggregates the result. Returns ok only
+// if every group published; otherwise reports the per-channel failures.
+export async function publishPerChannel(
+  byChannel: Record<string, string>,
+  profileKey?: string,
+  opts?: PublishOptions
+): Promise<PostResult & { failures?: { channels: string[]; error: string }[] }> {
+  const entries = Object.entries(byChannel).filter(([c]) => AYRSHARE_CHANNELS.some((a) => a.key === c));
+  if (entries.length === 0) return { ok: false, posted: false, error: "No channels selected." };
+
+  // Group channels that share the exact same body into one publish call.
+  const groups = new Map<string, string[]>();
+  for (const [channel, body] of entries) {
+    const arr = groups.get(body) ?? [];
+    arr.push(channel);
+    groups.set(body, arr);
+  }
+
+  const failures: { channels: string[]; error: string }[] = [];
+  let anyPosted = false;
+  let firstUrl: string | undefined;
+  for (const [body, channels] of Array.from(groups.entries())) {
+    const r = await publishToChannels(body, channels, profileKey, opts);
+    if (r.ok) { anyPosted = anyPosted || r.posted; firstUrl = firstUrl ?? r.postUrl; }
+    else failures.push({ channels, error: r.error ?? "publish failed" });
+  }
+  if (failures.length > 0) {
+    const detail = failures.map((f) => `${f.channels.join("/")}: ${f.error.replace(/^Couldn't publish:\s*/, "")}`).join(" · ");
+    return { ok: false, posted: anyPosted, postUrl: firstUrl, error: `Couldn't publish to ${detail}`, failures };
+  }
+  return { ok: true, posted: anyPosted, postUrl: firstUrl };
+}
+
 // Post an X thread. Zernio takes a single content body; we join the tweets and
 // target the company's linked X account.
 export async function postThreadToX(tweets: string[], profileKey?: string): Promise<PostResult> {

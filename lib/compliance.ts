@@ -56,8 +56,42 @@ export function hasBlockingFlags(flags: ComplianceFlag[]): boolean {
 
 // Disclosures are appended at publish time and are not optional.
 // publishThread is the ONLY path to "posted" status; it enforces every gate.
+// NOTE: this thread form (used by the X draft flow) still carries both notices as
+// separate tweets — it splits across a thread so length isn't an issue there.
 export function buildPublishedThread(tweets: string[], company: Company): string[] {
   return [...tweets, `${company.flsText}`, `${company.disclosureText}`];
+}
+
+// Per-network hard character limits for a single post (Quick Post enforces these).
+// Only X is tight; the rest comfortably hold the body + FLS note.
+export const CHANNEL_LIMITS: Record<string, number> = {
+  twitter: 280,
+  linkedin: 3000,
+  facebook: 5000,
+  instagram: 2200,
+  youtube: 5000,
+  tiktok: 2200,
+  telegram: 4096,
+  reddit: 40000,
+};
+
+// Build the final post body for ONE channel. The company sends its OWN posts, so the
+// third-party "compensated service provider" line is NOT appended — only the
+// forward-looking-statements (FLS) safe-harbor note. On X (280 cap) we use a compact
+// FLS note + a link to the company's public disclosures page instead of the full text.
+export function buildChannelPost(text: string, company: Company, channel: string): string {
+  const body = text.trim();
+  if (channel === "twitter") {
+    const ticker = String(company.ticker || "").toUpperCase();
+    const link = ticker ? `pubcozone.com/t/${ticker}` : "pubcozone.com";
+    const shortFls = `Forward-looking statements — see ${link}`;
+    // Only add the note if it still fits; if the body alone is already at the limit,
+    // the route's per-channel length guard will catch and report it.
+    const candidate = `${body}\n\n${shortFls}`;
+    return candidate.length <= CHANNEL_LIMITS.twitter ? candidate : body;
+  }
+  // All other channels: body + full FLS note (no compensated-provider line).
+  return company.flsText ? `${body}\n\n${company.flsText}` : body;
 }
 
 export type PublishGateResult = { ok: true } | { ok: false; reason: string };
