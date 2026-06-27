@@ -165,7 +165,7 @@ export default function HomeDashboard(props: {
       </div>
 
       {/* ── HERO: today's posts to approve ── */}
-      <Link href="/social/review" className="block rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-5 transition hover:border-emerald-500/60 hover:shadow-lg">
+      <Link href="/posts" className="block rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-5 transition hover:border-emerald-500/60 hover:shadow-lg">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">Today&apos;s posts to approve</p>
