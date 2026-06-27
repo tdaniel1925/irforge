@@ -352,14 +352,17 @@ export default function QuickPostPage() {
 const isVideo = (u: string) => /\.(mp4|mov|webm)$/i.test(u);
 
 // Split text into runs, highlighting URLs and $TICKER / #tag / @handle in link color.
-function RichText({ text, color = "#1d9bf0" }: { text: string; color?: string }) {
+// `inherit` forces plain-text runs to color:inherit via inline style — beating any
+// global theme CSS that would otherwise force the app's text color (which made the
+// X mockup's text dark-on-black).
+function RichText({ text, color = "#1d9bf0", inherit = false }: { text: string; color?: string; inherit?: boolean }) {
   const parts = text.split(/(\bhttps?:\/\/[^\s]+|\b(?:[a-z0-9-]+\.)+[a-z]{2,}(?:\/[^\s]*)?|[$#@][A-Za-z0-9_]+)/g);
   return (
     <span className="whitespace-pre-wrap break-words">
       {parts.map((p, i) =>
         /^(https?:\/\/|(?:[a-z0-9-]+\.)+[a-z]{2,}|[$#@])/i.test(p) && p.trim()
           ? <span key={i} style={{ color }}>{p}</span>
-          : <span key={i}>{p}</span>
+          : <span key={i} style={inherit ? { color: "inherit" } : undefined}>{p}</span>
       )}
     </span>
   );
@@ -401,17 +404,17 @@ function ChannelMockup({
   // X (Twitter)
   if (channel === "twitter") {
     return (
-      <div className="mx-auto max-w-md rounded-2xl bg-black p-4">
+      <div className="mx-auto max-w-md rounded-2xl bg-black p-4" style={{ color: "#e7e9ea" }}>
         <div className="flex gap-3">
           <Avatar account={account} fallback={name} />
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1 text-[15px]">
-              <span className="font-bold text-white">{name}</span>
-              <span className="text-gray-400">{handle} · 1m</span>
+              <span className="font-bold" style={{ color: "#ffffff" }}>{name}</span>
+              <span style={{ color: "#71767b" }}>{handle} · 1m</span>
             </div>
-            <div className="mt-0.5 text-[15px] leading-snug text-white"><RichText text={text} color="#1d9bf0" /></div>
+            <div className="mt-0.5 text-[15px] leading-snug" style={{ color: "#e7e9ea" }}><RichText text={text} color="#1d9bf0" inherit /></div>
             <Media urls={mediaUrls} />
-            <div className="mt-3 flex max-w-xs justify-between text-gray-400">
+            <div className="mt-3 flex max-w-xs justify-between" style={{ color: "#71767b" }}>
               <span>💬</span><span>🔁</span><span>♡</span><span>📊</span><span>🔖</span>
             </div>
           </div>
