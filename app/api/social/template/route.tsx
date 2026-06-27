@@ -19,9 +19,22 @@ export const runtime = "edge";
 //   label     — small label (e.g. stat label, attribution, filing form)
 interface TemplateOpts { bg?: string; layout?: string; ticker?: string; company?: string; title?: string; body?: string; label?: string }
 
+// On any render failure, return a small JSON 500 — NOT a Vercel HTML error page.
+// (The HTML page was being saved as a ".png", producing broken images. The caller
+// validates the PNG header, but a clean error makes failures obvious + debuggable.)
+function safeRender(o: TemplateOpts): Response {
+  try {
+    return render(o);
+  } catch (e) {
+    return new Response(JSON.stringify({ error: "template render failed", detail: String(e).slice(0, 200) }), {
+      status: 500, headers: { "Content-Type": "application/json" },
+    });
+  }
+}
+
 export async function GET(req: Request) {
   const p = new URL(req.url).searchParams;
-  return render({
+  return safeRender({
     bg: p.get("bg") || "", layout: p.get("layout") || "", ticker: p.get("ticker") || "",
     company: p.get("company") || "", title: p.get("title") || "", body: p.get("body") || "", label: p.get("label") || "",
   });
@@ -29,7 +42,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   const o = (await req.json().catch(() => ({}))) as TemplateOpts;
-  return render(o);
+  return safeRender(o);
 }
 
 function render(o: TemplateOpts) {

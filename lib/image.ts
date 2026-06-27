@@ -123,7 +123,12 @@ export async function generateBrandedImage(input: BrandedImageInput): Promise<st
     });
     if (!res.ok) return null;
     const png = Buffer.from(await res.arrayBuffer());
-    if (png.length < 1000) return null; // sanity: a real PNG is far bigger
+    // VALIDATE it's a real PNG, not an HTML error page. The route can transiently
+    // return a Vercel/Next error page (HTML) with a 200/ image-ish content-type;
+    // saving that as ".png" is exactly what produced the broken images. A real PNG
+    // starts with the 8-byte magic header 89 50 4E 47 0D 0A 1A 0A.
+    const isPng = png.length > 1000 && png[0] === 0x89 && png[1] === 0x50 && png[2] === 0x4e && png[3] === 0x47;
+    if (!isPng) return null; // bad render — caller falls back to no image (never a broken one)
     return uploadPng(input.companyId, `${input.postId}-branded`, png);
   } catch {
     return null;
