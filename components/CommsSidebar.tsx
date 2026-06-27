@@ -25,24 +25,46 @@ export default function CommsSidebar() {
   const [draft, setDraft] = useState("");
   const [outOpen, setOutOpen] = useState(false);
   const [outReason, setOutReason] = useState("");
+  const [err, setErr] = useState("");
+  const [unread, setUnread] = useState(0);     // new messages while collapsed
   const endRef = useRef<HTMLDivElement>(null);
+  const lastSeenId = useRef<string | null>(null); // newest chat id the user has seen
+  const lastCount = useRef(0);                  // to scroll only when new messages arrive
 
   const load = async () => {
     try {
       const res = await fetch("/api/comms", { cache: "no-store" });
       if (!res.ok) { setReady(false); return; }
       const d = await res.json();
+      const nextChat: Chat[] = d.chat ?? [];
       setProfiles(d.profiles ?? []);
-      setChat(d.chat ?? []);
+      setChat(nextChat);
       setReady(true);
+      // Track unread: count messages newer than the last one the user saw, but never
+      // count the user's own messages, and only while the panel is closed.
+      const newestSeenIdx = lastSeenId.current ? nextChat.findIndex((c) => c.id === lastSeenId.current) : -1;
+      const fresh = newestSeenIdx >= 0 ? nextChat.slice(newestSeenIdx + 1) : nextChat;
+      const freshFromOthers = fresh.filter((c) => !c.mine).length;
+      setUnread((prev) => (open ? 0 : prev + (freshFromOthers > 0 && lastSeenId.current ? freshFromOthers : 0)));
+      if (open && nextChat.length) lastSeenId.current = nextChat[nextChat.length - 1].id;
+      else if (!lastSeenId.current && nextChat.length) lastSeenId.current = nextChat[nextChat.length - 1].id;
     } catch { /* leave as-is */ }
   };
   useEffect(() => {
     load();
-    const t = setInterval(load, 15000); // light poll for liveness
+    const t = setInterval(load, 8000); // light poll for liveness
     return () => clearInterval(t);
   }, []);
-  useEffect(() => { if (open) endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chat, open]);
+  // Scroll to bottom only when the message COUNT grows (not on every poll), so a user
+  // scrolled up to read history isn't yanked back down every 8s.
+  useEffect(() => {
+    if (open && chat.length > lastCount.current) endRef.current?.scrollIntoView({ behavior: "smooth" });
+    lastCount.current = chat.length;
+  }, [chat, open]);
+  // Opening the panel clears unread and marks everything seen.
+  useEffect(() => {
+    if (open) { setUnread(0); if (chat.length) lastSeenId.current = chat[chat.length - 1].id; }
+  }, [open, chat]);
 
   // Only show the rail once we know the user has a company (authed company pages).
   if (!ready) return null;
@@ -59,22 +81,40 @@ export default function CommsSidebar() {
   const send = async () => {
     const body = draft.trim();
     if (!body) return;
+    setErr("");
     setDraft("");
-    const res = await fetch("/api/comms", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "chat", body }) });
-    const d = await res.json();
-    if (res.ok && d.chat) setChat(d.chat);
+    try {
+      const res = await fetch("/api/comms", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "chat", body }) });
+      const d = await res.json();
+      if (!res.ok) { setErr(d.error ?? "Couldn't send. Try again."); setDraft(body); return; }
+      if (d.chat) setChat(d.chat);
+    } catch {
+      setErr("Couldn't reach the server. Try again.");
+      setDraft(body); // restore the message so it isn't lost
+    }
   };
   const del = async (id: string) => {
-    const res = await fetch("/api/comms", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "deleteChat", id }) });
-    const d = await res.json();
-    if (res.ok && d.chat) setChat(d.chat);
+    setErr("");
+    try {
+      const res = await fetch("/api/comms", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "deleteChat", id }) });
+      const d = await res.json();
+      if (!res.ok) { setErr(d.error ?? "Couldn't delete."); return; }
+      if (d.chat) setChat(d.chat);
+    } catch { setErr("Couldn't delete. Try again."); }
   };
 
   // Collapsed strip.
   if (!open) {
     return (
-      <button onClick={() => setOpen(true)} className="sticky top-0 flex h-screen w-10 shrink-0 flex-col items-center gap-3 border-l border-app bg-surface py-4 text-muted hover:text-app" title="Open team panel">
-        <span>💬</span>
+      <button onClick={() => setOpen(true)} className="sticky top-0 flex h-screen w-10 shrink-0 flex-col items-center gap-3 border-l border-app bg-surface py-4 text-muted hover:text-app" title={unread > 0 ? `${unread} new message${unread === 1 ? "" : "s"}` : "Open team panel"}>
+        <span className="relative">
+          💬
+          {unread > 0 && (
+            <span className="absolute -right-2 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+              {unread > 9 ? "9+" : unread}
+            </span>
+          )}
+        </span>
         <span className="rotate-90 whitespace-nowrap text-xs tracking-wide">Team</span>
         <span className="mt-auto rounded-full bg-emerald-500/20 px-1.5 py-0.5 text-[10px] text-emerald-600">{inOffice.length}</span>
       </button>
@@ -139,8 +179,9 @@ export default function CommsSidebar() {
 
       {/* Composer */}
       <div className="border-t border-app p-2">
+        {err && <p className="mb-1.5 px-1 text-xs text-red-500">{err}</p>}
         <div className="flex gap-1.5">
-          <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} placeholder="Message the team…" className="flex-1 rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:border-emerald-500 focus:outline-none" />
+          <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} maxLength={1000} placeholder="Message the team…" className="flex-1 rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:border-emerald-500 focus:outline-none" />
           <button disabled={!draft.trim()} onClick={send} className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-50">→</button>
         </div>
       </div>

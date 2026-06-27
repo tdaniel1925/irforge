@@ -40,16 +40,11 @@ export default function HomeDashboard(props: {
   approvals: Approval[]; metrics: Metrics | null; morningRead: ReadItem[]; podcast: Podcast | null;
   layout: { order: string[]; hidden: string[] } | null;
 }) {
-  const [profiles, setProfiles] = useState<Profile[]>(props.initialProfiles);
-  const [updates, setUpdates] = useState<Update[]>(props.initialUpdates);
-  const [draft, setDraft] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [outOpen, setOutOpen] = useState(false);
-  const [outReason, setOutReason] = useState("");
-
   // ── Per-user widget customization ──
-  const DEFAULT_ORDER = ["intel", "read", "agenda", "updates", "around", "markets"];
-  const WIDGET_LABELS: Record<string, string> = { intel: "IR at a glance", read: "Morning read", agenda: "Today's agenda", updates: "Team updates", around: "Who's around", markets: "Markets" };
+  // 'updates' + 'around' removed — they duplicated the always-on right-rail team
+  // chat + who's-in/out (CommsSidebar). The rail is the single home for team comms.
+  const DEFAULT_ORDER = ["intel", "read", "agenda", "markets"];
+  const WIDGET_LABELS: Record<string, string> = { intel: "IR at a glance", read: "Morning read", agenda: "Today's agenda", markets: "Markets" };
   const [customizing, setCustomizing] = useState(false);
   const [order, setOrder] = useState<string[]>(() => {
     const saved = props.layout?.order?.filter((id) => DEFAULT_ORDER.includes(id)) ?? [];
@@ -75,28 +70,7 @@ export default function HomeDashboard(props: {
   const today = todayKey();
   const todays = props.events.filter((e) => e.eventDate === today).sort((a, b) => (a.eventTime || "99").localeCompare(b.eventTime || "99"));
   const upcoming = props.events.filter((e) => e.eventDate > today).slice(0, 4);
-  const inOffice = profiles.filter((p) => p.officeStatus === "in");
-  const outOffice = profiles.filter((p) => p.officeStatus === "out");
   const m = props.metrics;
-
-  const setStatus = async (status: "in" | "out", reason = "") => {
-    const res = await fetch("/api/dashboard", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ officeStatus: status, statusReason: reason }) });
-    const d = await res.json();
-    if (res.ok && d.profiles) setProfiles(d.profiles);
-  };
-  const postUpdate = async () => {
-    if (!draft.trim()) return;
-    setBusy(true);
-    const res = await fetch("/api/dashboard", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "update", body: draft }) });
-    const d = await res.json();
-    if (res.ok && d.updates) { setUpdates(d.updates); setDraft(""); }
-    setBusy(false);
-  };
-  const deleteUpdate = async (id: string) => {
-    const res = await fetch("/api/dashboard", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "deleteUpdate", id }) });
-    const d = await res.json();
-    if (res.ok && d.updates) setUpdates(d.updates);
-  };
 
   // Each customizable widget's JSX, keyed by id (rendered per the saved order).
   const widgets: Record<string, React.ReactNode> = {
@@ -134,7 +108,7 @@ export default function HomeDashboard(props: {
               </li>
             ))}
           </ul>
-        ) : !props.podcast ? <p className="text-sm text-muted">No recent coverage found for ${props.ticker}. Check back tomorrow.</p> : null}
+        ) : !props.podcast ? <p className="text-sm text-muted">No recent coverage found for ${props.ticker?.toUpperCase() ?? ""}. Check back tomorrow.</p> : null}
       </Card>
     ),
     agenda: (
@@ -163,48 +137,6 @@ export default function HomeDashboard(props: {
             </ul>
           </>
         )}
-      </Card>
-    ),
-    updates: (
-      <Card title="Team updates">
-        <div className="flex gap-2">
-          <input className="flex-1 rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app" placeholder="Quick update… (e.g. meeting at 11)" value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && postUpdate()} />
-          <button disabled={busy || !draft.trim()} onClick={postUpdate} className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-50">Post</button>
-        </div>
-        <ul className="mt-3 space-y-2">
-          {updates.length === 0 && <li className="text-sm text-muted">No updates yet.</li>}
-          {updates.slice(0, 5).map((u) => (
-            <li key={u.id} className="group flex items-start gap-2 rounded-lg bg-app/40 px-3 py-2 text-sm">
-              <div className="min-w-0 flex-1">
-                <span className="font-medium text-app">{u.authorName}</span><span className="ml-2 text-xs text-faint">{timeAgo(u.createdAt)}</span>
-                <p className="text-app">{u.body}</p>
-              </div>
-              {u.mine && <button onClick={() => deleteUpdate(u.id)} className="text-xs text-faint opacity-0 transition group-hover:opacity-100 hover:text-red-500">✕</button>}
-            </li>
-          ))}
-        </ul>
-      </Card>
-    ),
-    around: (
-      <Card title="Who's around">
-        <div className="mb-3 flex gap-2">
-          <button onClick={() => { setOutOpen(false); setStatus("in"); }} className="flex-1 rounded-lg bg-emerald-500/15 px-3 py-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-300">🟢 I&apos;m in</button>
-          <button onClick={() => setOutOpen((o) => !o)} className="flex-1 rounded-lg bg-amber-500/15 px-3 py-1.5 text-xs font-medium text-amber-700 dark:text-amber-300">🌴 I&apos;m out</button>
-        </div>
-        {outOpen && (
-          <div className="mb-3 space-y-2">
-            <input autoFocus value={outReason} onChange={(e) => setOutReason(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { setStatus("out", outReason); setOutOpen(false); setOutReason(""); } }} placeholder="Reason (optional) — e.g. at a wedding" className="w-full rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app" />
-            <div className="flex gap-2">
-              <button onClick={() => { setStatus("out", outReason); setOutOpen(false); setOutReason(""); }} className="rounded-lg bg-amber-500 px-3 py-1 text-xs font-medium text-white">Set out</button>
-              <button onClick={() => { setOutOpen(false); setOutReason(""); }} className="rounded-lg border border-app px-3 py-1 text-xs">Cancel</button>
-            </div>
-          </div>
-        )}
-        <ul className="space-y-0.5">
-          {inOffice.map((p) => <li key={p.userId} className="text-sm text-app">🟢 {p.displayName}</li>)}
-          {outOffice.map((p) => <li key={p.userId} className="text-sm text-muted">🌴 {p.displayName}{p.statusReason ? ` — ${p.statusReason}` : ""}</li>)}
-          {!profiles.length && <li className="text-sm text-faint">Set your status above.</li>}
-        </ul>
       </Card>
     ),
     markets: Object.keys(props.quotes).length > 0 ? (
@@ -272,7 +204,9 @@ export default function HomeDashboard(props: {
       </div>
 
       {/* ── Customizable widget grid ── */}
-      <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+      {/* auto-rows-fr keeps cards in the same row equal height so a tall card no
+          longer leaves big empty gaps next to short ones. */}
+      <div className="grid auto-rows-fr gap-5 md:grid-cols-2 lg:grid-cols-3">
         {order.map((id) => {
           const isHidden = hidden.has(id);
           // In normal mode, skip hidden widgets entirely. In customize mode, show
@@ -281,7 +215,7 @@ export default function HomeDashboard(props: {
           const body = widgets[id];
           if (!body) return null;
           return (
-            <div key={id} className={`relative ${isHidden ? "opacity-40" : ""}`}>
+            <div key={id} className={`relative h-full ${isHidden ? "opacity-40" : ""}`}>
               {customizing && (
                 <div className="absolute right-2 top-2 z-10 flex items-center gap-1 rounded-lg border border-app bg-surface px-1 py-0.5 text-xs">
                   <button onClick={() => move(id, -1)} className="px-1 text-muted hover:text-app" title="Move up">↑</button>
@@ -300,7 +234,7 @@ export default function HomeDashboard(props: {
 
 function Card({ title, href, children }: { title: string; href?: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-app bg-surface p-4">
+    <div className="flex h-full flex-col rounded-xl border border-app bg-surface p-4">
       <div className="mb-2 flex items-center justify-between">
         <h2 className="text-sm font-semibold text-app">{title}</h2>
         {href && <Link href={href} className="text-xs text-emerald-600">Open →</Link>}

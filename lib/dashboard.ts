@@ -154,8 +154,11 @@ export async function postChat(body: string): Promise<{ ok: boolean; error?: str
 }
 
 export async function deleteChat(id: string): Promise<void> {
-  const { supabase } = await ctx();
-  await supabase.from("team_chat").delete().eq("id", id);
+  const { supabase, user, cid } = await ctx();
+  if (!user || !cid) return;
+  // Only the author may delete their own message, scoped to their company.
+  // (Previously deleted by id alone — any user could delete anyone's message.)
+  await supabase.from("team_chat").delete().eq("id", id).eq("user_id", user.id).eq("company_id", cid);
 }
 
 // ── Per-user dashboard layout (which widgets show + their order) ──
