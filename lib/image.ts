@@ -1,6 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
 import { createServiceClient } from "./supabase/server";
-import { renderPostTemplate } from "./postTemplate";
 
 // AI image generation for social posts (Gemini) + upload to Supabase Storage.
 // Best-effort: if GEMINI_API_KEY is missing or generation fails, returns null so
@@ -36,11 +35,23 @@ export async function generateImageBuffer(prompt: string): Promise<Buffer | null
   }
 }
 
-// Upload a PNG buffer to the bucket; returns its public URL or null.
+// Detect the real image format from the buffer's magic bytes. Gemini returns JPEG
+// (not PNG), so labeling everything image/png produced mislabeled files; this keeps
+// the content-type + extension honest.
+function detectImage(b: Buffer): { ext: string; mime: string } {
+  if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return { ext: "png", mime: "image/png" };
+  if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return { ext: "jpg", mime: "image/jpeg" };
+  if (b.length > 12 && b.slice(0, 4).toString() === "RIFF" && b.slice(8, 12).toString() === "WEBP") return { ext: "webp", mime: "image/webp" };
+  return { ext: "png", mime: "image/png" }; // sensible default
+}
+
+// Upload an image buffer to the bucket with the CORRECT content-type/extension;
+// returns its public URL or null. (Named uploadPng for history; handles any format.)
 async function uploadPng(companyId: string, postId: string, buffer: Buffer): Promise<string | null> {
   const svc = createServiceClient();
-  const path = `${companyId}/${postId}.png`;
-  const { error } = await svc.storage.from(BUCKET).upload(path, buffer, { contentType: "image/png", upsert: true });
+  const { ext, mime } = detectImage(buffer);
+  const path = `${companyId}/${postId}.${ext}`;
+  const { error } = await svc.storage.from(BUCKET).upload(path, buffer, { contentType: mime, upsert: true });
   if (error) return null;
   return svc.storage.from(BUCKET).getPublicUrl(path).data?.publicUrl ?? null;
 }
@@ -91,50 +102,26 @@ export interface BrandedImageInput {
   variant?: number;
 }
 
-const isPngBuffer = (b: Buffer) => b.length > 1000 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47;
-
-// Our PUBLIC origin for the self-fetch fallback. NEVER VERCEL_URL — that's the
-// per-deployment URL behind Vercel's auth wall (returns an HTML login page that gets
-// saved as a ".png" → broken images). Use the public production domain.
-const PUBLIC_SITE =
-  process.env.NEXT_PUBLIC_SITE_URL ||
-  (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "") ||
-  "https://pubcozone.com";
-
-// Generate a fully branded template image and upload it. Returns the public URL, or
-// null on any failure (caller falls back to a plain image / no image).
+// Generate a post image and upload it. Returns the public URL, or null on failure.
+//
+// Pure Gemini: we let the model generate a complete, striking image directly (no
+// template/overlay). The post text + disclosures live in the post caption, so the
+// image just needs to look great — `buildImagePrompt` gives it strong art direction.
+// (Signature kept stable so existing callers — Quick Post, Content Engine — are
+// unchanged; layout/label fields are ignored in the pure-Gemini path.)
 export async function generateBrandedImage(input: BrandedImageInput): Promise<string | null> {
-  const opts = {
-    layout: input.layout ?? "announcement",
+  if (!imageGenConfigured()) return null;
+  const prompt = buildImagePrompt({
+    companyName: input.company,
     ticker: input.ticker,
-    company: input.company,
-    title: input.title,
-    body: input.body ?? undefined,
-    label: input.label ?? undefined,
-  };
-
-  // 1) Preferred: render the template IN-PROCESS (no HTTP, no auth wall). If next/og
-  //    can't run here, fall through to the HTTP fallback.
-  try {
-    const res = renderPostTemplate(opts);
-    const png = Buffer.from(await res.arrayBuffer());
-    if (isPngBuffer(png)) return uploadPng(input.companyId, `${input.postId}-branded`, png);
-  } catch { /* fall back to the HTTP render */ }
-
-  // 2) Fallback: fetch the template route on the PUBLIC domain (verified to return a
-  //    real PNG). Validate the PNG header so an HTML error page is never saved.
-  try {
-    const res = await fetch(`${PUBLIC_SITE}/api/social/template`, {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      signal: AbortSignal.timeout(20000), body: JSON.stringify(opts),
-    });
-    if (!res.ok) return null;
-    const png = Buffer.from(await res.arrayBuffer());
-    if (!isPngBuffer(png)) return null;
-    return uploadPng(input.companyId, `${input.postId}-branded`, png);
-  } catch {
-    return null;
-  }
+    theme: input.theme,
+    postText: input.title + (input.body ? `\n${input.body}` : ""),
+    brandColors: input.brandColors,
+    variant: input.variant,
+  });
+  const buffer = await generateImageBuffer(prompt);
+  if (!buffer) return null;
+  return uploadPng(input.companyId, `${input.postId}-branded`, buffer);
 }
 
 // Build a compliant, CINEMATIC, on-brand image prompt from the post text + company.
@@ -155,27 +142,26 @@ export function buildImagePrompt(opts: {
 }): string {
   const snippet = opts.postText.slice(0, 280).replace(/\s+/g, " ").trim();
   const palette = opts.brandColors?.trim()
-    ? `Color palette: built around the brand colors ${opts.brandColors} — used as dramatic accent light and material color, not flat fills.`
-    : `Color palette: a sophisticated, restrained palette with one bold accent color; deep tones with luminous highlights.`;
+    ? `Color palette: built around the brand colors ${opts.brandColors} — used as dramatic accent light, glow, and material color (not flat fills).`
+    : `Color palette: a sophisticated, restrained palette with one bold accent color; deep rich tones with luminous highlights.`;
 
-  // A few layout framings so successive images feel distinct, not cloned.
-  const compositions = [
-    "a central hero icon motif with clean geometric panels radiating outward",
-    "a balanced grid of related vector icon motifs connected by subtle flow lines",
-    "a single bold iconographic centerpiece on a layered geometric backdrop",
-    "an asymmetric modern layout with one large motif and supporting accent shapes",
-    "a connected node/flow arrangement of sleek icon motifs",
+  // Vary the look so repeated generations don't all look the same.
+  const styles = [
+    "a cinematic 3D render — sleek materials (glass, brushed metal, soft matte), dramatic studio lighting, shallow depth of field, premium product-shot feel",
+    "a bold editorial illustration — clean confident shapes, modern flat-with-depth vector art, strong focal point, magazine-cover polish",
+    "an atmospheric conceptual scene — volumetric light, soft haze, glowing accents, a single striking metaphor, aspirational mood",
+    "a premium isometric/3D scene — crisp geometric forms, gentle gradients, soft long shadows, modern tech aesthetic",
+    "a dynamic abstract composition — flowing forms, light streaks, depth and motion, elegant and high-end",
   ];
-  const composition = compositions[(opts.variant ?? 0) % compositions.length];
+  const style = styles[(opts.variant ?? 0) % styles.length];
 
   return (
-    `A polished, modern INFOGRAPHIC-STYLE brand graphic for ${opts.companyName} ($${opts.ticker}) — flat/semi-flat vector design, the kind of clean corporate infographic you'd see in a premium pitch deck or SaaS landing page. ` +
-    `Concept: represent the IDEA of "${snippet}" (theme: ${opts.theme}) through sleek symbolic ICONS and abstract shapes — NOT literal text. ` +
-    `Layout: ${composition}. ` +
-    `Style: crisp flat-design vector icons with subtle gradients and soft long shadows, rounded geometric panels/cards, a layered tech-pattern background (thin lines, diamonds, circuit/flow motifs), tasteful highlights — bright, confident, professional, highly polished. ` +
-    `Depth: clean and graphic (vector/illustration), NOT photographic — sharp edges, even studio lighting, no photo grain. ` +
+    `Create a STRIKING, premium, scroll-stopping social graphic for ${opts.companyName} ($${opts.ticker}) — the quality of a top brand's hero image or an Apple-keynote visual. ` +
+    `Convey the FEELING and IDEA of "${snippet}" (theme: ${opts.theme}) through evocative imagery and metaphor — confident, modern, aspirational. ` +
+    `Art direction: ${style}. ` +
     `${palette} ` +
-    `Hard constraints: absolutely NO words, letters, numbers, charts, graphs, percentages, price figures, tickers, fabricated logos, fake quotes, lorem ipsum, or anything that states or implies a stock price, valuation, prediction, or financial return. Icons and shapes ONLY — no readable text anywhere. No watermarks. ` +
-    `Square 1:1, crisp and beautiful, optimized for X and LinkedIn feeds.`
+    `Make it genuinely beautiful: strong focal point, rich detail, professional composition and lighting, clean negative space, gallery-grade finish. ` +
+    `HARD CONSTRAINTS (critical): absolutely NO words, letters, numbers, charts, graphs, percentages, price figures, tickers, fabricated logos, fake quotes, or anything that states or implies a stock price, valuation, prediction, or financial return. No readable text anywhere. No watermarks. No real people's faces. ` +
+    `Square 1:1, crisp and high-resolution, optimized for X and LinkedIn feeds.`
   );
 }
