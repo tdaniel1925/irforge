@@ -111,13 +111,24 @@ export interface BrandedImageInput {
 // unchanged; layout/label fields are ignored in the pure-Gemini path.)
 export async function generateBrandedImage(input: BrandedImageInput): Promise<string | null> {
   if (!imageGenConfigured()) return null;
+  const postText = input.title + (input.body ? `\n${input.body}` : "");
+
+  // Ask the AI what to depict for THIS post, so the image is relevant (not a fixed
+  // motif). Best-effort: if it's unavailable, buildImagePrompt uses a fallback subject.
+  let concept: string | null = null;
+  try {
+    const { pickVisualConcept } = await import("./ai");
+    concept = await pickVisualConcept(postText, { name: input.company, ticker: input.ticker, sector: input.theme } as never);
+  } catch { /* fall back to a generic subject */ }
+
   const prompt = buildImagePrompt({
     companyName: input.company,
     ticker: input.ticker,
     theme: input.theme,
-    postText: input.title + (input.body ? `\n${input.body}` : ""),
+    postText,
     brandColors: input.brandColors,
     variant: input.variant,
+    concept: concept ?? undefined,
   });
   const buffer = await generateImageBuffer(prompt);
   if (!buffer) return null;
@@ -139,29 +150,28 @@ export function buildImagePrompt(opts: {
   postText: string;
   brandColors?: string;
   variant?: number;
+  concept?: string;   // AI-chosen visual subject for THIS post (so the image is relevant)
 }): string {
   const snippet = opts.postText.slice(0, 280).replace(/\s+/g, " ").trim();
 
-  // American Fusion gets a dedicated "tech-report infographic" look that matches the
-  // brand reference: flat vector, navy + red, atom-shield motifs, isometric tech
-  // illustrations (reactor/energy/power), faint watermark atoms. Other companies use
-  // the general cinematic style below.
+  // American Fusion keeps a consistent BRAND STYLE (navy + red, polished, atom motifs),
+  // but the SUBJECT comes from the post: the AI-picked `concept` when available, else a
+  // rotating fallback. Imagery can be a scene, people, objects, or a stylized graphic —
+  // varied — as long as the brand look stays the same.
   if (opts.ticker.toUpperCase() === "AMFN") {
-    const motifs = [
-      "a large central isometric tokamak/fusion-reactor illustration with glowing core",
-      "an isometric energy/power scene — generator, turbine, transmission towers, flowing energy lines",
-      "a hero atom-shield emblem surrounded by orbiting electrons and connector lines",
-      "an isometric clean-energy facility with subtle process-flow arrows between panels",
-      "a bold abstract fusion-core motif radiating energy across a layered panel grid",
+    const fallbacks = [
+      "a striking visual that represents this announcement for an electric / fusion energy company",
+      "a confident scene symbolizing progress and momentum in clean energy",
+      "an aspirational image evoking innovation and forward motion",
     ];
-    const motif = motifs[(opts.variant ?? 0) % motifs.length];
+    const subject = opts.concept?.trim() || fallbacks[(opts.variant ?? 0) % fallbacks.length];
     return (
-      `A polished, modern corporate INFOGRAPHIC-style brand graphic for American Fusion (electric & fusion energy), in the clean "tech report" aesthetic of a premium pitch deck. ` +
-      `Flat / semi-flat VECTOR design with subtle gradients and soft long shadows, crisp geometric icons, rounded panels/cards, thin connector lines and arrows, and faint atom watermarks in the background. ` +
-      `Color palette: deep NAVY BLUE background with strong RED accents and light/white panels (the American Fusion brand). ` +
-      `Visual concept: ${motif}. Include sleek shield-and-atom iconography as recurring accents. Evoke the idea of "${snippet}" (theme: ${opts.theme}) through icons and imagery, not words. ` +
-      `HARD CONSTRAINTS: NO readable words, letters, numbers, charts, percentages, price figures, tickers, fake quotes, or anything implying a stock price or return. Icons, shapes and illustrations only — no text. No real people's faces. ` +
-      `Bright, confident, highly polished, professional. Square 1:1, crisp and high-resolution for X and LinkedIn.`
+      `A polished, premium social graphic for American Fusion (electric & fusion energy), in a consistent modern brand style. ` +
+      `SUBJECT (what to depict, drawn from the post): ${subject}. The post is about: "${snippet}" (theme: ${opts.theme}). ` +
+      `BRAND STYLE (keep this consistent across all images): a deep NAVY BLUE palette with strong RED accents and clean light/white space; sleek, polished, modern and professional; subtle atom/orbital motifs woven in as a recurring brand cue; crisp lighting, strong focal point, gallery-grade finish. ` +
+      `The subject can be a real scene, people, objects, an illustration, or a stylized graphic — whatever best fits the post — but always rendered in the navy/red American Fusion look. ` +
+      `HARD CONSTRAINTS: NO readable words, letters, numbers, charts, percentages, price figures, tickers, fake quotes, fabricated logos, or anything implying a stock price, valuation, or return. No text anywhere. No watermarks. ` +
+      `Square 1:1, crisp and high-resolution for X and LinkedIn.`
     );
   }
 

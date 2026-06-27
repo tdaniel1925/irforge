@@ -988,3 +988,21 @@ export async function assistantReply(
   );
   return ai?.trim() || "I'm having trouble reaching the AI right now — try again in a moment.";
 }
+
+// Pick a concrete VISUAL CONCEPT for a post's image, so the generated image actually
+// reflects what the post is about (instead of a fixed/abstract motif). Returns a short
+// scene description (the SUBJECT) — the image prompt wraps it in the brand style.
+// Falls back to null when AI is unavailable; callers then use a generic concept.
+export async function pickVisualConcept(postText: string, company: Company): Promise<string | null> {
+  const text = String(postText ?? "").slice(0, 600).trim();
+  if (!text) return null;
+  const out = await claude(
+    `You choose a single visual concept for a social-media image that accompanies an investor-relations post for ${company.name} ($${company.ticker}) (sector: ${company.sector || "business"}). ` +
+      `Read the post and describe ONE concrete, relevant image idea that visually represents WHAT THE POST IS ABOUT — a scene, subject, or metaphor. It may include people, places, objects, or symbolic imagery. ` +
+      `Rules: 1 sentence, under 30 words, concrete and specific to the post's topic. Describe the SUBJECT/scene only — NOT the colors or art style (those are added separately). ` +
+      `Do NOT include any words/text/numbers/logos/charts in the idea, and nothing implying a stock price, valuation, or return. Output ONLY the description, no preamble.`,
+    `Post:\n"""${text}"""\n\nVisual concept:`
+  );
+  const concept = out?.trim().replace(/^["']|["']$/g, "").split("\n")[0];
+  return concept && concept.length > 3 ? concept.slice(0, 200) : null;
+}
