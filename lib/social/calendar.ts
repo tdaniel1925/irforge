@@ -2,7 +2,7 @@ import crypto from "crypto";
 import { createServerSupabase, createServiceClient } from "../supabase/server";
 import { getMyCompany } from "../supabase/store";
 import { writeAudit } from "../platform";
-import { planCalendar, generateSocialPost, classifyRegFD } from "../ai";
+import { planCalendar, generateSocialPost, classifyRegFD, generateCadencePost } from "../ai";
 import { checkContent } from "../compliance";
 import { generateBrandedImage } from "../image";
 import { publishToChannels, getPostStatus } from "../ayrshare";
@@ -703,4 +703,73 @@ export async function reschedulePost(postId: string, newScheduledAt: string): Pr
   await supabase.from("iros_posts").update({ scheduled_at: when.toISOString(), updated_at: new Date().toISOString() }).eq("id", postId);
   await writeAudit({ companyId: cid, actorUserId: user.id, actorEmail: user.email, action: "social.post_rescheduled", entityType: "post", entityId: postId, payload: { from: post.scheduled_at, to: when.toISOString() } });
   return { ok: true };
+}
+
+// ── Daily suggested posts (cron) ─────────────────────────────────────────────
+// For each active company, draft ONE fresh suggested post and drop it into the
+// Needs-approval queue (status 'pending') so there's always something new to review
+// or reject. Service-role (no session). Skips companies that already have a pending
+// suggestion from today (so the queue doesn't pile up). Time-budgeted.
+export async function generateDailySuggestions(deadlineMs: number): Promise<{ companies: number; created: number }> {
+  const svc = createServiceClient();
+  const started = Date.now();
+
+  // Active companies that are set up (have a ticker + onboarding complete).
+  const { data: companies } = await svc
+    .from("companies")
+    .select("id, name, ticker, sector, description")
+    .not("ticker", "is", null)
+    .neq("ticker", "")
+    .eq("onboarding_complete", true)
+    .limit(200);
+
+  let created = 0;
+  let touched = 0;
+  for (const co of companies ?? []) {
+    if (Date.now() - started > deadlineMs) break;
+    const cid = String(co.id);
+
+    // Skip if a daily suggestion already exists from the last ~20 hours.
+    const since = new Date(Date.now() - 20 * 60 * 60 * 1000).toISOString();
+    const { count } = await svc
+      .from("iros_posts")
+      .select("id", { count: "exact", head: true })
+      .eq("company_id", cid)
+      .eq("theme", "Daily suggestion")
+      .gte("created_at", since);
+    if ((count ?? 0) > 0) continue;
+    touched++;
+
+    // Recent post titles to avoid repeating topics.
+    const { data: recent } = await svc.from("iros_posts").select("title").eq("company_id", cid).order("created_at", { ascending: false }).limit(8);
+    const recentTitles = (recent ?? []).map((r) => String(r.title ?? "")).filter(Boolean);
+
+    try {
+      const company = {
+        name: String(co.name ?? ""), ticker: String(co.ticker ?? ""),
+        sector: String(co.sector ?? "business"), description: String(co.description ?? ""),
+      } as never;
+      const draft = await generateCadencePost(company, recentTitles);
+      const body = draft.tweets.join("\n\n").slice(0, 4000);
+      if (!body.trim()) continue;
+
+      // Compliance pre-check: skip anything with blocked language outright.
+      const flags = checkContent(draft.tweets);
+      if (flags.some((f) => f.severity === "block")) continue;
+      const cls = await classifyRegFD(body, company).catch(() => null);
+
+      const { error } = await svc.from("iros_posts").insert({
+        company_id: cid,
+        title: (draft.title || "Daily suggestion").slice(0, 200),
+        body,
+        channels: [],
+        status: "pending",          // → lands in Needs-approval
+        theme: "Daily suggestion",
+        classification: cls?.classification ?? "yellow",
+        class_reason: cls?.reasoning ?? null,
+      });
+      if (!error) created++;
+    } catch { /* skip this company; keep going */ }
+  }
+  return { companies: touched, created };
 }
