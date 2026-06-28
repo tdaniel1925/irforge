@@ -1024,6 +1024,35 @@ export async function polishText(text: string): Promise<string | null> {
   return cleaned && cleaned.length > 0 ? cleaned : null;
 }
 
+// Rewrite a post's BODY to fit within `limit` characters for a given channel, keeping
+// the core message and tone. Compliance-safe: no new claims, numbers, or hype; just
+// a tighter version of the same content. The caller appends the disclosure AFTER, so
+// pass a limit that already reserves room for it. Returns the fitted body (guaranteed
+// ≤ limit via a hard truncate fallback), or null if AI is unavailable.
+export async function fitToLimit(text: string, limit: number, channel: string): Promise<string | null> {
+  const input = String(text ?? "").trim();
+  if (!input || limit < 20) return null;
+  if (input.length <= limit) return input; // already fits
+
+  const out = await claude(
+    `You shorten investor-relations social posts to fit a platform's character limit. ` +
+      `Rewrite the post so it fits within ${limit} characters for ${channel}, keeping the SAME core message, key facts, and tone. ` +
+      `STRICT: do NOT add, remove, or change any facts, numbers, claims, or predictions; no new hashtags/emojis/links; no hype. Just say it more concisely. ` +
+      `It MUST be ${limit} characters or fewer. Output ONLY the shortened post — no preamble, no quotes, no character count.`,
+    `Limit: ${limit} characters.\nPost:\n"""${input}"""\n\nShortened (≤${limit} chars):`,
+    1000
+  );
+  let fitted = out?.trim().replace(/^["']|["']$/g, "") ?? "";
+  // Hard guarantee: if the model overshot, truncate at a word boundary with an ellipsis.
+  if (!fitted) fitted = input;
+  if (fitted.length > limit) {
+    const cut = fitted.slice(0, limit - 1);
+    const lastSpace = cut.lastIndexOf(" ");
+    fitted = (lastSpace > limit * 0.6 ? cut.slice(0, lastSpace) : cut).trim() + "…";
+  }
+  return fitted;
+}
+
 // Write a social post from a user's topic/idea. Compliance-safe: grounded in the
 // company's public facts, never predicts price, never gives advice, never says
 // "undervalued". Returns a single ready-to-edit post (the user reviews + approves).

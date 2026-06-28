@@ -61,6 +61,9 @@ export default function QuickPostComposer({ embedded = false }: { embedded?: boo
   const [aiTopic, setAiTopic] = useState("");
   const [aiBusy, setAiBusy] = useState(false);
   const [aiErr, setAiErr] = useState("");
+  // Fit-to-limit: rewrite the post to fit an over-limit channel's character cap.
+  const [fitBusy, setFitBusy] = useState<string | null>(null); // channel key being fit, or "all"
+  const [fitErr, setFitErr] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -168,6 +171,45 @@ export default function QuickPostComposer({ embedded = false }: { embedded?: boo
       setErr(e instanceof Error ? e.message : "Couldn't build preview.");
     } finally {
       setBusy(false);
+    }
+  };
+
+  // Rewrite the post body so it fits a channel's character limit (disclosure-aware,
+  // compliance-rechecked server-side). Replaces the editor text with the fitted
+  // version and rebuilds the preview. `channel` may be a single channel key; "all"
+  // fits to the tightest over-limit channel so every selected channel passes.
+  const fitChannel = async (channelOrAll: string) => {
+    const targets = channelOrAll === "all" ? overLimit.map((x) => x.channel) : [channelOrAll];
+    if (targets.length === 0 || !text.trim()) return;
+    // Pick the channel with the smallest limit among targets — fitting to the
+    // tightest cap guarantees the looser ones also fit.
+    const tightest = targets.reduce((best, c) => {
+      const lim = overLimit.find((x) => x.channel === c)?.limit ?? Infinity;
+      return lim < best.lim ? { c, lim } : best;
+    }, { c: targets[0], lim: Infinity });
+    setFitBusy(channelOrAll); setFitErr("");
+    try {
+      const r = await fetch("/api/ai/fit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, channel: tightest.c }),
+      });
+      const d = await r.json();
+      if (!r.ok) { setFitErr(d.error ?? "Couldn't shorten it — edit it down manually."); return; }
+      // Update the editor with the fitted body, then rebuild the preview so the
+      // length warnings refresh.
+      setText(d.body); setAck(false);
+      const pr = await fetch("/api/social/quickpost", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "preview", text: d.body, channels, mediaUrls: media.map((m) => m.url) }),
+      });
+      const pd = await pr.json();
+      if (pr.ok) { setPreview(pd); setPreviewTab((t) => (pd.channels?.includes(t) ? t : pd.channels?.[0] ?? null)); }
+    } catch {
+      setFitErr("Couldn't reach the editor service. Try again.");
+    } finally {
+      setFitBusy(null);
     }
   };
 
@@ -379,8 +421,34 @@ export default function QuickPostComposer({ embedded = false }: { embedded?: boo
             <div className="mt-3 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-300">
               ✕ Too long for {overLimit.map((x) => labelFor(x.channel)).join(", ")}.
               <span className="mt-1 block text-xs">
-                {overLimit.map((x) => `${labelFor(x.channel)}: ${x.len}/${x.limit} (over by ${x.over})`).join(" · ")}. Shorten your text, or uncheck that channel.
+                {overLimit.map((x) => `${labelFor(x.channel)}: ${x.len}/${x.limit} (over by ${x.over})`).join(" · ")}.
               </span>
+              {/* AI rewrite-to-fit — one button per over-limit channel, plus Fit all. */}
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                <span className="text-[11px] text-red-700/80 dark:text-red-300/80">Let AI shorten it to fit:</span>
+                {overLimit.map((x) => (
+                  <button
+                    key={x.channel}
+                    onClick={() => fitChannel(x.channel)}
+                    disabled={!!fitBusy}
+                    className="rounded-full border border-red-500/50 bg-red-500/10 px-2.5 py-0.5 text-[11px] font-medium text-red-700 transition hover:bg-red-500/20 disabled:opacity-50 dark:text-red-300"
+                  >
+                    {fitBusy === x.channel ? "Shortening…" : `✂ Fit to ${labelFor(x.channel)}`}
+                  </button>
+                ))}
+                {overLimit.length > 1 && (
+                  <button
+                    onClick={() => fitChannel("all")}
+                    disabled={!!fitBusy}
+                    className="rounded-full border border-red-500/60 bg-red-500/20 px-2.5 py-0.5 text-[11px] font-semibold text-red-800 transition hover:bg-red-500/30 disabled:opacity-50 dark:text-red-200"
+                  >
+                    {fitBusy === "all" ? "Shortening…" : "✂ Fit all"}
+                  </button>
+                )}
+                <span className="text-[11px] text-red-700/70 dark:text-red-300/70">— or shorten it yourself / uncheck that channel.</span>
+              </div>
+              {fitErr && <p className="mt-1.5 text-[11px] font-medium text-red-700 dark:text-red-300">{fitErr}</p>}
+              <p className="mt-1 text-[11px] text-red-700/70 dark:text-red-300/70">Fitting keeps your facts and the required disclosure; review the rewrite before publishing.</p>
             </div>
           )}
           {preview.flags.length > 0 && !preview.blocked && (
