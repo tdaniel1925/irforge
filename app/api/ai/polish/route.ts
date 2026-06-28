@@ -11,7 +11,7 @@ export async function POST(req: Request) {
   const { text } = (await req.json().catch(() => ({}))) as { text?: string };
   const input = String(text ?? "").trim();
   if (!input) return NextResponse.json({ error: "Nothing to polish." }, { status: 422 });
-  if (input.length > 4000) return NextResponse.json({ error: "Text is too long to polish (max 4000 chars)." }, { status: 422 });
+  if (input.length > 8000) return NextResponse.json({ error: "Text is too long to polish (max 8000 chars)." }, { status: 422 });
 
   const polished = await polishText(input);
   if (!polished) return NextResponse.json({ error: "Couldn't polish right now — try again." }, { status: 502 });

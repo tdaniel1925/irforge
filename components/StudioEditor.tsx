@@ -37,6 +37,24 @@ export default function StudioEditor({ companyTicker }: { companyTicker: string 
     }
   };
 
+  // Polish the document in place (grammar/spelling/spacing) — compliance-safe.
+  const [polishing, setPolishing] = useState(false);
+  const polish = async () => {
+    if (!content.trim()) return;
+    setPolishing(true); setError("");
+    try {
+      const res = await fetch("/api/ai/polish", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: content }) });
+      const d = await res.json();
+      if (!res.ok) { setError(d.error ?? "Couldn't polish."); return; }
+      if (d.polished && d.polished.trim() !== content.trim()) setContent(d.polished);
+      else setError("Looks clean already — no changes suggested.");
+    } catch {
+      setError("Couldn't reach the editor service.");
+    } finally {
+      setPolishing(false);
+    }
+  };
+
   const blocking = flags.filter((f) => f.severity === "block");
 
   return (
@@ -50,9 +68,18 @@ export default function StudioEditor({ companyTicker }: { companyTicker: string 
             {flags.map((f) => f.rule).join(", ")}
           </div>
         )}
+        {content.trim() && (
+          <div className="mb-2 flex items-center gap-2">
+            <button onClick={polish} disabled={polishing} className="rounded-lg border border-app px-2.5 py-1 text-xs font-medium text-app transition hover:bg-app-hover disabled:opacity-50">
+              {polishing ? "Polishing…" : "✨ Polish (grammar & spacing)"}
+            </button>
+            <span className="text-[11px] text-faint">Fixes spelling/grammar/spacing without changing your meaning.</span>
+          </div>
+        )}
         <textarea
           value={content}
           onChange={(e) => setContent(e.target.value)}
+          spellCheck
           placeholder="Your document appears here. Type a topic in the bar below and hit Generate — or just start writing. You have full edit control."
           className="h-full min-h-[50vh] w-full resize-none rounded-xl border border-app bg-surface p-4 text-sm leading-relaxed text-app focus:border-emerald-500 focus:outline-none"
         />

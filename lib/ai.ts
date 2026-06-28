@@ -7,7 +7,7 @@ import type { TickerAudit } from "./audit";
 
 const MODEL = "claude-sonnet-4-6";
 
-async function claude(system: string, user: string): Promise<string | null> {
+async function claude(system: string, user: string, maxTokens = 1200): Promise<string | null> {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return null;
   try {
@@ -20,7 +20,7 @@ async function claude(system: string, user: string): Promise<string | null> {
       },
       body: JSON.stringify({
         model: MODEL,
-        max_tokens: 1200,
+        max_tokens: maxTokens,
         system,
         messages: [{ role: "user", content: user }],
       }),
@@ -1011,13 +1011,14 @@ export async function pickVisualConcept(postText: string, company: Company): Pro
 // WITHOUT changing meaning, tone, or adding any claims/numbers/promotion. Used by the
 // compose editor's "Polish" button. Returns the cleaned text, or null if unavailable.
 export async function polishText(text: string): Promise<string | null> {
-  const input = String(text ?? "").slice(0, 4000).trim();
+  const input = String(text ?? "").slice(0, 8000).trim();
   if (!input) return null;
   const out = await claude(
     `You are a careful copy editor for investor-relations social posts. Clean up the user's draft: fix spelling, grammar, punctuation, capitalization, awkward spacing, and line breaks; tighten only obviously clumsy wording. ` +
       `STRICT RULES: preserve the original MEANING, facts, and tone exactly. Do NOT add, remove, or change any facts, numbers, claims, predictions, or promotional language. Do NOT add hashtags, emojis, or calls to action that weren't there. Do NOT invent anything. If the draft is already clean, return it essentially unchanged. ` +
       `Output ONLY the corrected text — no preamble, no quotes, no explanation.`,
-    `Draft:\n"""${input}"""\n\nCorrected:`
+    `Draft:\n"""${input}"""\n\nCorrected:`,
+    4000 // headroom to return a full press-release-length document
   );
   const cleaned = out?.trim().replace(/^["']|["']$/g, "");
   return cleaned && cleaned.length > 0 ? cleaned : null;
