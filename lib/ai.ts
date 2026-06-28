@@ -1022,3 +1022,21 @@ export async function polishText(text: string): Promise<string | null> {
   const cleaned = out?.trim().replace(/^["']|["']$/g, "");
   return cleaned && cleaned.length > 0 ? cleaned : null;
 }
+
+// Write a social post from a user's topic/idea. Compliance-safe: grounded in the
+// company's public facts, never predicts price, never gives advice, never says
+// "undervalued". Returns a single ready-to-edit post (the user reviews + approves).
+export async function writePostFromTopic(topic: string, company: Company): Promise<string | null> {
+  const t = String(topic ?? "").slice(0, 400).trim();
+  if (!t) return null;
+  const out = await claude(
+    SYSTEM_PROMPT(company) +
+      ` Write ONE concise, engaging social post (1–3 short paragraphs, not a numbered thread) suitable for X/LinkedIn. ` +
+      `Plain, confident, factual. No hashtags spam, at most one tasteful emoji. Do NOT append disclosures (the app adds them).`,
+    `Company: ${company.name} ($${company.ticker}), sector ${company.sector}. Description: ${company.description}. ` +
+      `Write a post about this topic/idea: "${t}". Use only public, factual framing.`
+  );
+  if (!out || isRefusal(out)) return null;
+  // Strip any preamble; return the post body as plain text.
+  return out.trim().replace(/^(here'?s|sure|draft:?)[^\n]*\n+/i, "").trim().slice(0, 2000) || null;
+}

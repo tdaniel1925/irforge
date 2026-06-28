@@ -56,6 +56,11 @@ export default function QuickPostComposer({ embedded = false }: { embedded?: boo
   const [previewTab, setPreviewTab] = useState<string | null>(null);
   const [brandColors, setBrandColors] = useState("");
   const [imgVariant, setImgVariant] = useState(0);
+  // AI-write: an inline panel that drafts the post from a topic/idea.
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiTopic, setAiTopic] = useState("");
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiErr, setAiErr] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -77,6 +82,32 @@ export default function QuickPostComposer({ embedded = false }: { embedded?: boo
 
   // Any edit invalidates a prior preview/approval.
   const onText = (v: string) => { setText(v); setPreview(null); setDone(null); setAck(false); };
+
+  // AI writes the post from a topic, then drops it into the editor to refine.
+  const writeWithAI = async (topic: string) => {
+    const t = topic.trim();
+    if (!t) return;
+    setAiBusy(true); setAiErr("");
+    try {
+      const r = await fetch("/api/ai/write-post", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ topic: t }) });
+      const d = await r.json();
+      if (!r.ok) { setAiErr(d.error ?? "Couldn't draft that."); return; }
+      onText(d.text);
+      setAiOpen(false); setAiTopic("");
+    } catch {
+      setAiErr("Couldn't reach the AI. Try again.");
+    } finally {
+      setAiBusy(false);
+    }
+  };
+
+  const AI_SUGGESTIONS = [
+    "A recent milestone or achievement",
+    "A product or partnership update",
+    "Thank our shareholders & community",
+    "Educate investors on our sector",
+    "An upcoming event or webinar",
+  ];
 
   const uploadFile = async (file: File) => {
     setErr(""); setMediaBusy(true);
@@ -195,7 +226,42 @@ export default function QuickPostComposer({ embedded = false }: { embedded?: boo
 
       {/* 1 — compose */}
       <Card className="mb-4">
-        <label className="mb-1 block text-xs font-medium text-muted">Your post</label>
+        <div className="mb-1 flex items-center justify-between">
+          <label className="block text-xs font-medium text-muted">Your post</label>
+          <button onClick={() => setAiOpen((o) => !o)} className="rounded-lg border border-emerald-500/40 bg-emerald-500/5 px-2.5 py-1 text-xs font-medium text-emerald-700 transition hover:bg-emerald-500/10 dark:text-emerald-300">
+            ✨ Write with AI
+          </button>
+        </div>
+
+        {/* AI-write panel: give a topic (or pick a suggestion) and AI drafts the post */}
+        {aiOpen && (
+          <div className="mb-3 rounded-lg border border-emerald-500/30 bg-emerald-500/[0.04] p-3">
+            <p className="mb-1.5 text-xs font-medium text-app">What should this post be about?</p>
+            <div className="flex gap-2">
+              <input
+                value={aiTopic}
+                onChange={(e) => setAiTopic(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && writeWithAI(aiTopic)}
+                placeholder="e.g. our Q2 operations update, or a new partnership…"
+                className="flex-1 rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:border-emerald-500 focus:outline-none"
+              />
+              <button onClick={() => writeWithAI(aiTopic)} disabled={aiBusy || !aiTopic.trim()} className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-50">
+                {aiBusy ? "Writing…" : "Write it"}
+              </button>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              <span className="text-[11px] text-faint">Or try:</span>
+              {AI_SUGGESTIONS.map((s) => (
+                <button key={s} onClick={() => writeWithAI(s)} disabled={aiBusy} className="rounded-full border border-app bg-surface px-2.5 py-0.5 text-[11px] text-muted transition hover:bg-app-hover hover:text-app disabled:opacity-50">
+                  {s}
+                </button>
+              ))}
+            </div>
+            {aiErr && <p className="mt-1.5 text-xs text-red-500">{aiErr}</p>}
+            <p className="mt-1.5 text-[11px] text-faint">AI drafts a compliant post grounded in your public facts — you can edit, polish, and preview before it goes out.</p>
+          </div>
+        )}
+
         <SmartTextarea
           value={text}
           onChange={onText}
