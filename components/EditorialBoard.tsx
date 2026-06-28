@@ -1,6 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import SmartTextarea from "@/components/SmartTextarea";
+
+const DRAFT_SUGGESTIONS = [
+  "A recent milestone or achievement",
+  "A product or partnership update",
+  "Educate investors on our sector",
+  "An upcoming event or webinar",
+];
 
 interface Post {
   id: string; title: string; body: string; status: string;
@@ -172,10 +180,16 @@ export default function EditorialBoard({ initialPosts, voices, canPublish = fals
               {busy === "draft" ? "Drafting…" : "✨ AI draft"}
             </button>
           </div>
+          {/* Quick topic starters — click to draft from a common idea */}
+          <div className="flex flex-wrap gap-1.5">
+            <span className="text-[11px] text-faint">Try:</span>
+            {DRAFT_SUGGESTIONS.map((s) => (
+              <button key={s} onClick={() => setTopic(s)} disabled={busy === "draft"} className="rounded-full border border-app bg-surface px-2.5 py-0.5 text-[11px] text-muted transition hover:bg-app-hover hover:text-app disabled:opacity-50">{s}</button>
+            ))}
+          </div>
           <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title (optional)"
             className="w-full rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:border-emerald-500 focus:outline-none" />
-          <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={5} placeholder="Post text…"
-            className="w-full resize-none rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:border-emerald-500 focus:outline-none" />
+          <SmartTextarea value={body} onChange={setBody} rows={5} placeholder="Post text…" />
           {error && <p className="text-sm text-red-500">{error}</p>}
           <button onClick={create} disabled={busy === "create" || !body.trim()} className="rounded-lg bg-emerald-600 px-5 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50">
             {busy === "create" ? "Saving…" : "Save as draft"}
