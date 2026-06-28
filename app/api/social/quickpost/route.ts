@@ -114,6 +114,11 @@ export async function POST(req: Request) {
     "QUICKPOST_PUBLISHED",
     `Immediate post to ${channels.join(", ")}${result.postUrl ? ` (${result.postUrl})` : ""} — FLS note appended`
   );
+  // Record the published post so it appears in Posts → Published (best-effort; never
+  // blocks the publish). Without this, Quick Posts published fine but were invisible
+  // to the Published list (which reads iros_posts).
+  const { recordPublishedPost } = await import("@/lib/iros");
+  await recordPublishedPost({ body: text, channels, postUrl: result.postUrl, posted: result.posted });
   await save();
   return NextResponse.json({ ok: true, posted: result.posted, postUrl: result.postUrl, channels });
 }

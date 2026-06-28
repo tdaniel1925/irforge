@@ -43,6 +43,10 @@ export default function SocialOutbox({ initialPosts, linkedAccounts }: { initial
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const [error, setError] = useState("");
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 20;
+  const pageCount = Math.max(1, Math.ceil(posts.length / PAGE_SIZE));
+  const paged = posts.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
 
   const refresh = async () => {
     setBusy(true); setError(""); setMsg("");
@@ -91,7 +95,7 @@ export default function SocialOutbox({ initialPosts, linkedAccounts }: { initial
       {msg && <p className="text-sm text-green-600">{msg}</p>}
       {error && <p className="text-sm text-red-600">{error}</p>}
 
-      {posts.map((p) => {
+      {paged.map((p) => {
         const badge = statusBadge(p);
         const channelLinked = linkedAccounts.length === 0 || linkedAccounts.includes(p.platform);
         return (
@@ -125,6 +129,14 @@ export default function SocialOutbox({ initialPosts, linkedAccounts }: { initial
           </div>
         );
       })}
+
+      {pageCount > 1 && (
+        <div className="flex items-center justify-center gap-3 pt-2 text-sm">
+          <button onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0} className="rounded-lg border border-app px-3 py-1.5 text-muted hover:bg-app-hover disabled:opacity-40">← Prev</button>
+          <span className="text-muted">Page {page + 1} of {pageCount} · {posts.length} posts</span>
+          <button onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))} disabled={page >= pageCount - 1} className="rounded-lg border border-app px-3 py-1.5 text-muted hover:bg-app-hover disabled:opacity-40">Next →</button>
+        </div>
+      )}
     </div>
   );
 }

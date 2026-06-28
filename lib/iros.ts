@@ -96,6 +96,37 @@ export async function createPost(input: { title: string; body: string; channels?
   return data ? rowToPost(data) : null;
 }
 
+// Record a post that was published OUTSIDE the draft pipeline (e.g. Quick Post →
+// publish now). Inserts a published iros_posts row so it shows in the Posts page's
+// Published list. Best-effort: a failure here must not fail the actual publish.
+export async function recordPublishedPost(input: {
+  body: string;
+  channels: string[];
+  postUrl?: string;
+  posted: boolean; // false = simulated (no live connection)
+}): Promise<void> {
+  try {
+    const supabase = await createServerSupabase();
+    const { data: { user } } = await supabase.auth.getUser();
+    const cid = await myCompanyId();
+    if (!cid) return;
+    const now = new Date().toISOString();
+    await supabase.from("iros_posts").insert({
+      company_id: cid,
+      title: input.body.split("\n")[0].slice(0, 200),
+      body: input.body.slice(0, 4000),
+      channels: input.channels ?? [],
+      platform: input.channels?.[0] ?? "",
+      status: "published",
+      posted_at: input.posted ? now : null,
+      scheduled_at: now,
+      post_url: input.postUrl ?? null,
+      theme: "Quick Post",
+      created_by: user?.id ?? null,
+    });
+  } catch { /* never block the real publish on a logging insert */ }
+}
+
 export async function updatePostFields(id: string, patch: Record<string, unknown>): Promise<IrosPost | null> {
   const supabase = await createServerSupabase();
   const { data } = await supabase.from("iros_posts").update({ ...patch, updated_at: new Date().toISOString() }).eq("id", id).select("*").single();
