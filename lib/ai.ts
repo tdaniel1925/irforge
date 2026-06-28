@@ -1006,3 +1006,19 @@ export async function pickVisualConcept(postText: string, company: Company): Pro
   const concept = out?.trim().replace(/^["']|["']$/g, "").split("\n")[0];
   return concept && concept.length > 3 ? concept.slice(0, 200) : null;
 }
+
+// Polish a draft: fix spelling, grammar, punctuation, spacing, and line breaks —
+// WITHOUT changing meaning, tone, or adding any claims/numbers/promotion. Used by the
+// compose editor's "Polish" button. Returns the cleaned text, or null if unavailable.
+export async function polishText(text: string): Promise<string | null> {
+  const input = String(text ?? "").slice(0, 4000).trim();
+  if (!input) return null;
+  const out = await claude(
+    `You are a careful copy editor for investor-relations social posts. Clean up the user's draft: fix spelling, grammar, punctuation, capitalization, awkward spacing, and line breaks; tighten only obviously clumsy wording. ` +
+      `STRICT RULES: preserve the original MEANING, facts, and tone exactly. Do NOT add, remove, or change any facts, numbers, claims, predictions, or promotional language. Do NOT add hashtags, emojis, or calls to action that weren't there. Do NOT invent anything. If the draft is already clean, return it essentially unchanged. ` +
+      `Output ONLY the corrected text — no preamble, no quotes, no explanation.`,
+    `Draft:\n"""${input}"""\n\nCorrected:`
+  );
+  const cleaned = out?.trim().replace(/^["']|["']$/g, "");
+  return cleaned && cleaned.length > 0 ? cleaned : null;
+}

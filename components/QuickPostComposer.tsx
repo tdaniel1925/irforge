@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useAppState } from "@/components/useAppState";
 import { Button, Card, ErrorBanner, LoadingState, PageHeader } from "@/components/ui";
+import SmartTextarea from "@/components/SmartTextarea";
 
 // Quick Post — compose a post, pick channels, preview (with disclosures + compliance
 // checks), then publish immediately. Same guardrails as the Do queue: disclosures are
@@ -195,12 +196,11 @@ export default function QuickPostComposer({ embedded = false }: { embedded?: boo
       {/* 1 — compose */}
       <Card className="mb-4">
         <label className="mb-1 block text-xs font-medium text-muted">Your post</label>
-        <textarea
+        <SmartTextarea
           value={text}
-          onChange={(e) => onText(e.target.value)}
+          onChange={onText}
           rows={5}
           placeholder="What do you want to share with investors?"
-          className="w-full rounded-lg border border-app bg-surface-2 p-3 text-sm text-app focus:border-emerald-500 focus:outline-none"
         />
         <p className="mt-1 text-xs text-faint">{text.length} characters · a forward-looking-statements note is appended automatically (a short version + link on X).</p>
 
