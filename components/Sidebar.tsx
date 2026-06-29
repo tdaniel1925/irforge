@@ -31,6 +31,7 @@ const NAV: NavGroup[] = [
       { href: "/social/setup", label: "Social Media Setup", icon: "🎨", hint: "Logo, colors, image style, voice & guidance — set once", detail: "Set your brand once and every AI post + image stays on-brand: upload your logo, pick brand colors and an image style (with live samples), teach the AI your executives' voice, and add any guidance that helps. A guided, step-by-step setup. Still fully compliance-checked." },
       { href: "/calendar", label: "IR Calendar", icon: "📅", hint: "Earnings, deadlines, conferences, lock-ups", detail: "Keep every IR date in one place: earnings, filing deadlines, conferences, lock-ups, meetings, and reminders. Set a quiet period whenever you need one to block sensitive posts during a blackout window." },
       { href: "/calendars", label: "Team Calendars", icon: "📆", hint: "IR / Tech / General / personal — admin sets who sees what", detail: "All your team's calendars in one view: IR, Tech & Dev, a General calendar everyone sees, and personal ones. Admins choose which calendars each teammate can see; anyone can add events to a calendar they have access to." },
+      { href: "/team", label: "Team", icon: "🧑‍🤝‍🧑", hint: "Invite teammates & manage roles", detail: "Manage who can access this company account: invite teammates by email, set each person as an admin or member, and remove people. Admins can invite and manage roles; members get the full dashboard plus their own private workspace." },
     ],
   },
   {

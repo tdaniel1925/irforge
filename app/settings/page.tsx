@@ -161,8 +161,8 @@ export default function SettingsPage() {
 
 // Team management — invite and manage the people on this company account.
 // Lives here in Settings so admins find it where they expect. The full roster +
-// invite form is the /admin/team page (works for any company admin, not just
-// platform super-admins).
+// invite form is the /team page (works for any company admin, not just platform
+// super-admins — it is intentionally NOT under the /admin super-admin wall).
 function TeamSection() {
   return (
     <Card className="mb-6">
@@ -171,7 +171,7 @@ function TeamSection() {
         Invite colleagues to this company account. Everyone shares the dashboard; each person gets their own private workspace.
         Admins can approve posts and manage settings; members can draft and collaborate.
       </p>
-      <Link href="/admin/team" className="inline-block rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500">
+      <Link href="/team" className="inline-block rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500">
         Manage team &amp; invite people →
       </Link>
     </Card>

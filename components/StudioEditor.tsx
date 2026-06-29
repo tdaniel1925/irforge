@@ -58,10 +58,43 @@ export default function StudioEditor({ companyTicker }: { companyTicker: string 
   const blocking = flags.filter((f) => f.severity === "block");
 
   return (
-    // Fills the content area; the AI bar sticks to the bottom of THIS frame.
-    <div className="flex h-[calc(100vh-7rem)] flex-col">
-      {/* Frame 2: scrollable, editable content window */}
-      <div className="min-h-0 flex-1 overflow-y-auto">
+    // Natural document flow (no fixed 100vh frame — that frame got pushed off-screen
+    // inside the Compose page, hiding the Generate button). The AI bar is the FIRST
+    // thing you see so the Generate/Revise button is always visible.
+    <div>
+      {/* Frame 1: AI instruction bar — always visible at the top */}
+      <div className="rounded-xl border border-app bg-surface p-3">
+        <label className="mb-1.5 block text-xs font-semibold text-app">
+          {content ? "Tell the AI how to revise the press release" : "Describe the press release to generate"}
+        </label>
+        <div className="flex items-end gap-2">
+          <textarea
+            value={instruction}
+            onChange={(e) => setInstruction(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) generate(); }}
+            rows={2}
+            placeholder={content ? "e.g. 'make it shorter and add a forward-looking statement'… (⌘/Ctrl+Enter)" : "e.g. 'announce we acquired the Texatron unit'… (⌘/Ctrl+Enter)"}
+            className="flex-1 resize-none rounded-xl border border-app bg-surface-2 p-3 text-sm text-app focus:border-emerald-500 focus:outline-none"
+          />
+          <button disabled={busy || !instruction.trim()} onClick={generate} className="shrink-0 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-50">
+            {busy ? "Working…" : content ? "Revise" : "Generate"}
+          </button>
+        </div>
+        {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+        <p className="mt-1.5 text-[11px] text-faint">
+          {instruction.trim() ? "AI keeps it compliant — no price talk, predictions, or advice. Edit the text directly any time." : "Type a topic above, then press Generate to draft a compliant press release."}
+        </p>
+      </div>
+
+      {/* Recent AI exchanges (compact) */}
+      {log.length > 0 && (
+        <div className="mt-3 max-h-20 overflow-y-auto rounded-lg bg-app/30 px-3 py-2 text-xs text-muted">
+          {log.slice(-4).map((m, i) => <p key={i}><span className="font-semibold text-app">{m.role === "you" ? "You" : "AI"}:</span> {m.text}</p>)}
+        </div>
+      )}
+
+      {/* Frame 2: editable document */}
+      <div className="mt-3">
         {flags.length > 0 && (
           <div className={`mb-3 rounded-lg border px-3 py-2 text-xs ${blocking.length ? "border-red-500/40 bg-red-500/10 text-red-700 dark:text-red-300" : "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300"}`}>
             {blocking.length ? "⚠ Blocked language — fix before publishing: " : "Heads up: "}
@@ -80,35 +113,9 @@ export default function StudioEditor({ companyTicker }: { companyTicker: string 
           value={content}
           onChange={(e) => setContent(e.target.value)}
           spellCheck
-          placeholder="Your document appears here. Type a topic in the bar below and hit Generate — or just start writing. You have full edit control."
-          className="h-full min-h-[50vh] w-full resize-none rounded-xl border border-app bg-surface p-4 text-sm leading-relaxed text-app focus:border-emerald-500 focus:outline-none"
+          placeholder="Your document appears here. Type a topic in the bar above and hit Generate — or just start writing. You have full edit control."
+          className="min-h-[50vh] w-full resize-y rounded-xl border border-app bg-surface p-4 text-sm leading-relaxed text-app focus:border-emerald-500 focus:outline-none"
         />
-      </div>
-
-      {/* Recent AI exchanges (compact) */}
-      {log.length > 0 && (
-        <div className="mt-2 max-h-20 overflow-y-auto rounded-lg bg-app/30 px-3 py-2 text-xs text-muted">
-          {log.slice(-4).map((m, i) => <p key={i}><span className="font-semibold text-app">{m.role === "you" ? "You" : "AI"}:</span> {m.text}</p>)}
-        </div>
-      )}
-
-      {/* Frame 3: STICKY AI instruction bar (does not scroll with the content) */}
-      <div className="sticky bottom-0 mt-3 border-t border-app bg-app/80 pt-3 backdrop-blur">
-        {error && <p className="mb-2 text-sm text-red-600">{error}</p>}
-        <div className="flex items-end gap-2">
-          <textarea
-            value={instruction}
-            onChange={(e) => setInstruction(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) generate(); }}
-            rows={2}
-            placeholder={content ? "Tell the AI how to change it — e.g. 'make it shorter and add a forward-looking statement'… (⌘/Ctrl+Enter)" : "Describe the press release to generate — e.g. 'announce we acquired the Texatron unit for testing'… (⌘/Ctrl+Enter)"}
-            className="flex-1 resize-none rounded-xl border border-app bg-surface p-3 text-sm text-app focus:border-emerald-500 focus:outline-none"
-          />
-          <button disabled={busy || !instruction.trim()} onClick={generate} className="rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white disabled:opacity-50">
-            {busy ? "Working…" : content ? "Revise" : "Generate"}
-          </button>
-        </div>
-        <p className="mt-1.5 text-[11px] text-faint">AI keeps it compliant — no price talk, predictions, or advice. Edit the text directly any time.</p>
       </div>
     </div>
   );
