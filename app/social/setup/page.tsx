@@ -61,6 +61,17 @@ export default function SocialSetupPage() {
   const isAdmin = (db as { role?: string }).role !== "member";
 
   const save = async (patch: Record<string, unknown>, msg = "Saved.") => {
+    // These brand fields are preserved-if-blank server-side (an empty save won't
+    // overwrite the saved value). Catch it here so the user gets honest feedback
+    // instead of a misleading "Saved." that quietly did nothing.
+    const PRESERVE_IF_BLANK = ["brandColors", "postGuidance", "imageStyle"];
+    const blanked = Object.entries(patch).filter(
+      ([k, v]) => PRESERVE_IF_BLANK.includes(k) && (typeof v !== "string" || v.trim() === "")
+    );
+    if (blanked.length > 0 && Object.keys(patch).length === blanked.length) {
+      setNotice("Nothing to save — that field is empty, so your saved value is kept. (Empty entries don't overwrite your brand settings.)");
+      return;
+    }
     setSaving(true); setNotice("");
     const err = await act("/api/company", "PUT", patch);
     setNotice(err ? err : msg);

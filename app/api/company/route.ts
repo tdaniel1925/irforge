@@ -8,6 +8,19 @@ export const dynamic = "force-dynamic";
 export async function PUT(req: Request) {
   const patch = (await req.json()) as Partial<Company>;
 
+  // Guard against blank-overwrites-saved-value: these brand/AI-grounding fields drive
+  // how on-brand the generated images look (e.g. AMFN's navy+red infographic style).
+  // If a save form submits one of them as an empty string, treat it as "leave it
+  // alone" rather than wiping the stored value — a cleared field once silently reset
+  // AMFN's images back to a generic look. To intentionally clear one, the caller must
+  // not include it as "" (we drop empties here). Whitespace-only counts as empty.
+  const PRESERVE_IF_BLANK: (keyof Company)[] = ["brandColors", "postGuidance", "imageStyle"];
+  for (const k of PRESERVE_IF_BLANK) {
+    if (k in patch && (typeof patch[k] !== "string" || (patch[k] as string).trim() === "")) {
+      delete patch[k];
+    }
+  }
+
   // Multi-tenant path: if a user is logged in, write to their company row (RLS-scoped).
   const mine = await getMyCompany();
   if (mine) {
