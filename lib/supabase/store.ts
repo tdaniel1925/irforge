@@ -270,16 +270,34 @@ export async function loadCompanyDb(): Promise<{ db: Database; companyId: string
   for (const c of COLLECTIONS) (db as unknown as Record<string, unknown>)[c] = [];
   for (const row of data ?? []) (db as unknown as Record<string, unknown>)[row.collection as string] = row.data;
 
+  // Snapshot what was LOADED so save() writes only what THIS request changed.
+  // Previously save() upserted all 16 collections + the full company profile on
+  // every call — a full-document last-writer-wins: two concurrent requests (or two
+  // teammates) silently clobbered each other's unrelated writes (e.g. saving a draft
+  // overwrote a concurrent brand-colors change with stale values). Dirty-only writes
+  // shrink the race to same-collection concurrent edits (inherent to the JSONB
+  // design; per-row versioning is the eventual fix).
+  const baseline: Record<string, string> = {};
+  for (const c of COLLECTIONS) baseline[c] = JSON.stringify((db as unknown as Record<string, unknown>)[c] ?? []);
+  const companyBaseline = JSON.stringify(db.company);
+
   const save = async () => {
-    // Persist company profile fields + each collection that exists on db.
-    await updateMyCompany(db.company);
-    const rows = COLLECTIONS.map((c) => ({
+    // Company profile: only when this request actually changed it.
+    if (JSON.stringify(db.company) !== companyBaseline) await updateMyCompany(db.company);
+    const dirty = COLLECTIONS.filter(
+      (c) => JSON.stringify((db as unknown as Record<string, unknown>)[c] ?? []) !== baseline[c]
+    );
+    if (dirty.length === 0) return;
+    const ts = new Date().toISOString();
+    const rows = dirty.map((c) => ({
       company_id: mine.id,
       collection: c,
       data: (db as unknown as Record<string, unknown>)[c] ?? [],
-      updated_at: new Date().toISOString(),
+      updated_at: ts,
     }));
     await supabase.from("company_data").upsert(rows, { onConflict: "company_id,collection" });
+    // Refresh baselines so a second save() in the same request stays dirty-only.
+    for (const c of dirty) baseline[c] = JSON.stringify((db as unknown as Record<string, unknown>)[c] ?? []);
   };
 
   return { db, companyId: mine.id, save };
