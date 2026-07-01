@@ -55,6 +55,28 @@ export default function StudioEditor({ companyTicker }: { companyTicker: string 
     }
   };
 
+  // Output actions so a finished release isn't a dead end: copy to clipboard or
+  // download as a .txt file to send/publish elsewhere.
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setError("Couldn't copy — select the text and copy manually.");
+    }
+  };
+  const download = () => {
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${companyTicker || "press"}-release.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const blocking = flags.filter((f) => f.severity === "block");
 
   return (
@@ -102,11 +124,18 @@ export default function StudioEditor({ companyTicker }: { companyTicker: string 
           </div>
         )}
         {content.trim() && (
-          <div className="mb-2 flex items-center gap-2">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
             <button onClick={polish} disabled={polishing} className="rounded-lg border border-app px-2.5 py-1 text-xs font-medium text-app transition hover:bg-app-hover disabled:opacity-50">
               {polishing ? "Polishing…" : "✨ Polish (grammar & spacing)"}
             </button>
-            <span className="text-[11px] text-faint">Fixes spelling/grammar/spacing without changing your meaning.</span>
+            <span className="mx-0.5 h-4 w-px bg-app" aria-hidden />
+            <button onClick={copy} className="rounded-lg border border-app px-2.5 py-1 text-xs font-medium text-app transition hover:bg-app-hover">
+              {copied ? "✓ Copied" : "📋 Copy"}
+            </button>
+            <button onClick={download} className="rounded-lg border border-app px-2.5 py-1 text-xs font-medium text-app transition hover:bg-app-hover">
+              ⤓ Download .txt
+            </button>
+            <span className="text-[11px] text-faint">{content.length.toLocaleString()} characters</span>
           </div>
         )}
         <textarea
