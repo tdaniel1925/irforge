@@ -175,12 +175,12 @@ export default function BoardQA({ ticker }: { ticker: string }) {
                   <button onClick={() => draftAnswer(q.id)} disabled={b === "draft"} className="rounded-lg border border-app px-3 py-1.5 text-xs font-medium text-app transition hover:bg-app-hover disabled:opacity-50">
                     {b === "draft" ? "…" : "↻ Re-draft"}
                   </button>
-                  <label className="flex items-center gap-1.5 text-[11px] text-muted" title="Also share this answer on X automatically. Compliance gates (blocked language, Reg FD red, disclosure, 280-char fit) still run before it posts.">
+                  <label className="flex items-center gap-1.5 text-[11px] text-muted" title="Also share this answer on X automatically. Only routine (Reg FD green) answers auto-post; anything sensitive (yellow) or material (red) stays on the board for a human. Disclosure + 280-char fit applied.">
                     <input type="checkbox" checked={alsoX} onChange={(e) => toggleAlsoX(e.target.checked)} className="h-3.5 w-3.5" />
                     Also post to X (𝕏)
                   </label>
                 </div>
-                <p className="mt-1 text-[11px] text-faint">Posts publicly as a verified reply from your IR team. FLS/disclosures apply. {alsoX ? "X cross-post runs the same compliance checks; a Reg FD ‘red’ answer stays on the board and is not auto-tweeted." : ""}</p>
+                <p className="mt-1 text-[11px] text-faint">Posts publicly as a verified reply from your IR team. FLS/disclosures apply. {alsoX ? "Only routine (Reg FD green) answers auto-tweet — anything sensitive (yellow) or material (red) stays on the board for a human to share." : ""}</p>
                 {noteById[`x_${q.id}`] && <p className="mt-1 text-[11px] text-amber-600 dark:text-amber-300">𝕏 {noteById[`x_${q.id}`]}</p>}
               </div>
             )}

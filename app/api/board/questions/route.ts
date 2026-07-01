@@ -100,12 +100,17 @@ async function crossPostToX(
     return { attempted: true, posted: false, skipped: "No X account connected — reply is live on your board only." };
   }
 
-  // Gate: Reg FD RED auto-blocks. A reply that reads as material non-public info must
-  // NOT auto-post to X — it stays on the board (visible, in context) and is held from X.
+  // Gate: Reg FD auto-block. Auto-posting to X only happens for GREEN (routine /
+  // already-public) answers. Both RED (likely material non-public info) and YELLOW
+  // (sensitive / guidance-adjacent — worth a human's eyes) stay on the board and are
+  // HELD from X. Only an explicit human can share those on X afterward.
   try {
     const reg = await classifyRegFD(text, company);
     if (reg.classification === "red") {
-      return { attempted: true, posted: false, skipped: "Held from X: this reply was flagged as possible material non-public info (Reg FD). It's live on your board; review before sharing on X." };
+      return { attempted: true, posted: false, skipped: "Held from X: flagged as possible material non-public info (Reg FD red). It's live on your board; have it reviewed before sharing on X." };
+    }
+    if (reg.classification === "yellow") {
+      return { attempted: true, posted: false, skipped: "Held from X: this answer is sensitive (Reg FD yellow) and needs a human's eyes before it's tweeted. It's live on your board; share it on X manually if it's fine." };
     }
   } catch {
     // If the classifier is unavailable, fail SAFE — don't auto-post to X.
