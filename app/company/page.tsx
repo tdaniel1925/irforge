@@ -100,8 +100,8 @@ export default function CompanyCommandCenter() {
   return (
     <div>
       <PageHeader
-        title="Defense & Reach"
-        subtitle="Two things this page shows you: (1) anyone attacking or spreading false info about your company right now, with a one-tap factual response ready, and (2) how visible you are to investors and whether that's improving."
+        title="Defend Your Name"
+        subtitle="Threats to your reputation right now — each with a one-tap factual response — plus your investor visibility score."
       >
         <Link href={`/t/${db.company.ticker}`} target="_blank" className="rounded-lg border border-app px-3.5 py-2 text-sm text-app hover:bg-app-hover">
           View public page ↗

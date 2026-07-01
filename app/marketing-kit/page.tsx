@@ -12,7 +12,7 @@ export default async function MarketingKitPage() {
 
   return (
     <div className="max-w-3xl">
-      <PageHeader title="Marketing Kit" subtitle="Tell your investors where the real conversation is. Everything here is ready to copy, post, or download — free." />
+      <PageHeader title="Marketing Kit" subtitle="Ready-made posts, graphics, and links to point investors to your page — copy, post, or download." />
       {ticker ? (
         <MarketingKit />
       ) : (

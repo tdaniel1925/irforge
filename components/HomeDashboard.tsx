@@ -85,7 +85,11 @@ export default function HomeDashboard(props: {
             <Stat label="🟢 Green / 🟡 Yellow / 🔴 Red" value={`${m.classByLevel.green ?? 0}/${m.classByLevel.yellow ?? 0}/${m.classByLevel.red ?? 0}`} wide />
             {m.quietActive && <p className="col-span-2 rounded bg-red-500/10 px-2 py-1 text-xs text-red-600">🔇 Quiet period active — publishing paused.</p>}
           </div>
-        ) : <p className="text-sm text-muted">No analytics yet.</p>}
+        ) : (
+          <p className="text-sm text-muted">
+            No analytics yet — <a href="/compose" className="text-emerald-600 hover:underline dark:text-emerald-400">publish your first post</a> to start tracking.
+          </p>
+        )}
       </Card>
     ),
     read: (
@@ -108,7 +112,7 @@ export default function HomeDashboard(props: {
               </li>
             ))}
           </ul>
-        ) : !props.podcast ? <p className="text-sm text-muted">No recent coverage found for ${props.ticker?.toUpperCase() ?? ""}. Check back tomorrow.</p> : null}
+        ) : !props.podcast ? <p className="text-sm text-muted">{`No recent coverage found for $${props.ticker?.toUpperCase() ?? ""}. Check back tomorrow.`}</p> : null}
       </Card>
     ),
     agenda: (
@@ -186,7 +190,7 @@ export default function HomeDashboard(props: {
             ))}
           </div>
         ) : (
-          <p className="mt-3 text-sm text-muted">Nothing waiting. Generate a calendar in the Content Engine to get posts flowing.</p>
+          <p className="mt-3 text-sm text-muted">You&apos;re all caught up — nothing waiting for approval. <span className="text-emerald-600 dark:text-emerald-400">Open your posts →</span></p>
         )}
       </Link>
 

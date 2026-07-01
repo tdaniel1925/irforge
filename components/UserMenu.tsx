@@ -57,7 +57,7 @@ export default function UserMenu() {
             <Link href="/settings" onClick={() => setOpen(false)} className={item}>⚙ Settings</Link>
             <Link href="/billing" onClick={() => setOpen(false)} className={item}>💳 Billing &amp; plan</Link>
             <Link href="/workspace" onClick={() => setOpen(false)} className={item}>🗒 My workspace</Link>
-            <Link href="/admin/team" onClick={() => setOpen(false)} className={item}>👤 Team</Link>
+            <Link href="/team" onClick={() => setOpen(false)} className={item}>👤 Team</Link>
             <Link href="/help" onClick={() => setOpen(false)} className={item}>❓ Help Center</Link>
           </div>
           <div className="border-t border-app p-1.5">

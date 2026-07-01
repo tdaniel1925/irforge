@@ -38,7 +38,7 @@ export default function CapTablePage() {
 
   return (
     <div>
-      <PageHeader title="Cap Table & Dilution" subtitle="Your ownership, fully diluted — common, preferred, insiders, options, warrants, and what your convertible notes turn into. The fully-diluted number every financing decision hinges on, in one place." />
+      <PageHeader title="Cap Table" subtitle="Your fully-diluted ownership — common, preferred, options, warrants, and what convertible notes turn into." />
       {notice && <Banner message={notice.text} tone={notice.tone} onDismiss={() => setNotice(null)} />}
 
       <div className="mb-4 flex items-center gap-2 rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm">

@@ -30,7 +30,7 @@ export default function Analyzer() {
 
   return (
     <div className="max-w-4xl">
-      <PageHeader title="Document Analyzer" subtitle="Paste any document — a short-seller report, a term sheet, a contract, a competitor's filing — and get a plain-English summary, the key terms, the risks, and whether it might trigger a disclosure. Drafting assistant, not legal advice." />
+      <PageHeader title="Document Analyzer" subtitle="Paste any document for a plain-English summary, key terms, risks, and whether it may trigger a disclosure. Not legal advice." />
       {notice && <Banner message={notice.text} tone={notice.tone} onDismiss={() => setNotice(null)} />}
 
       <Card className="mb-6">

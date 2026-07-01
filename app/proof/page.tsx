@@ -26,8 +26,8 @@ export default function ProofPage() {
   return (
     <div>
       <PageHeader
-        title="Your Results"
-        subtitle="Proof that this is working — your score over time, every post we sent, and a complete record of who approved what (the part your lawyers will want). Screenshot any of it for your board."
+        title="Results"
+        subtitle="Your visibility score over time, every post published, and a full record of who approved what — ready for your board."
       />
 
       <div className="mb-5 flex gap-1 rounded-lg border border-app bg-surface-2 p-1 text-sm">
