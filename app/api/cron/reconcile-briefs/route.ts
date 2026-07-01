@@ -1,4 +1,5 @@
 import { fulfillBriefBySession, listStuckPaidBriefs } from "@/lib/briefs";
+import { cronAuthorized } from "@/lib/cronAuth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,7 +22,7 @@ function authorized(req: Request): boolean {
 }
 
 export async function GET(req: Request) {
-  if (!authorized(req)) return Response.json({ error: "Unauthorized." }, { status: 401 });
+  if (!cronAuthorized(req)) return Response.json({ error: "Unauthorized." }, { status: 401 });
 
   const stuck = await listStuckPaidBriefs();
   let fulfilled = 0;

@@ -8,7 +8,10 @@ export const dynamic = "force-dynamic";
 
 // POST — generate a new cadence (between-news) draft
 export async function POST() {
-  const { db, save } = await getStore();
+  const { db, save, authed } = await getStore();
+  // AI-cost guard: when auth is enforced, anonymous callers must not reach the
+  // model call below (token burn). Demo mode (AUTH_ENABLED off) still works.
+  if (process.env.AUTH_ENABLED === "1" && !authed) return NextResponse.json({ error: "Sign in first." }, { status: 401 });
   const recentTitles = db.drafts.filter((d) => d.kind === "cadence").slice(0, 5).map((d) => d.title);
   const { tweets, engine, title } = await generateCadencePost(db.company, recentTitles);
   const flags = checkContent(tweets);

@@ -19,7 +19,10 @@ const validChannel = (c: string) => AYRSHARE_CHANNELS.some((a) => a.key === c);
 
 export async function POST(req: Request) {
   const body = (await req.json().catch(() => ({}))) as Body;
-  const { db, save } = await getStore();
+  const { db, save, authed } = await getStore();
+  // AI-cost guard: when auth is enforced, anonymous callers must not reach the
+  // model call below (token burn). Demo mode (AUTH_ENABLED off) still works.
+  if (process.env.AUTH_ENABLED === "1" && !authed) return NextResponse.json({ error: "Sign in first." }, { status: 401 });
 
   const text = String(body.text ?? "").trim();
   if (!text) return NextResponse.json({ error: "Write something to post first." }, { status: 422 });

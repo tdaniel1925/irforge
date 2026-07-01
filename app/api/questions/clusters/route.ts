@@ -13,7 +13,10 @@ export const dynamic = "force-dynamic";
 // not decide anything is material. Answering a cluster still goes through the existing
 // draft pipeline (generatePublicAnswer + Reg FD guard + checkContent).
 export async function GET(req: Request) {
-  const { db } = await getStore();
+  const { db, authed } = await getStore();
+  // AI-cost guard: when auth is enforced, anonymous callers must not reach the
+  // model call below (token burn). Demo mode (AUTH_ENABLED off) still works.
+  if (process.env.AUTH_ENABLED === "1" && !authed) return NextResponse.json({ error: "Sign in first." }, { status: 401 });
 
   // Default to the claimed company's ticker; allow ?ticker= override for unclaimed pages.
   const url = new URL(req.url);

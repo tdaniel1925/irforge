@@ -9,6 +9,13 @@ import { sendEmail } from "./email";
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL || "https://pubcozone.com";
 
+// Escape user-controlled strings before interpolating into email HTML. Board author
+// names and question bodies are attacker-controlled; unescaped they inject HTML into
+// the company owner's inbox.
+function esc(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
 // Resolve the onboarded company that owns a ticker + the owner's email to notify.
 export async function companyNotifyTarget(
   ticker: string
@@ -51,8 +58,8 @@ export async function notifyNewQuestion(ticker: string, author: string, question
       to: target.email,
       subject: `New investor question on your $${target.ticker} board`,
       html: shell(
-        `${author} asked a question on your public board`,
-        `<blockquote style="border-left:3px solid #059669;margin:0;padding:6px 14px;color:#334155">${question.replace(/</g, "&lt;")}</blockquote>
+        `${esc(author)} asked a question on your public board`,
+        `<blockquote style="border-left:3px solid #059669;margin:0;padding:6px 14px;color:#334155">${esc(question)}</blockquote>
          <p style="color:#334155">Draft a compliant answer with AI and post it as a verified reply — investors see you respond on the record.</p>`,
         `${SITE}/company`,
         "Answer this question →"

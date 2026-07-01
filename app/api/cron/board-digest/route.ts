@@ -1,6 +1,7 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { boardActivitySince } from "@/lib/board";
 import { companyNotifyTarget, sendBoardDigest } from "@/lib/boardNotify";
+import { cronAuthorized } from "@/lib/cronAuth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,18 +12,10 @@ export const maxDuration = 300;
 // digest — but only if there's something new. Best-effort per company so one failure
 // doesn't stop the rest.
 //
-// Auth: Vercel-Cron header OR ?secret=CRON_SECRET (manual trigger).
-function authorized(req: Request): boolean {
-  if (req.headers.get("x-vercel-cron")) return true;
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return false;
-  const url = new URL(req.url);
-  const provided = url.searchParams.get("secret") || req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
-  return provided === secret;
-}
+// Auth: CRON_SECRET only (shared cronAuthorized — x-vercel-cron is client-spoofable).
 
 export async function GET(req: Request) {
-  if (!authorized(req)) return Response.json({ error: "Unauthorized." }, { status: 401 });
+  if (!cronAuthorized(req)) return Response.json({ error: "Unauthorized." }, { status: 401 });
 
   const svc = createServiceClient();
   const { data: companies } = await svc

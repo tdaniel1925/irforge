@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { addBoardPost } from "@/lib/publicStats";
+import { addBoardPost, rateAllow } from "@/lib/publicStats";
 import { notifyNewQuestion } from "@/lib/boardNotify";
 
 export const dynamic = "force-dynamic";
@@ -8,6 +8,12 @@ export const dynamic = "force-dynamic";
 // Supabase public_board (flag='question') so it survives on the serverless host
 // and appears on the ticker's board; the company answers as a verified reply.
 export async function POST(req: Request) {
+  // This is an unauthenticated write that also emails the company — rate-limit it
+  // per IP or it's a board-spam + inbox-bombing vector.
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "anon";
+  if (!(await rateAllow(`question:${ip}`, 3))) {
+    return NextResponse.json({ error: "Slow down a moment — try again shortly." }, { status: 429 });
+  }
   const body = await req.json().catch(() => ({}));
   const ticker = String(body.ticker ?? "").toUpperCase().slice(0, 8);
   const author = String(body.author ?? "").trim().slice(0, 60) || "Anonymous investor";

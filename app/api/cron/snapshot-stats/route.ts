@@ -3,6 +3,7 @@ import { getMarketTrending } from "@/lib/trending";
 import { getBigMovers } from "@/lib/boards";
 import { getWatchedTickers } from "@/lib/publicStats";
 import { auditToStatRow, upsertStatRow, getExistingSnapshotTimes } from "@/lib/companyStats";
+import { cronAuthorized } from "@/lib/cronAuth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,14 +21,6 @@ export const maxDuration = 300; // up to 5 min — sequential audits per chunk
 const UNIVERSE_CAP = 250;  // total tickers we'll track
 const CHUNK = 25;          // tickers refreshed per run (fits the time budget)
 
-function authorized(req: Request): boolean {
-  if (req.headers.get("x-vercel-cron")) return true;
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return false;
-  const url = new URL(req.url);
-  const provided = url.searchParams.get("secret") || req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
-  return provided === secret;
-}
 
 const SYM_RE = /^[A-Z]{1,6}$/;
 
@@ -65,7 +58,7 @@ async function buildUniverse(): Promise<{ ticker: string; reason: string; score:
 }
 
 export async function GET(req: Request) {
-  if (!authorized(req)) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (!cronAuthorized(req)) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
   const started = Date.now();
 

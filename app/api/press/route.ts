@@ -13,7 +13,10 @@ export async function POST(req: Request) {
   const topic = String(body.topic ?? "").trim().slice(0, 300);
   if (topic.length < 5) return NextResponse.json({ error: "Describe what the release is about." }, { status: 422 });
 
-  const { db, save } = await getStore();
+  const { db, save, authed } = await getStore();
+  // AI-cost guard: when auth is enforced, anonymous callers must not reach the
+  // model call below (token burn). Demo mode (AUTH_ENABLED off) still works.
+  if (process.env.AUTH_ENABLED === "1" && !authed) return NextResponse.json({ error: "Sign in first." }, { status: 401 });
   const publicContext = db.filings.slice(0, 4).map((f) => `${f.form}: ${f.summary}`).join(" | ");
   const { headline, dateline, body: prBody, engine } = await generatePressRelease(topic, db.company, publicContext);
 
@@ -35,7 +38,10 @@ export async function POST(req: Request) {
 // PATCH — approve / reject a press release.
 export async function PATCH(req: Request) {
   const { id, action } = await req.json().catch(() => ({}));
-  const { db, save } = await getStore();
+  const { db, save, authed } = await getStore();
+  // AI-cost guard: when auth is enforced, anonymous callers must not reach the
+  // model call below (token burn). Demo mode (AUTH_ENABLED off) still works.
+  if (process.env.AUTH_ENABLED === "1" && !authed) return NextResponse.json({ error: "Sign in first." }, { status: 401 });
   const pr = db.pressReleases.find((p) => p.id === id);
   if (!pr) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const approver = `${db.company.approverName} (${db.company.approverTitle})`;

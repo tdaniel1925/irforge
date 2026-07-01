@@ -8,26 +8,12 @@ import {
 } from "@/lib/publicStats";
 import { sendWatchAlert } from "@/lib/email";
 import { explainFiling } from "@/lib/filingExplain";
+import { cronAuthorized } from "@/lib/cronAuth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300; // up to 5 min — many tickers, sequential audits
 
-// Scheduled alert dispatcher (Vercel Cron). For each watched ticker it runs a
-// fresh audit, diffs against the last-seen snapshot, and emails subscribers about
-// genuinely new events (filing / insider trade / halt / grade change). Then it
-// stores the new snapshot so each event is sent exactly once.
-//
-// Auth: requires the Vercel-Cron header OR ?secret=CRON_SECRET (manual trigger).
-function authorized(req: Request): boolean {
-  // Vercel sets this header on cron invocations.
-  if (req.headers.get("x-vercel-cron")) return true;
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return false; // never allow unauthenticated runs in prod
-  const url = new URL(req.url);
-  const provided = url.searchParams.get("secret") || req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
-  return provided === secret;
-}
 
 interface Change {
   headline: string;
@@ -84,7 +70,7 @@ function diff(prev: WatchSnapshot | null, cur: WatchSnapshot): Change[] {
 }
 
 export async function GET(req: Request) {
-  if (!authorized(req)) {
+  if (!cronAuthorized(req)) {
     return Response.json({ error: "Unauthorized." }, { status: 401 });
   }
 

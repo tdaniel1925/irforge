@@ -31,6 +31,12 @@ export async function GET() {
 // per-platform OAuth). Ensures this company has a profile, then returns that
 // network's OAuth authUrl. Defaults to twitter for back-compat.
 export async function POST(req: Request) {
+  // AUTH REQUIRED before any profile creation: each createAyrshareProfile call
+  // consumes a Zernio plan profile slot. Anonymous callers could exhaust the plan
+  // cap (DoS on paying customers) and orphan provider profiles.
+  const mine = await getMyCompany();
+  if (!mine) return NextResponse.json({ error: "Sign in first." }, { status: 401 });
+
   const { db, save } = await getStore();
   if (!ayrshareMultiTenant()) {
     return NextResponse.json(
@@ -41,8 +47,7 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const platform = typeof body.platform === "string" && body.platform ? body.platform : "twitter";
 
-  const mine = await getMyCompany();
-  const idSuffix = String(mine?.id ?? "").slice(0, 8);
+  const idSuffix = String(mine.id).slice(0, 8);
   const uniqueTitle = `${db.company.name || "Company"} ($${db.company.ticker || "—"}) · ${idSuffix}`;
 
   // We're now on Zernio: a valid profile id is a 24-char Mongo ObjectId (hex).
