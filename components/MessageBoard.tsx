@@ -416,6 +416,11 @@ function PostCard({
               <span className="font-semibold text-app">{post.memberId ? `@${post.author}` : post.author}</span>
             )}
             <span className={`rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${s.badge}`}>{s.label}</span>
+            {/* Answered signal: a question with a verified company reply shows investors
+                the company responded on the record. */}
+            {post.flag === "question" && replies.some((r) => r.verified) && (
+              <span className="rounded-md bg-emerald-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">✓ Answered</span>
+            )}
             <span className="text-faint">{ago(post.ts)} ago</span>
           </div>
           <p className="text-sm leading-relaxed text-app">{post.body}</p>
