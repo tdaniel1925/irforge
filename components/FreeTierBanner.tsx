@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { fetchAppState } from "@/lib/appStateClient";
 
 // Shown in the dashboard when the logged-in company is on the FREE tier — free is a
 // public page only, so the tools are locked until they upgrade.
@@ -9,10 +10,12 @@ export default function FreeTierBanner() {
   const [show, setShow] = useState(false);
 
   useEffect(() => {
-    fetch("/api/state", { cache: "no-store" })
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.authed && d.company?.tier === "free") setShow(true);
+    // Shared fetcher — dedupes with Sidebar/FeatureGate/useAppState (one /api/state
+    // request per page load).
+    fetchAppState()
+      .then((r) => {
+        const d = r.data as { authed?: boolean; company?: { tier?: string } };
+        if (r.ok && d.authed && d.company?.tier === "free") setShow(true);
       })
       .catch(() => {});
   }, []);

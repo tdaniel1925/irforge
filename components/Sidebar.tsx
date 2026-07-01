@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import ThemeToggle from "./ThemeToggle";
+import { fetchAppState } from "@/lib/appStateClient";
 import { HELP, getArticle } from "@/lib/helpContent";
 
 type NavItem = { href: string; label: string; icon: string; hint?: string; detail?: string; helpKey?: string };
@@ -97,9 +98,9 @@ export default function Sidebar() {
     // the Admin section for a super-admin (it's their only nav path to Back Office).
     const loadState = async (attempt = 0): Promise<void> => {
       try {
-        const r = await fetch("/api/state", { cache: "no-store" });
+        const r = await fetchAppState();
         if (!r.ok) throw new Error(String(r.status));
-        const d = await r.json();
+        const d = r.data as { superAdmin?: boolean; company?: { ticker?: string }; openQuestions?: number };
         if (cancelled) return;
         setSuperAdmin(Boolean(d?.superAdmin));
         setTicker(String(d?.company?.ticker ?? "").trim());

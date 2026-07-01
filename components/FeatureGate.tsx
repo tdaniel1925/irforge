@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { LoadingState } from "./ui";
 import { TIERS, FEATURE_MIN_TIER, tierHasFeature, type Feature, type Tier } from "@/lib/billing";
+import { fetchAppState } from "@/lib/appStateClient";
 
 // Client-side hard gate for a tool page. Checks the logged-in company's tier against
 // the required feature; if locked (or free tier), shows an upgrade wall instead of the
@@ -13,11 +14,14 @@ export default function FeatureGate({ feature, children }: { feature: Feature; c
   const [tier, setTier] = useState<Tier>("free");
 
   useEffect(() => {
-    fetch("/api/state", { cache: "no-store" })
-      .then((r) => r.json())
-      .then((d) => {
+    // Shared fetcher — dedupes with Sidebar/FreeTierBanner/useAppState so a page
+    // load costs one /api/state request instead of 3-4.
+    fetchAppState()
+      .then((r) => {
+        const d = r.data as { authed?: boolean; company?: { tier?: string } };
         // Local/demo mode (not authed against Supabase) — no gating.
-        if (!d.authed) { setState("ok"); return; }
+        if (r.ok && !d.authed) { setState("ok"); return; }
+        if (!r.ok) { setState("locked"); return; } // fail CLOSED on errors
         const t = (d.company?.tier ?? "free") as Tier;
         setTier(t);
         setState(tierHasFeature(t, feature) ? "ok" : "locked");

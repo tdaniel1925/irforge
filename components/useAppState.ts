@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { fetchAppState } from "@/lib/appStateClient";
 import type { Database } from "@/lib/types";
 
 // The per-company capability keys the API gates on (server: companyHasFeature).
@@ -20,9 +21,12 @@ export function useAppState() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const refresh = useCallback(async () => {
+  // Shared fetcher dedupes with Sidebar/FeatureGate/FreeTierBanner — one network
+  // request per page load instead of 3-4. `fresh` bypasses the short cache; used
+  // after mutations so the UI reflects the write immediately.
+  const refresh = useCallback(async (opts?: { fresh?: boolean }) => {
     try {
-      const res = await fetch("/api/state", { cache: "no-store" });
+      const res = await fetchAppState(opts);
       // Not signed in (auth enforced) → send them to login instead of showing
       // a confusing error inside the dashboard shell.
       if (res.status === 401) {
@@ -30,7 +34,7 @@ export function useAppState() {
         return;
       }
       if (!res.ok) throw new Error(`Couldn't load your data (${res.status}). Try refreshing.`);
-      setDb(await res.json());
+      setDb(res.data as unknown as AppState);
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load");
@@ -52,7 +56,8 @@ export function useAppState() {
           body: body ? JSON.stringify(body) : undefined,
         });
         const data = await res.json().catch(() => ({}));
-        await refresh();
+        // After a mutation, bypass the shared cache so the write is visible now.
+        await refresh({ fresh: true });
         if (!res.ok) return (data as { error?: string }).error ?? `Request failed (${res.status})`;
         return null;
       } catch {
