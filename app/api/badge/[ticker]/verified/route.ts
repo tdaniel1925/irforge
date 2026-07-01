@@ -1,4 +1,5 @@
 import { getDb } from "@/lib/db";
+import { createServiceClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -9,10 +10,24 @@ export const dynamic = "force-dynamic";
 export async function GET(_req: Request, { params }: { params: { ticker: string } }) {
   const ticker = params.ticker.replace(/\.svg$/i, "").toUpperCase().slice(0, 8);
 
+  // Claimed = a real onboarded company owns this ticker in Supabase. The old code
+  // read the local demo store (empty in production), so EVERY paying customer's
+  // embedded badge rendered "Claim this page" on their own IR site.
   let claimed = false;
   try {
-    const db = getDb();
-    claimed = db.company.ticker.toUpperCase() === ticker;
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      const { data } = await createServiceClient()
+        .from("companies")
+        .select("id")
+        .ilike("ticker", ticker)
+        .eq("onboarding_complete", true)
+        .limit(1)
+        .maybeSingle();
+      claimed = Boolean(data);
+    } else {
+      // Local demo (no Supabase): fall back to the single-company JSON store.
+      claimed = getDb().company.ticker.toUpperCase() === ticker;
+    }
   } catch {
     /* default not claimed */
   }

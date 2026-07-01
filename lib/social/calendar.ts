@@ -3,9 +3,9 @@ import { createServerSupabase, createServiceClient } from "../supabase/server";
 import { getMyCompany } from "../supabase/store";
 import { writeAudit } from "../platform";
 import { planCalendar, generateSocialPost, classifyRegFD, generateCadencePost } from "../ai";
-import { checkContent } from "../compliance";
+import { checkContent, buildChannelPost, CHANNEL_LIMITS } from "../compliance";
 import { generateBrandedImage } from "../image";
-import { publishToChannels, getPostStatus } from "../ayrshare";
+import { publishPerChannel, getPostStatus } from "../ayrshare";
 import { getStore } from "../db";
 import { buildStrategyContext, renderContextForPrompt, getStrategy } from "./strategy";
 
@@ -359,11 +359,25 @@ export async function scheduleApprovedPosts(): Promise<{ ok: boolean; error?: st
     const channels = (p.channels as string[]) ?? [];
     if (!channels.length) { failed.push({ id: String(p.id), reason: "no channel" }); continue; }
 
-    // Append the mandatory disclosures in the publish path (not the draft).
-    const disclosures = [company.flsText, company.disclosureText].filter(Boolean).join("\n\n");
-    const finalText = disclosures ? `${p.body}\n\n${disclosures}` : String(p.body);
+    // Append the mandatory disclosure PER CHANNEL via the same builder as Quick Post
+    // (FLS-only; compact FLS + disclosures link on X). The old code sent one combined
+    // body+FLS+third-party-disclosure blob to every channel — diverging from every
+    // other publish path AND blowing X's 280 cap silently. Channels where the final
+    // text still exceeds the cap are skipped and reported, never sent truncated.
+    const bodies: Record<string, string> = {};
+    const overLimit: string[] = [];
+    for (const ch of channels) {
+      const text = buildChannelPost(String(p.body), company, ch);
+      if (text.length > (CHANNEL_LIMITS[ch] ?? 5000)) { overLimit.push(ch); continue; }
+      bodies[ch] = text;
+    }
+    if (Object.keys(bodies).length === 0) {
+      failed.push({ id: String(p.id), reason: `over the character limit for ${overLimit.join(", ")}` });
+      await supabase.from("iros_posts").update({ publish_error: `Over the character limit for ${overLimit.join(", ")} — shorten the post.`.slice(0, 500), updated_at: new Date().toISOString() }).eq("id", p.id);
+      continue;
+    }
 
-    const result = await publishToChannels(finalText, channels, company.ayrshareProfileKey, {
+    const result = await publishPerChannel(bodies, company.ayrshareProfileKey, {
       scheduleDate: p.scheduled_at ? String(p.scheduled_at) : undefined,
       mediaUrls: p.media_url ? [String(p.media_url)] : undefined,
     });
@@ -381,7 +395,9 @@ export async function scheduleApprovedPosts(): Promise<{ ok: boolean; error?: st
       status: result.posted ? "published" : "scheduled",
       ayr_post_id: result.externalId ?? "",
       post_url: result.postUrl ?? "",
-      publish_error: "",
+      // Partial skip is visible, not silent: if a channel was over its cap it was
+      // held back while the rest published.
+      publish_error: overLimit.length ? `Skipped ${overLimit.join(", ")} — over the character limit.`.slice(0, 500) : "",
       posted_at: result.posted ? new Date().toISOString() : null,
       updated_at: new Date().toISOString(),
     }).eq("id", p.id);
