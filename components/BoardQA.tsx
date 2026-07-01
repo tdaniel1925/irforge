@@ -35,6 +35,10 @@ export default function BoardQA({ ticker }: { ticker: string }) {
   const [flags, setFlags] = useState<Record<string, Flag[]>>({});
   const [busy, setBusy] = useState<Record<string, "draft" | "post" | null>>({});
   const [noteById, setNoteById] = useState<Record<string, string>>({});
+  // "Also post to X" — remembered as a default across answers (localStorage).
+  const [alsoX, setAlsoX] = useState(false);
+  useEffect(() => { try { setAlsoX(localStorage.getItem("boardqa_also_x") === "1"); } catch { /* ignore */ } }, []);
+  const toggleAlsoX = (v: boolean) => { setAlsoX(v); try { localStorage.setItem("boardqa_also_x", v ? "1" : "0"); } catch { /* ignore */ } };
 
   const load = async () => {
     try {
@@ -95,11 +99,16 @@ export default function BoardQA({ ticker }: { ticker: string }) {
     if (!body) return;
     setBusyFor(id, "post"); setNoteById((n) => ({ ...n, [id]: "" }));
     try {
-      const r = await fetch("/api/board/questions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ questionId: id, body }) });
+      const r = await fetch("/api/board/questions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ questionId: id, body, alsoPostToX: alsoX }) });
       const d = await r.json();
       if (!r.ok) { setNoteById((n) => ({ ...n, [id]: d.error ?? "Couldn't post the reply." })); return; }
-      // Answered — drop it from the open list.
-      setQuestions((qs) => (qs ?? []).filter((q) => q.id !== id));
+      // If X was requested but a gate held it, surface why (the board reply still posted).
+      if (d.x?.attempted && !d.x?.posted && d.x?.skipped) {
+        setNoteById((n) => ({ ...n, [`x_${id}`]: d.x.skipped }));
+      }
+      // Answered — drop it from the open list (small delay so an X note is readable).
+      const drop = () => setQuestions((qs) => (qs ?? []).filter((q) => q.id !== id));
+      if (d.x?.attempted && !d.x?.posted) setTimeout(drop, 4000); else drop();
     } catch {
       setNoteById((n) => ({ ...n, [id]: "Couldn't post — try again." }));
     } finally {
@@ -161,13 +170,18 @@ export default function BoardQA({ ticker }: { ticker: string }) {
                 )}
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <button onClick={() => post(q.id)} disabled={b === "post" || blocking(q.id) || !draft.trim()} className="rounded-lg bg-emerald-600 px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-50">
-                    {b === "post" ? "Posting…" : "✓ Approve & post reply"}
+                    {b === "post" ? "Posting…" : alsoX ? "✓ Approve & post (board + X)" : "✓ Approve & post reply"}
                   </button>
                   <button onClick={() => draftAnswer(q.id)} disabled={b === "draft"} className="rounded-lg border border-app px-3 py-1.5 text-xs font-medium text-app transition hover:bg-app-hover disabled:opacity-50">
                     {b === "draft" ? "…" : "↻ Re-draft"}
                   </button>
-                  <span className="text-[11px] text-faint">Posts publicly as a verified reply from your IR team. FLS/disclosures apply.</span>
+                  <label className="flex items-center gap-1.5 text-[11px] text-muted" title="Also share this answer on X automatically. Compliance gates (blocked language, Reg FD red, disclosure, 280-char fit) still run before it posts.">
+                    <input type="checkbox" checked={alsoX} onChange={(e) => toggleAlsoX(e.target.checked)} className="h-3.5 w-3.5" />
+                    Also post to X (𝕏)
+                  </label>
                 </div>
+                <p className="mt-1 text-[11px] text-faint">Posts publicly as a verified reply from your IR team. FLS/disclosures apply. {alsoX ? "X cross-post runs the same compliance checks; a Reg FD ‘red’ answer stays on the board and is not auto-tweeted." : ""}</p>
+                {noteById[`x_${q.id}`] && <p className="mt-1 text-[11px] text-amber-600 dark:text-amber-300">𝕏 {noteById[`x_${q.id}`]}</p>}
               </div>
             )}
             {noteById[q.id] && <p className="mt-2 text-[11px] text-amber-600 dark:text-amber-300">{noteById[q.id]}</p>}
