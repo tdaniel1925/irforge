@@ -37,6 +37,11 @@ export async function middleware(request: NextRequest) {
     }
   );
 
+  // getUser() validates the token with Supabase and, when the access token has
+  // expired but the refresh token is still valid, rotates the session — the new
+  // cookies are written to `response` via the setAll callback above. We must carry
+  // those refreshed cookies onto ANY response we return (401 / redirect included),
+  // otherwise the just-refreshed session is dropped and the user bounces to /login.
   const { data: { user } } = await supabase.auth.getUser();
   const { pathname } = request.nextUrl;
 
@@ -44,11 +49,15 @@ export async function middleware(request: NextRequest) {
     // API routes get a clean JSON 401 — never redirect an API call to the HTML
     // login page (that yields "<" instead of JSON and surfaces as a fake 500).
     if (pathname.startsWith("/api/")) {
-      return NextResponse.json({ error: "Not signed in." }, { status: 401 });
+      const json = NextResponse.json({ error: "Not signed in." }, { status: 401 });
+      response.cookies.getAll().forEach((c) => json.cookies.set(c));
+      return json;
     }
     const url = request.nextUrl.clone();
     url.pathname = "/login";
-    return NextResponse.redirect(url);
+    const redirectRes = NextResponse.redirect(url);
+    response.cookies.getAll().forEach((c) => redirectRes.cookies.set(c));
+    return redirectRes;
   }
 
   return response;

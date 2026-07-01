@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createClient, supabaseConfigured } from "@/lib/supabase/client";
 
 export default function Login() {
@@ -34,6 +34,30 @@ export default function Login() {
     const n = new URLSearchParams(window.location.search).get("next");
     return n && n.startsWith("/") ? n : null;
   })();
+
+  // If you're already signed in, don't show the sign-in form — go to the app
+  // (or the ?next= destination, e.g. accepting an invite). Skip while a password
+  // reset is in progress (?mode=reset), which legitimately lands a signed-in user here.
+  const [checkingSession, setCheckingSession] = useState(configured);
+  useEffect(() => {
+    if (!configured) return;
+    const isReset = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("mode") === "reset";
+    if (isReset) { setCheckingSession(false); return; }
+    let active = true;
+    createClient().auth.getUser()
+      .then(({ data }) => {
+        if (!active) return;
+        if (data.user) {
+          const type = data.user.user_metadata?.account_type;
+          window.location.href = nextParam ?? (type === "member" ? "/member" : "/app");
+        } else {
+          setCheckingSession(false);
+        }
+      })
+      .catch(() => { if (active) setCheckingSession(false); });
+    return () => { active = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [configured]);
 
   const submit = async () => {
     setBusy(true);
@@ -90,6 +114,8 @@ export default function Login() {
           <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-6 text-center text-sm text-amber-700 dark:text-amber-300">
             Sign-in isn&apos;t configured yet — add your Supabase keys and run the schema. The app still runs locally in single-company mode.
           </div>
+        ) : checkingSession ? (
+          <div className="rounded-2xl border border-app bg-surface p-7 text-center text-sm text-muted">Loading…</div>
         ) : (
           <div className="rounded-2xl border border-app bg-surface p-7">
             <h1 className="text-lg font-semibold text-app">{mode === "signin" ? "Sign in" : "Create your account"}</h1>
