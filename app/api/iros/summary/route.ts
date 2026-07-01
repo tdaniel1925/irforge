@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getMyCompany } from "@/lib/supabase/store";
+import { getMyCompany, getMyRole } from "@/lib/supabase/store";
 import { companyHasFeature, writeAudit } from "@/lib/platform";
 import { getMetrics } from "@/lib/iros";
 import { weeklySummary } from "@/lib/ai";
@@ -27,15 +27,23 @@ export async function POST(req: Request) {
 
   const summary = await weeklySummary(metricsText, mine.company);
 
-  // Optionally email the requester (or their account email).
+  // Optionally email the requester (or their account email). Guardrails: valid
+  // format, and only ADMINS may send to an address other than their own — a signed-in
+  // member could otherwise relay platform-branded email to arbitrary addresses
+  // (spam vector for the sending domain).
   const body = await req.json().catch(() => ({}));
   let emailed = false;
-  let to = String(body.email ?? "").trim();
-  if (!to) {
-    const supabase = await createServerSupabase();
-    const { data: { user } } = await supabase.auth.getUser();
-    to = user?.email ?? "";
+  let to = String(body.email ?? "").trim().slice(0, 254);
+  const supabase = await createServerSupabase();
+  const { data: { user } } = await supabase.auth.getUser();
+  const ownEmail = user?.email ?? "";
+  if (to && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)) {
+    return NextResponse.json({ error: "That doesn't look like a valid email." }, { status: 422 });
   }
+  if (to && to.toLowerCase() !== ownEmail.toLowerCase() && (await getMyRole()) !== "admin") {
+    return NextResponse.json({ error: "Only admins can send the summary to other addresses." }, { status: 403 });
+  }
+  if (!to) to = ownEmail;
   if (to && emailEnabled()) {
     try {
       const html = `<div style="font-family:system-ui,sans-serif"><h2>${mine.company.name} — Weekly IR summary</h2><pre style="white-space:pre-wrap;font-family:inherit">${summary.markdown.replace(/[<>]/g, "")}</pre></div>`;

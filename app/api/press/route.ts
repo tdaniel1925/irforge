@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getStore, logAudit, newId } from "@/lib/db";
 import { generatePressRelease } from "@/lib/ai";
-import { checkContent } from "@/lib/compliance";
+import { checkContent, hasBlockingFlags } from "@/lib/compliance";
 import type { PressRelease } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -46,6 +46,11 @@ export async function PATCH(req: Request) {
   if (!pr) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const approver = `${db.company.approverName} (${db.company.approverTitle})`;
   if (action === "approve") {
+    // Same gate as draft approval: hard-blocked language can't be approved (this
+    // path previously skipped the check the drafts path enforces).
+    if (hasBlockingFlags(pr.complianceFlags ?? [])) {
+      return NextResponse.json({ error: "Cannot approve: the release contains blocked language. Edit it first." }, { status: 422 });
+    }
     pr.status = "approved";
     pr.decidedAt = new Date().toISOString();
     pr.decidedBy = approver;

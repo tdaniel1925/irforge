@@ -14,7 +14,12 @@ type Action =
   | { action: "edit"; tweets: string[] };
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
-  const body = (await req.json()) as Action;
+  // Malformed JSON must be a clean 422, not an unhandled 500 (every other route
+  // in the repo guards this).
+  const body = (await req.json().catch(() => null)) as Action | null;
+  if (!body || typeof body.action !== "string") {
+    return NextResponse.json({ error: "Invalid request body." }, { status: 422 });
+  }
   const { db, save } = await getStore();
   const draft = db.drafts.find((d) => d.id === params.id);
   if (!draft) return NextResponse.json({ error: "Draft not found" }, { status: 404 });
@@ -23,7 +28,11 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   switch (body.action) {
     case "edit": {
-      draft.tweets = body.tweets.map((t) => t.trim()).filter(Boolean);
+      // Missing/non-array tweets crashed with `body.tweets.map is not a function`.
+      if (!Array.isArray(body.tweets)) {
+        return NextResponse.json({ error: "Edit requires a tweets array." }, { status: 422 });
+      }
+      draft.tweets = body.tweets.map((t) => String(t).trim()).filter(Boolean);
       draft.complianceFlags = checkContent(draft.tweets);
       const blocked = hasBlockingFlags(draft.complianceFlags);
       // Editing re-runs compliance and resets any prior decision.
@@ -113,6 +122,10 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       );
       break;
     }
+    default:
+      // Unknown actions previously fell through and returned 200 with the unchanged
+      // draft — the caller believed something happened.
+      return NextResponse.json({ error: `Unknown action.` }, { status: 422 });
   }
 
   await save();

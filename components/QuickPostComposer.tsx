@@ -66,12 +66,20 @@ export default function QuickPostComposer({ embedded = false }: { embedded?: boo
   const [fitErr, setFitErr] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const [acctsErr, setAcctsErr] = useState("");
   useEffect(() => {
+    let active = true;
+    // Check r.ok: a 401/500 used to silently produce [] and the UI then confidently
+    // (and wrongly) said "No accounts connected — connect them in Settings".
     fetch("/api/social/accounts")
-      .then((r) => r.json())
-      .then((d) => setAccounts(Array.isArray(d.accounts) ? d.accounts : []))
-      .catch(() => {})
-      .finally(() => setLoadingAccts(false));
+      .then(async (r) => {
+        if (!r.ok) throw new Error(String(r.status));
+        const d = await r.json();
+        if (active) setAccounts(Array.isArray(d.accounts) ? d.accounts : []);
+      })
+      .catch(() => { if (active) setAcctsErr("Couldn't check your connected accounts — refresh to try again."); })
+      .finally(() => { if (active) setLoadingAccts(false); });
+    return () => { active = false; };
   }, []);
 
   if (error) return <ErrorBanner message={error} />;
@@ -139,8 +147,10 @@ export default function QuickPostComposer({ embedded = false }: { embedded?: boo
         // regenerate looks different; layout picks the branded template style.
         body: JSON.stringify({ generate: true, text, brandColors: brandColors.trim() || undefined, variant: imgVariant }),
       });
-      const d = await r.json();
+      // Check the 503 BEFORE parsing: a non-JSON 503 body used to throw in json()
+      // and show an alarming error instead of quietly hiding the button.
       if (r.status === 503) { setAiImageOff(true); return; } // not configured — hide the button, don't alarm
+      const d = await r.json();
       if (!r.ok) throw new Error(d.error ?? "Couldn't generate an image.");
       setMedia((m) => [...m, { url: d.url, kind: "image" }]);
       setImgVariant((v) => v + 1);
@@ -206,6 +216,13 @@ export default function QuickPostComposer({ embedded = false }: { embedded?: boo
       });
       const pd = await pr.json();
       if (pr.ok) { setPreview(pd); setPreviewTab((t) => (pd.channels?.includes(t) ? t : pd.channels?.[0] ?? null)); }
+      else {
+        // The text WAS shortened but the preview rebuild failed — clear the stale
+        // preview (old body + wrong over-limit warnings) instead of silently
+        // desyncing; the user re-clicks Preview.
+        setPreview(null);
+        setFitErr(pd.error ?? "Shortened — click Preview again to refresh.");
+      }
     } catch {
       setFitErr("Couldn't reach the editor service. Try again.");
     } finally {
@@ -309,6 +326,9 @@ export default function QuickPostComposer({ embedded = false }: { embedded?: boo
           onChange={onText}
           rows={5}
           placeholder="What do you want to share with investors?"
+          // While AI-write or Fit is in flight the response will REPLACE the text —
+          // lock the editor so concurrent typing isn't silently thrown away.
+          disabled={aiBusy || !!fitBusy}
         />
         <p className="mt-1 text-xs text-faint">{text.length} characters · a forward-looking-statements note is appended automatically (a short version + link on X).</p>
 
@@ -350,6 +370,8 @@ export default function QuickPostComposer({ embedded = false }: { embedded?: boo
         <label className="mb-2 block text-xs font-medium text-muted">Post to</label>
         {loadingAccts ? (
           <p className="text-sm text-faint">Checking your connected accounts…</p>
+        ) : acctsErr ? (
+          <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-300">{acctsErr}</p>
         ) : connectedKeys.size === 0 ? (
           <p className="rounded-lg border border-dashed border-app bg-surface-2/40 px-3 py-2 text-sm text-muted">
             No accounts connected yet. <a href="/settings" className="text-emerald-600 underline dark:text-emerald-400">Connect accounts in Settings</a> first.

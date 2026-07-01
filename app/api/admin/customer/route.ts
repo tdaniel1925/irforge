@@ -126,9 +126,13 @@ export async function POST(req: Request) {
         days_until_due: 14,
         metadata: { tier },
       });
-      // Sync to the company if linked.
+      // Sync to the company if linked. Use the REAL subscription status — send_invoice
+      // subs are created 'active' (with an open invoice), and hardcoding 'trialing'
+      // left paying customers stuck there forever: checkout.session.completed never
+      // fires for invoice subs, so the webhook never flipped them, skewing MRR and
+      // every subscription_status === 'active' gate.
       if (b.companyId) {
-        await svc.from("companies").update({ stripe_subscription_id: sub.id, subscription_status: "trialing", tier }).eq("id", b.companyId);
+        await svc.from("companies").update({ stripe_subscription_id: sub.id, subscription_status: sub.status || "active", tier }).eq("id", b.companyId);
       }
       // Find the first invoice and return its hosted URL to send to the customer.
       const inv = await stripe.invoices.list({ customer: customerId, subscription: sub.id, limit: 1 });

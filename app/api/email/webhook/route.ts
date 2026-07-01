@@ -17,6 +17,10 @@ function verifySvix(secret: string, headers: Headers, payload: string): boolean 
   const ts = headers.get("svix-timestamp");
   const sigHeader = headers.get("svix-signature");
   if (!id || !ts || !sigHeader) return false;
+  // Reject stale timestamps (±5 min) — a valid signature must not be replayable
+  // forever (e.g. re-flipping a bounced lead back to delivered).
+  const tsNum = Number(ts);
+  if (!Number.isFinite(tsNum) || Math.abs(Date.now() / 1000 - tsNum) > 300) return false;
   // Secret is "whsec_<base64>"; the signing key is the base64-decoded part.
   const key = Buffer.from(secret.replace(/^whsec_/, ""), "base64");
   const signed = `${id}.${ts}.${payload}`;
@@ -42,13 +46,18 @@ type ResendEvent = {
 export async function POST(req: Request) {
   const raw = await req.text();
   const secret = process.env.RESEND_WEBHOOK_SECRET;
-  // If a secret is configured, enforce it. If not, accept (dev) but log a warning.
+  // Enforce the signature when configured. When it ISN'T configured, fail closed in
+  // production (previously accepted anything with only a console warning — anyone
+  // could flip lead delivery statuses); accept only in local dev.
   if (secret) {
     if (!verifySvix(secret, req.headers, raw)) {
       return NextResponse.json({ error: "Bad signature" }, { status: 400 });
     }
+  } else if (process.env.AUTH_ENABLED === "1") {
+    console.error("[email-webhook] RESEND_WEBHOOK_SECRET not set — rejecting in production");
+    return NextResponse.json({ error: "Webhook not configured" }, { status: 503 });
   } else {
-    console.warn("[email-webhook] RESEND_WEBHOOK_SECRET not set — accepting unverified");
+    console.warn("[email-webhook] RESEND_WEBHOOK_SECRET not set — accepting unverified (dev)");
   }
 
   let event: ResendEvent;
@@ -90,13 +99,17 @@ export async function POST(req: Request) {
 
   try {
     const svc = createServiceClient();
-    await svc.from("email_events").update(patch).eq("message_id", messageId);
+    const { error } = await svc.from("email_events").update(patch).eq("message_id", messageId);
+    if (error) throw new Error(error.message);
     // Mirror outreach status onto the lead row so the Lead Finder shows delivered/opened/bounced.
     if (patch.status && ["delivered", "opened", "bounced"].includes(patch.status)) {
-      await svc.from("outreach_leads").update({ status: patch.status }).eq("message_id", messageId);
+      const { error: e2 } = await svc.from("outreach_leads").update({ status: patch.status }).eq("message_id", messageId);
+      if (e2) throw new Error(e2.message);
     }
   } catch (e) {
     console.error("[email-webhook] update failed:", e instanceof Error ? e.message : e);
+    // 5xx so Svix redelivers — ACKing a failed write permanently lost the status.
+    return NextResponse.json({ error: "Update failed" }, { status: 500 });
   }
   return NextResponse.json({ received: true });
 }
