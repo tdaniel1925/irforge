@@ -51,10 +51,12 @@ export async function listTeam(): Promise<{ members: TeamMember[]; isAdmin: bool
   const emailById: Record<string, string> = {};
   if (userIds.length) {
     const svc = createServiceClient();
-    for (const uid of userIds) {
-      const { data: u } = await svc.auth.admin.getUserById(uid);
-      if (u?.user?.email) emailById[uid] = u.user.email;
-    }
+    // Parallel, not a sequential per-member loop (N+1 — roster load scaled linearly
+    // with team size at one auth round trip each).
+    const results = await Promise.all(
+      userIds.map(async (uid) => ({ uid, u: (await svc.auth.admin.getUserById(uid)).data }))
+    );
+    for (const { uid, u } of results) if (u?.user?.email) emailById[uid] = u.user.email;
   }
 
   // Am I an admin of this company?

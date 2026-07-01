@@ -33,7 +33,7 @@ export async function GET() {
     // the client agree with the server on comped/full-access (previously /api/state
     // used `co.comped` while the API used subscription_status, so they could
     // disagree and produce a click -> 403).
-    const access = co.id ? await effectiveCompanyAccess(String(co.id)) : { fullAccess: superAdmin, comped: false, features: Object.fromEntries(IROS_FEATURES.map((f) => [f.key, superAdmin])) as Record<string, boolean> };
+    const access = co.id ? await effectiveCompanyAccess(String(co.id), superAdmin) : { fullAccess: superAdmin, comped: false, features: Object.fromEntries(IROS_FEATURES.map((f) => [f.key, superAdmin])) as Record<string, boolean> };
     // Full-access companies report the top tier so tier-gating (FeatureGate) opens
     // every dashboard tool. `capabilities` carries the per-capability truth so the UI
     // can disable/explain a specific blocked ACTION before the user clicks.

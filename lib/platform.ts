@@ -92,12 +92,17 @@ export async function companyHasFeature(companyId: string, feature: FeatureKey):
 // SAME truth and disable/explain a blocked action BEFORE the user clicks and gets a
 // 403. `fullAccess` = super-admin or comped (every capability on); `features` is the
 // per-capability map (always all-true when fullAccess).
-export async function effectiveCompanyAccess(companyId: string): Promise<{
+export async function effectiveCompanyAccess(companyId: string, knownSuperAdmin?: boolean): Promise<{
   fullAccess: boolean;
   comped: boolean;
   features: Record<FeatureKey, boolean>;
 }> {
-  const [superAdmin, comped] = await Promise.all([isSuperAdmin(), isCompedCompany(companyId)]);
+  // Callers that already computed isSuperAdmin() pass it in to avoid a duplicate
+  // auth+DB round trip (/api/state runs on every page load).
+  const [superAdmin, comped] = await Promise.all([
+    knownSuperAdmin !== undefined ? Promise.resolve(knownSuperAdmin) : isSuperAdmin(),
+    isCompedCompany(companyId),
+  ]);
   const fullAccess = superAdmin || comped;
   const map = {} as Record<FeatureKey, boolean>;
   if (fullAccess) {

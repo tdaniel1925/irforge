@@ -71,9 +71,17 @@ export async function listOpenQuestions(ticker: string): Promise<BoardQuestion[]
   return toQuestions(rows).filter((q) => !q.answered);
 }
 
-// Just the count — for the nav/home badge (cheap, no payload).
+// Just the count — for the nav/home badge. This runs on EVERY /api/state hit
+// (sidebar + dashboard), so it must be cheap: two id-only selects (question ids and
+// verified-reply parent ids) instead of pulling 2000 full-body rows to count.
 export async function countOpenQuestions(ticker: string): Promise<number> {
-  return (await listOpenQuestions(ticker)).length;
+  const T = ticker.toUpperCase();
+  const [{ data: questions }, { data: verifiedReplies }] = await Promise.all([
+    svc().from("public_board").select("id").eq("ticker", T).eq("flag", "question").is("parent_id", null).limit(5000),
+    svc().from("public_board").select("parent_id").eq("ticker", T).eq("verified", true).not("parent_id", "is", null).limit(5000),
+  ]);
+  const answered = new Set((verifiedReplies ?? []).map((r) => String(r.parent_id)));
+  return (questions ?? []).filter((q) => !answered.has(String(q.id))).length;
 }
 
 // New activity since a timestamp — powers the digest email + realtime notifier.
