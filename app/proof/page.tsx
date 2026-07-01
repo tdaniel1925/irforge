@@ -61,7 +61,7 @@ export default function ProofPage() {
           <Card>
             <h2 className="mb-3 font-semibold text-app">Published posts</h2>
             {posted.length === 0 ? (
-              <p className="py-4 text-sm text-faint">Nothing published yet — work the Do queue.</p>
+              <p className="py-4 text-sm text-faint">Nothing published yet — <a href="/compose" className="text-emerald-600 hover:underline dark:text-emerald-400">compose your first post</a>.</p>
             ) : (
               <ul className="space-y-2">
                 {posted.map((d) => (
