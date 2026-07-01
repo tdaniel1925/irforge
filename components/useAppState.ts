@@ -3,7 +3,16 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Database } from "@/lib/types";
 
-export type AppState = Database & { hasAi?: boolean; hasAyrshare?: boolean; hasSupabase?: boolean; stripeMode?: string; authed?: boolean };
+// The per-company capability keys the API gates on (server: companyHasFeature).
+export type Capability = "compliance" | "voices" | "calendar" | "social" | "publishing" | "stakeholders" | "intelligence";
+
+export type AppState = Database & {
+  hasAi?: boolean; hasAyrshare?: boolean; hasSupabase?: boolean; stripeMode?: string; authed?: boolean;
+  // Effective, server-authoritative access — mirrors what the API gates actually
+  // allow, so the UI can disable/explain a blocked action before it 403s.
+  fullAccess?: boolean;
+  capabilities?: Record<Capability, boolean>;
+};
 
 export function useAppState() {
   const [db, setDb] = useState<AppState | null>(null);
@@ -54,5 +63,18 @@ export function useAppState() {
     [refresh]
   );
 
-  return { db, error, busy, refresh, act };
+  // Can the current company use a capability? Mirrors the server's companyHasFeature.
+  // Defaults to TRUE while state is still loading or when auth is off (local/demo),
+  // so we never wrongly block in those cases — the server remains the hard gate.
+  const can = useCallback(
+    (capability: Capability): boolean => {
+      if (!db) return true;
+      if (db.authed === false) return true;
+      if (db.fullAccess) return true;
+      return db.capabilities?.[capability] ?? true;
+    },
+    [db]
+  );
+
+  return { db, error, busy, refresh, act, can };
 }

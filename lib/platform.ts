@@ -65,7 +65,10 @@ export async function setCompanyFeature(companyId: string, feature: string, enab
 // True when the company was given free full access (active subscription_status
 // with no Stripe subscription behind it = comped/promo). Such companies unlock
 // every feature, same as a paid customer would.
-async function isCompedCompany(companyId: string): Promise<boolean> {
+// Exported so /api/state uses the EXACT same definition of "comped" the API gates
+// use — otherwise the client and server can disagree on access (a comped company
+// unlocked server-side but shown locked client-side, or vice-versa).
+export async function isCompedCompany(companyId: string): Promise<boolean> {
   const svc = createServiceClient();
   const { data } = await svc
     .from("companies")
@@ -82,6 +85,28 @@ export async function companyHasFeature(companyId: string, feature: FeatureKey):
   if (await isCompedCompany(companyId)) return true;
   const features = await getCompanyFeatures(companyId);
   return Boolean(features[feature]);
+}
+
+// The company's EFFECTIVE capability access in a single pass — the authoritative
+// answer the API gates (companyHasFeature) use, exposed so the UI can reflect the
+// SAME truth and disable/explain a blocked action BEFORE the user clicks and gets a
+// 403. `fullAccess` = super-admin or comped (every capability on); `features` is the
+// per-capability map (always all-true when fullAccess).
+export async function effectiveCompanyAccess(companyId: string): Promise<{
+  fullAccess: boolean;
+  comped: boolean;
+  features: Record<FeatureKey, boolean>;
+}> {
+  const [superAdmin, comped] = await Promise.all([isSuperAdmin(), isCompedCompany(companyId)]);
+  const fullAccess = superAdmin || comped;
+  const map = {} as Record<FeatureKey, boolean>;
+  if (fullAccess) {
+    for (const f of IROS_FEATURES) map[f.key] = true;
+    return { fullAccess, comped, features: map };
+  }
+  const flags = await getCompanyFeatures(companyId);
+  for (const f of IROS_FEATURES) map[f.key] = Boolean(flags[f.key]);
+  return { fullAccess, comped, features: map };
 }
 
 // ---------- append-only audit log ----------
