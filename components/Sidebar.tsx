@@ -28,6 +28,7 @@ const NAV: NavGroup[] = [
       { href: "/stakeholders", label: "Investor Inbox", icon: "📥", hint: "Paste any inbound message — AI drafts a reply for your review", detail: "Paste any inbound DM, email, or comment and AI tells you who it's likely from, categorizes it, and drafts a reply — grounded in your public record — that you review and approve before sending. Keeps your investor/press relationships organized and your responses on the record." },
       { href: "/calendar", label: "Calendar", icon: "📅", hint: "IR dates, team & personal calendars, quiet periods", detail: "Every date in one place — earnings, filing deadlines, conferences, lock-ups, plus team and personal calendars. Set a quiet period to block sensitive posts during a blackout window." },
       { href: "/intelligence", label: "Analytics", icon: "📊", hint: "Your IR program at a glance + weekly summary", detail: "A live snapshot of how your investor-relations program is performing: what shipped, your Reg FD mix, inbound volume, and stakeholder counts. Generate a one-click weekly summary written for your board or execs and emailed to them." },
+      { href: "/team", label: "Team", icon: "🧑‍🤝‍🧑", hint: "Invite teammates & manage roles", detail: "Manage who can access this company account: invite teammates by email, set each person as an admin or member, and remove people. Admins can invite and manage roles; members get the full dashboard plus their own private workspace." },
     ],
   },
   {
