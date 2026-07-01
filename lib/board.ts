@@ -40,7 +40,9 @@ async function fetchBoard(ticker: string): Promise<Record<string, unknown>[]> {
 }
 
 // A question is ANSWERED when it has at least one verified (company) reply.
-function toQuestions(rows: Record<string, unknown>[]): BoardQuestion[] {
+// Exported for unit tests (pure function — the badge/digest/Q&A inbox all hang off
+// this definition of "answered").
+export function toQuestions(rows: Record<string, unknown>[]): BoardQuestion[] {
   const replyByParent = new Map<string, Record<string, unknown>[]>();
   for (const r of rows) {
     const pid = r.parent_id ? String(r.parent_id) : null;

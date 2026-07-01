@@ -1,17 +1,9 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-
 // Refreshes the Supabase session cookie on every request and gates the app routes.
-// Public routes (landing, login, public ticker pages, public APIs) stay open.
-const PUBLIC_PREFIXES = ["/", "/login", "/auth", "/privacy", "/terms", "/how-its-legal", "/t", "/discover", "/sample-brief", "/snapshot", "/for-investors", "/for-companies", "/accept-invite", "/embed", "/welcome", "/api/health", "/api/board", "/api/claim", "/api/questions", "/api/ticker-audit", "/api/sec-feed", "/api/chart", "/api/trending", "/api/movers", "/api/buzz", "/api/risk", "/api/og", "/api/badge", "/api/promo", "/api/watch", "/api/billing/webhook", "/api/member-billing/webhook", "/api/email/webhook", "/api/cron", "/_next", "/img", "/favicon"];
-
-// Whole-segment matching: "/t" must match "/t" and "/t/AMFN" but NOT "/team" or
-// "/ticker-audit" (a bare startsWith exempted those authenticated pages from the auth
-// gate). Exact path or prefix followed by "/" only.
-function isPublic(pathname: string): boolean {
-  if (pathname === "/") return true;
-  return PUBLIC_PREFIXES.some((p) => p !== "/" && (pathname === p || pathname.startsWith(p + "/")));
-}
+// Public routes (landing, login, public ticker pages, public APIs) stay open —
+// the allowlist + matcher live in lib/publicRoutes.ts so they're unit-testable.
+import { isPublic } from "@/lib/publicRoutes";
 
 export async function middleware(request: NextRequest) {
   // Auth gating is OFF until the data layer is migrated to Supabase. Flip AUTH_ENABLED=1
