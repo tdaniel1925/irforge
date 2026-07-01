@@ -38,8 +38,13 @@ export async function POST(req: Request) {
     metadata: { kind: "sponsored_brief", companyId: mine.id, ticker },
   });
 
-  // Record the order so the webhook can match payment → fulfillment.
-  if (session.id) await createBriefOrder(mine.id, ticker, session.id);
+  // Record the order so the webhook can match payment → fulfillment. If this row
+  // can't be written, DO NOT hand out the payment URL — the customer would pay
+  // $3,500 with nothing to fulfill against. (The unused Stripe session expires.)
+  const orderId = session.id ? await createBriefOrder(mine.id, ticker, session.id) : null;
+  if (!orderId) {
+    return NextResponse.json({ error: "Couldn't start your order — please try again in a moment." }, { status: 500 });
+  }
 
   return NextResponse.json({ url: session.url });
 }
