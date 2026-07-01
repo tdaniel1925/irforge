@@ -40,9 +40,9 @@ const BLANK: Strategy = {
 function ListField({ label, value, onChange, placeholder }: { label: string; value: string[]; onChange: (v: string[]) => void; placeholder?: string }) {
   return (
     <label className="block">
-      <span className="text-sm font-medium text-gray-700">{label}</span>
+      <span className="text-sm font-medium text-muted">{label}</span>
       <textarea
-        className="mt-1 w-full rounded-lg border border-gray-300 p-2 text-sm"
+        className="mt-1 w-full rounded-lg border border-app p-2 text-sm"
         rows={3}
         placeholder={placeholder}
         value={value.join("\n")}
@@ -112,40 +112,40 @@ export default function SocialEngine({ initialStrategy, channels, initialSlots }
   if (stage === "interview") {
     return (
       <div className="space-y-4">
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
+        <div className="rounded-xl border border-app bg-surface p-5">
           <h2 className="text-lg font-semibold">Let&apos;s set up your content</h2>
-          <p className="mt-1 text-sm text-gray-600">Answer a few questions. The AI uses these plus your filings and company profile to plan your calendar. You can edit everything before anything is generated.</p>
+          <p className="mt-1 text-sm text-muted">Answer a few questions. The AI uses these plus your filings and company profile to plan your calendar. You can edit everything before anything is generated.</p>
           <div className="mt-4 space-y-4">
             <label className="block">
-              <span className="text-sm font-medium text-gray-700">What do you want from social? (goals)</span>
-              <textarea className="mt-1 w-full rounded-lg border border-gray-300 p-2 text-sm" rows={2} placeholder="e.g. Build awareness with retail investors and keep current shareholders informed." value={interview.goals} onChange={(e) => setInterview({ ...interview, goals: e.target.value })} />
+              <span className="text-sm font-medium text-muted">What do you want from social? (goals)</span>
+              <textarea className="mt-1 w-full rounded-lg border border-app p-2 text-sm" rows={2} placeholder="e.g. Build awareness with retail investors and keep current shareholders informed." value={interview.goals} onChange={(e) => setInterview({ ...interview, goals: e.target.value })} />
             </label>
             <label className="block">
-              <span className="text-sm font-medium text-gray-700">Who&apos;s your audience?</span>
-              <input className="mt-1 w-full rounded-lg border border-gray-300 p-2 text-sm" placeholder="e.g. Retail shareholders, prospective institutional investors" value={interview.audience} onChange={(e) => setInterview({ ...interview, audience: e.target.value })} />
+              <span className="text-sm font-medium text-muted">Who&apos;s your audience?</span>
+              <input className="mt-1 w-full rounded-lg border border-app p-2 text-sm" placeholder="e.g. Retail shareholders, prospective institutional investors" value={interview.audience} onChange={(e) => setInterview({ ...interview, audience: e.target.value })} />
             </label>
             <div className="grid grid-cols-2 gap-3">
               <label className="block">
-                <span className="text-sm font-medium text-gray-700">Tone</span>
-                <input className="mt-1 w-full rounded-lg border border-gray-300 p-2 text-sm" placeholder="professional, plain-spoken…" value={interview.tone} onChange={(e) => setInterview({ ...interview, tone: e.target.value })} />
+                <span className="text-sm font-medium text-muted">Tone</span>
+                <input className="mt-1 w-full rounded-lg border border-app p-2 text-sm" placeholder="professional, plain-spoken…" value={interview.tone} onChange={(e) => setInterview({ ...interview, tone: e.target.value })} />
               </label>
               <label className="block">
-                <span className="text-sm font-medium text-gray-700">How often?</span>
-                <input className="mt-1 w-full rounded-lg border border-gray-300 p-2 text-sm" placeholder="e.g. 3 posts/week" value={interview.frequency} onChange={(e) => setInterview({ ...interview, frequency: e.target.value })} />
+                <span className="text-sm font-medium text-muted">How often?</span>
+                <input className="mt-1 w-full rounded-lg border border-app p-2 text-sm" placeholder="e.g. 3 posts/week" value={interview.frequency} onChange={(e) => setInterview({ ...interview, frequency: e.target.value })} />
               </label>
             </div>
             <label className="block">
-              <span className="text-sm font-medium text-gray-700">Topics you want to cover</span>
-              <textarea className="mt-1 w-full rounded-lg border border-gray-300 p-2 text-sm" rows={2} placeholder="e.g. New filings explained, milestones, sector education, team spotlights" value={interview.topics} onChange={(e) => setInterview({ ...interview, topics: e.target.value })} />
+              <span className="text-sm font-medium text-muted">Topics you want to cover</span>
+              <textarea className="mt-1 w-full rounded-lg border border-app p-2 text-sm" rows={2} placeholder="e.g. New filings explained, milestones, sector education, team spotlights" value={interview.topics} onChange={(e) => setInterview({ ...interview, topics: e.target.value })} />
             </label>
           </div>
           {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
           <div className="mt-4 flex gap-2">
-            <button disabled={busy} onClick={propose} className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+            <button disabled={busy} onClick={propose} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
               {busy ? "Building your strategy…" : "Build my strategy →"}
             </button>
             {initialStrategy && (
-              <button disabled={busy} onClick={() => setStage("review")} className="rounded-lg border border-gray-300 px-4 py-2 text-sm">Skip — edit saved strategy</button>
+              <button disabled={busy} onClick={() => setStage("review")} className="rounded-lg border border-app px-4 py-2 text-sm">Skip — edit saved strategy</button>
             )}
           </div>
         </div>
@@ -156,26 +156,26 @@ export default function SocialEngine({ initialStrategy, channels, initialSlots }
   // Review / edit stage
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-gray-200 bg-white p-5">
+      <div className="rounded-xl border border-app bg-surface p-5">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">Your content strategy</h2>
-          <button onClick={() => setStage("interview")} className="text-sm text-indigo-600">Redo interview</button>
+          <button onClick={() => setStage("interview")} className="text-sm text-emerald-600 dark:text-emerald-400">Redo interview</button>
         </div>
-        <p className="mt-1 text-sm text-gray-600">Edit anything here. This drives every post the AI plans and writes.</p>
+        <p className="mt-1 text-sm text-muted">Edit anything here. This drives every post the AI plans and writes.</p>
 
         <div className="mt-4 space-y-4">
           <label className="block">
-            <span className="text-sm font-medium text-gray-700">Goals</span>
-            <textarea className="mt-1 w-full rounded-lg border border-gray-300 p-2 text-sm" rows={2} value={strategy.goals} onChange={(e) => patch({ goals: e.target.value })} />
+            <span className="text-sm font-medium text-muted">Goals</span>
+            <textarea className="mt-1 w-full rounded-lg border border-app p-2 text-sm" rows={2} value={strategy.goals} onChange={(e) => patch({ goals: e.target.value })} />
           </label>
           <div className="grid grid-cols-2 gap-3">
             <label className="block">
-              <span className="text-sm font-medium text-gray-700">Audience</span>
-              <input className="mt-1 w-full rounded-lg border border-gray-300 p-2 text-sm" value={strategy.audience} onChange={(e) => patch({ audience: e.target.value })} />
+              <span className="text-sm font-medium text-muted">Audience</span>
+              <input className="mt-1 w-full rounded-lg border border-app p-2 text-sm" value={strategy.audience} onChange={(e) => patch({ audience: e.target.value })} />
             </label>
             <label className="block">
-              <span className="text-sm font-medium text-gray-700">Tone</span>
-              <input className="mt-1 w-full rounded-lg border border-gray-300 p-2 text-sm" value={strategy.tone} onChange={(e) => patch({ tone: e.target.value })} />
+              <span className="text-sm font-medium text-muted">Tone</span>
+              <input className="mt-1 w-full rounded-lg border border-app p-2 text-sm" value={strategy.tone} onChange={(e) => patch({ tone: e.target.value })} />
             </label>
           </div>
 
@@ -186,14 +186,14 @@ export default function SocialEngine({ initialStrategy, channels, initialSlots }
           </div>
 
           <div>
-            <span className="text-sm font-medium text-gray-700">Platforms to publish to</span>
+            <span className="text-sm font-medium text-muted">Platforms to publish to</span>
             <div className="mt-2 flex flex-wrap gap-2">
               {channels.map((c) => (
                 <button
                   key={c.key}
                   type="button"
                   onClick={() => togglePlatform(c.key)}
-                  className={`rounded-full border px-3 py-1 text-sm ${strategy.platforms.includes(c.key) ? "border-indigo-600 bg-indigo-50 text-indigo-700" : "border-gray-300 text-gray-600"}`}
+                  className={`rounded-full border px-3 py-1 text-sm ${strategy.platforms.includes(c.key) ? "border-emerald-600 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "border-app text-muted"}`}
                 >
                   {c.label}
                 </button>
@@ -202,14 +202,14 @@ export default function SocialEngine({ initialStrategy, channels, initialSlots }
           </div>
 
           <label className="block w-40">
-            <span className="text-sm font-medium text-gray-700">Posts per week</span>
-            <input type="number" min={1} max={21} className="mt-1 w-full rounded-lg border border-gray-300 p-2 text-sm" value={strategy.postsPerWeek} onChange={(e) => patch({ postsPerWeek: Number(e.target.value) || 1 })} />
+            <span className="text-sm font-medium text-muted">Posts per week</span>
+            <input type="number" min={1} max={21} className="mt-1 w-full rounded-lg border border-app p-2 text-sm" value={strategy.postsPerWeek} onChange={(e) => patch({ postsPerWeek: Number(e.target.value) || 1 })} />
           </label>
         </div>
 
         {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
         <div className="mt-5 flex items-center gap-2">
-          <button disabled={busy} onClick={() => save(true)} className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+          <button disabled={busy} onClick={() => save(true)} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
             {busy ? "Saving…" : strategy.interviewComplete ? "Save changes" : "Save strategy"}
           </button>
           {strategy.id && <span className="text-sm text-green-600">Saved ✓</span>}
