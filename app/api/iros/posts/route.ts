@@ -60,6 +60,34 @@ export async function PATCH(req: Request) {
   if (typeof body.body === "string") patch.body = body.body.slice(0, 4000);
   if (Array.isArray(body.channels)) patch.channels = body.channels;
   if (body.scheduledAt !== undefined) patch.scheduled_at = body.scheduledAt;
+
+  // COMPLIANCE GUARD: editing the CONTENT of a post that already passed review must
+  // send it back through review. Without this, a benign post could be approved, then
+  // rewritten with material content and published — bypassing the Reg FD gate the
+  // product exists to enforce. Published posts can't be content-edited at all.
+  const contentChanged =
+    (typeof body.title === "string" && body.title !== post.title) ||
+    (typeof body.body === "string" && body.body !== post.body);
+  if (contentChanged && post.status === "published") {
+    return NextResponse.json({ error: "This post is already published — it can't be edited. Create a new post instead." }, { status: 409 });
+  }
+  if (contentChanged && post.status !== "draft") {
+    // Back to draft + wipe the stale classification so the Reg FD check re-runs on
+    // the NEW text before it can be re-approved.
+    patch.status = "draft";
+    patch.classification = null;
+    patch.class_confidence = null;
+    patch.class_flags = [];
+    patch.class_reason = "";
+    await writeAudit({
+      companyId: g.mine!.id,
+      action: "post.edited_after_review",
+      entityType: "post",
+      entityId: id,
+      payload: { from: post.status, to: "draft", reason: "content changed — review reset" },
+    });
+  }
+
   const updated = await updatePostFields(id, patch);
   return NextResponse.json({ ok: true, post: updated });
 }

@@ -5,9 +5,12 @@ import { NextResponse, type NextRequest } from "next/server";
 // Public routes (landing, login, public ticker pages, public APIs) stay open.
 const PUBLIC_PREFIXES = ["/", "/login", "/auth", "/privacy", "/terms", "/how-its-legal", "/t", "/discover", "/sample-brief", "/snapshot", "/for-investors", "/for-companies", "/accept-invite", "/embed", "/welcome", "/api/health", "/api/board", "/api/claim", "/api/questions", "/api/ticker-audit", "/api/sec-feed", "/api/chart", "/api/trending", "/api/movers", "/api/buzz", "/api/risk", "/api/og", "/api/badge", "/api/promo", "/api/watch", "/api/billing/webhook", "/api/member-billing/webhook", "/api/email/webhook", "/api/cron", "/_next", "/img", "/favicon"];
 
+// Whole-segment matching: "/t" must match "/t" and "/t/AMFN" but NOT "/team" or
+// "/ticker-audit" (a bare startsWith exempted those authenticated pages from the auth
+// gate). Exact path or prefix followed by "/" only.
 function isPublic(pathname: string): boolean {
   if (pathname === "/") return true;
-  return PUBLIC_PREFIXES.some((p) => p !== "/" && pathname.startsWith(p));
+  return PUBLIC_PREFIXES.some((p) => p !== "/" && (pathname === p || pathname.startsWith(p + "/")));
 }
 
 export async function middleware(request: NextRequest) {
