@@ -47,11 +47,16 @@ export default function CommsSidebar() {
       setReady(true);
       // Track unread: count messages newer than the last one the user saw, but never
       // count the user's own messages, and only while the panel is closed.
+      // MUST read openRef.current (not `open`): this load() is held by the 30s
+      // interval and the realtime subscription from mount, so the closed-over `open`
+      // is frozen at its first-render value — which reset unread on every poll and
+      // made the collapsed-strip badge permanently dead.
+      const isOpen = openRef.current;
       const newestSeenIdx = lastSeenId.current ? nextChat.findIndex((c) => c.id === lastSeenId.current) : -1;
       const fresh = newestSeenIdx >= 0 ? nextChat.slice(newestSeenIdx + 1) : nextChat;
       const freshFromOthers = fresh.filter((c) => !c.mine).length;
-      setUnread((prev) => (open ? 0 : prev + (freshFromOthers > 0 && lastSeenId.current ? freshFromOthers : 0)));
-      if (open && nextChat.length) lastSeenId.current = nextChat[nextChat.length - 1].id;
+      setUnread((prev) => (isOpen ? 0 : prev + (freshFromOthers > 0 && lastSeenId.current ? freshFromOthers : 0)));
+      if (isOpen && nextChat.length) lastSeenId.current = nextChat[nextChat.length - 1].id;
       else if (!lastSeenId.current && nextChat.length) lastSeenId.current = nextChat[nextChat.length - 1].id;
     } catch { /* leave as-is */ }
   };

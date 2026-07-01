@@ -46,6 +46,9 @@ export default function BoardQA({ ticker }: { ticker: string }) {
       if (!r.ok) { setErr("Couldn't load investor questions."); return; }
       const d = await r.json();
       setQuestions(Array.isArray(d.questions) ? d.questions : []);
+      // Clear any prior error — load() re-runs on every realtime insert, and a sticky
+      // error was permanently replacing the (still-working) list with the banner.
+      setErr("");
     } catch {
       setErr("Couldn't reach the board.");
     }
@@ -101,17 +104,19 @@ export default function BoardQA({ ticker }: { ticker: string }) {
     try {
       const r = await fetch("/api/board/questions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ questionId: id, body, alsoPostToX: alsoX }) });
       const d = await r.json();
-      if (!r.ok) { setNoteById((n) => ({ ...n, [id]: d.error ?? "Couldn't post the reply." })); return; }
+      if (!r.ok) { setNoteById((n) => ({ ...n, [id]: d.error ?? "Couldn't post the reply." })); setBusyFor(id, null); return; }
       // If X was requested but a gate held it, surface why (the board reply still posted).
       if (d.x?.attempted && !d.x?.posted && d.x?.skipped) {
         setNoteById((n) => ({ ...n, [`x_${id}`]: d.x.skipped }));
       }
       // Answered — drop it from the open list (small delay so an X note is readable).
+      // Deliberately DO NOT clear busy on success: the reply is posted, and clearing
+      // it re-enabled "Approve & post" during the 4s note window — a second click
+      // posted a duplicate verified reply.
       const drop = () => setQuestions((qs) => (qs ?? []).filter((q) => q.id !== id));
       if (d.x?.attempted && !d.x?.posted) setTimeout(drop, 4000); else drop();
     } catch {
       setNoteById((n) => ({ ...n, [id]: "Couldn't post — try again." }));
-    } finally {
       setBusyFor(id, null);
     }
   };

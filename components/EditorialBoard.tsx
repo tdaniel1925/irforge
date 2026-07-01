@@ -51,6 +51,12 @@ export default function EditorialBoard({ initialPosts, voices, canPublish = fals
   const [error, setError] = useState("");
 
   const patchPost = (p: Post) => setPosts((ps) => ps.map((x) => (x.id === p.id ? p : x)));
+  // Functional partial merge — always applies deltas to the CURRENT post, never a
+  // click-time snapshot. The old `{ ...posts.find(id)!, ...delta }` pattern raced:
+  // classify-while-dragging wrote back a stale object (card snapped back), and the
+  // `!` threw if the post was removed mid-flight.
+  const mergePost = (id: string, delta: Partial<Post>) =>
+    setPosts((ps) => ps.map((x) => (x.id === id ? { ...x, ...delta } : x)));
 
   // ── Drag-and-drop between columns ──
   const [dragId, setDragId] = useState<string | null>(null);
@@ -80,14 +86,16 @@ export default function EditorialBoard({ initialPosts, voices, canPublish = fals
       return;
     }
     const prev = p.status;
-    patchPost({ ...p, status: colKey }); // optimistic
+    mergePost(id, { status: colKey }); // optimistic
     try {
       const res = await fetch("/api/iros/posts", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, action: "transition", to: colKey }) });
       const d = await res.json();
       if (!res.ok) throw new Error(d.error || "Move failed.");
       if (d.post) patchPost(d.post);
     } catch (e) {
-      patchPost({ ...p, status: prev }); // revert
+      // Revert ONLY the status — restoring the full pre-drag snapshot wiped any
+      // field a concurrent request (e.g. a classify) updated in the interim.
+      mergePost(id, { status: prev });
       setError(e instanceof Error ? e.message : "Couldn't move that card.");
       setTimeout(() => setError(""), 2500);
     }
@@ -122,7 +130,7 @@ export default function EditorialBoard({ initialPosts, voices, canPublish = fals
       const res = await fetch("/api/iros/classify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ postId: id }) });
       const d = await res.json();
       if (!res.ok) throw new Error(d.error ?? "Classification failed.");
-      patchPost({ ...posts.find((p) => p.id === id)!, classification: d.classification, classConfidence: d.confidence, classFlags: d.flags, classReason: d.reasoning });
+      mergePost(id, { classification: d.classification, classConfidence: d.confidence, classFlags: d.flags, classReason: d.reasoning });
     } catch (e) { setError(e instanceof Error ? e.message : "Failed."); } finally { setBusy(""); }
   };
 
@@ -142,7 +150,7 @@ export default function EditorialBoard({ initialPosts, voices, canPublish = fals
       const res = await fetch("/api/iros/publish", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ postId: id, channels }) });
       const d = await res.json();
       if (!res.ok) throw new Error(d.error ?? "Failed.");
-      patchPost({ ...posts.find((x) => x.id === id)!, status: "published", channels });
+      mergePost(id, { status: "published", channels });
     } catch (e) { setError(e instanceof Error ? e.message : "Failed."); } finally { setBusy(""); }
   };
 
@@ -152,9 +160,9 @@ export default function EditorialBoard({ initialPosts, voices, canPublish = fals
       const res = await fetch("/api/iros/approve", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ postId: id, stage: "approver", decision: "approved" }) });
       const d = await res.json();
       if (!res.ok) throw new Error(d.error ?? "Failed.");
-      // reflect the new status (reviewed→approved or draft→reviewed)
-      const p = posts.find((x) => x.id === id)!;
-      patchPost({ ...p, status: p.status === "draft" ? "reviewed" : "approved" });
+      // reflect the new status (reviewed→approved or draft→reviewed) — computed from
+      // the CURRENT status inside the functional update, not a click-time snapshot.
+      setPosts((ps) => ps.map((x) => (x.id === id ? { ...x, status: x.status === "draft" ? "reviewed" : "approved" } : x)));
     } catch (e) { setError(e instanceof Error ? e.message : "Failed."); } finally { setBusy(""); }
   };
 
