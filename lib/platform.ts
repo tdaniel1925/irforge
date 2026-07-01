@@ -18,15 +18,22 @@ export type FeatureKey = (typeof IROS_FEATURES)[number]["key"];
 
 // ---------- super admin ----------
 export async function isSuperAdmin(): Promise<boolean> {
-  const supabase = await createServerSupabase();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return false;
-  const { data } = await supabase
-    .from("platform_admins")
-    .select("super_admin")
-    .eq("user_id", user.id)
-    .maybeSingle();
-  return Boolean(data?.super_admin);
+  // Fail CLOSED on any error (auth or DB): a transient Supabase failure must deny
+  // admin access cleanly, never throw and 500 the calling route.
+  try {
+    const supabase = await createServerSupabase();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return false;
+    const { data, error } = await supabase
+      .from("platform_admins")
+      .select("super_admin")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (error) return false;
+    return Boolean(data?.super_admin);
+  } catch {
+    return false;
+  }
 }
 
 export async function getCurrentUser(): Promise<{ id: string; email: string } | null> {

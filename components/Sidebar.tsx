@@ -97,13 +97,24 @@ export default function Sidebar() {
   // no-store so the admin-nav flag is NEVER served stale from a cached response
   // (a cached superAdmin=true from another session would wrongly show Admin links).
   useEffect(() => {
-    fetch("/api/state", { cache: "no-store" })
-      .then((r) => r.json())
-      .then((d) => {
+    let cancelled = false;
+    // Retry a couple of times: a single transient failure must NOT permanently hide
+    // the Admin section for a super-admin (it's their only nav path to Back Office).
+    const loadState = async (attempt = 0): Promise<void> => {
+      try {
+        const r = await fetch("/api/state", { cache: "no-store" });
+        if (!r.ok) throw new Error(String(r.status));
+        const d = await r.json();
+        if (cancelled) return;
         setSuperAdmin(Boolean(d?.superAdmin));
         setTicker(String(d?.company?.ticker ?? "").trim());
-      })
-      .catch(() => {});
+      } catch {
+        if (cancelled || attempt >= 2) return;
+        setTimeout(() => { void loadState(attempt + 1); }, 800 * (attempt + 1));
+      }
+    };
+    void loadState();
+    return () => { cancelled = true; };
   }, []);
 
   // Hide the Admin section unless the user is a platform super-admin; point

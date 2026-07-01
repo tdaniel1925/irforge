@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import ThemeToggle from "@/components/ThemeToggle";
+import { createClient } from "@/lib/supabase/client";
 
 // Shared marketing chrome (nav + footer) used by the hub (/), /for-investors, and
 // /for-companies so the three pages stay visually consistent. The nav adapts its
@@ -18,6 +20,19 @@ const NAV_LINKS = [
 ];
 
 export function MarketingNav({ audience = "hub" }: { audience?: "hub" | "investors" | "companies" }) {
+  // Auth-aware CTA: signed-in users get "Open the app"; signed-out visitors get
+  // "Log in". Checked client-side (these pages are static client components). Start
+  // as null (unknown) so we never flash "Open the app" at a logged-out visitor —
+  // we show the neutral "Log in" until we know, then upgrade if they're signed in.
+  const [signedIn, setSignedIn] = useState<boolean | null>(null);
+  useEffect(() => {
+    let active = true;
+    createClient().auth.getUser()
+      .then(({ data }) => { if (active) setSignedIn(Boolean(data.user)); })
+      .catch(() => { if (active) setSignedIn(false); });
+    return () => { active = false; };
+  }, []);
+
   return (
     <header className="sticky top-0 z-30 border-b border-app bg-app/80 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
@@ -40,14 +55,21 @@ export function MarketingNav({ audience = "hub" }: { audience?: "hub" | "investo
         </nav>
         <div className="flex items-center gap-3">
           <ThemeToggle />
-          {audience === "investors" ? (
-            <Link href="/login" className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500">
-              Join free
-            </Link>
-          ) : (
+          {signedIn ? (
+            // Logged in — go straight to the app.
             <Link href="/app" className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500">
               Open the app
             </Link>
+          ) : (
+            // Logged out — show Log in, plus the audience-appropriate sign-up CTA.
+            <>
+              <Link href="/login" className="text-sm font-medium text-muted transition hover:text-app">
+                Log in
+              </Link>
+              <Link href={audience === "investors" ? "/login?type=investor&mode=signup" : "/login?type=company&mode=signup"} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500">
+                {audience === "investors" ? "Join free" : "Get started"}
+              </Link>
+            </>
           )}
         </div>
       </div>
