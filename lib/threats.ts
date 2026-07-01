@@ -44,8 +44,15 @@ export async function scanThreats(db: Database, audit?: TickerAudit | null): Pro
   }
 
   // 1 — FUD on the company's own board (the iHub-basher problem, caught on home turf).
+  // Only surface RECENT board FUD — the radar is a live monitor, not a replay of old
+  // posts. Without this, stale/seeded posts show as "active threats" forever (a 2-week-
+  // old post kept surfacing on companies with quiet boards). 14-day window.
+  const FUD_WINDOW_DAYS = 14;
+  const freshCutoff = Date.now() - FUD_WINDOW_DAYS * 86400000;
   const board = await getBoardPosts(ticker, 100);
-  const fud = board.filter((p) => p.flag === "fud" && !p.verified);
+  const fud = board.filter(
+    (p) => p.flag === "fud" && !p.verified && new Date(p.ts).getTime() >= freshCutoff
+  );
   for (const p of fud.slice(0, 5)) {
     threats.push({
       id: `thr_${ticker}_${n++}`,

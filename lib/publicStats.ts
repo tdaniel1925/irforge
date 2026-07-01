@@ -229,16 +229,39 @@ function demoSeeds(T: string): Omit<BoardPost, "id" | "reactions">[] {
   ];
 }
 
+// A REAL, onboarded company owns this ticker — so we must NOT seed fake demo board
+// posts onto its page. Demo seeds are only for unclaimed/discovery tickers (to make
+// the public discovery experience feel alive). Seeding a claimed company planted
+// fake "FUD" that then surfaced on its Defend-Your-Name radar as a phantom threat.
+async function isOnboardedTicker(ticker: string): Promise<boolean> {
+  try {
+    const svc = createServiceClient();
+    const { data } = await svc
+      .from("companies")
+      .select("id")
+      .ilike("ticker", ticker)
+      .eq("onboarding_complete", true)
+      .limit(1)
+      .maybeSingle();
+    return Boolean(data);
+  } catch {
+    return false;
+  }
+}
+
 async function allPosts(ticker: string): Promise<BoardPost[]> {
   const T = ticker.toUpperCase();
   if (supabaseEnabled()) {
     const svc = createServiceClient();
     let { data } = await svc.from("public_board").select("*").eq("ticker", T).order("created_at", { ascending: false }).limit(4000);
     if (!data || data.length === 0) {
-      // Seed once.
-      const seeds = demoSeeds(T).map((p) => ({ ticker: p.ticker, author: p.author, body: p.body, verified: p.verified, flag: p.flag, flag_reason: p.flagReason, reactions: EMPTY_REACTIONS, created_at: p.ts }));
-      await svc.from("public_board").insert(seeds);
-      ({ data } = await svc.from("public_board").select("*").eq("ticker", T).order("created_at", { ascending: false }).limit(4000));
+      // Seed once — but ONLY for unclaimed tickers. A real onboarded company keeps a
+      // genuine (possibly empty) board instead of planted demo posts.
+      if (!(await isOnboardedTicker(T))) {
+        const seeds = demoSeeds(T).map((p) => ({ ticker: p.ticker, author: p.author, body: p.body, verified: p.verified, flag: p.flag, flag_reason: p.flagReason, reactions: EMPTY_REACTIONS, created_at: p.ts }));
+        await svc.from("public_board").insert(seeds);
+        ({ data } = await svc.from("public_board").select("*").eq("ticker", T).order("created_at", { ascending: false }).limit(4000));
+      }
     }
     return (data ?? []).map(rowToPost);
   }
