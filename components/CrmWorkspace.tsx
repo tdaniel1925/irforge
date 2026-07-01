@@ -56,7 +56,8 @@ export default function CrmWorkspace({ initialContacts, initialCompanies, initia
             <button onClick={() => setScope("mine")} className={`px-3 py-1.5 transition ${scope === "mine" ? "bg-emerald-600 text-white" : "text-muted hover:text-app"}`}>Mine</button>
           </div>
         )}
-        <a href="/crm/import" className={`rounded-lg border border-app px-3 py-1.5 text-sm font-medium text-app hover:bg-app-hover ${currentUserEmail && tab !== "dashboard" ? "" : "ml-auto"}`}>⤓ Import / Export</a>
+        <a href="/investors" className={`rounded-lg border border-app px-3 py-1.5 text-sm font-medium text-app hover:bg-app-hover ${currentUserEmail && tab !== "dashboard" ? "" : "ml-auto"}`}>🎯 Find investors</a>
+        <a href="/crm/import" className="rounded-lg border border-app px-3 py-1.5 text-sm font-medium text-app hover:bg-app-hover">⤓ Import / Export</a>
       </div>
 
       {tab === "dashboard" && <Dashboard metrics={metrics} deals={deals} tasks={tasks} />}

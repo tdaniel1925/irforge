@@ -50,8 +50,11 @@ export default function ProofPage() {
 
           {history.length > 1 && (
             <Card>
-              <h2 className="mb-2 font-semibold text-app">Score over time</h2>
-              <BigTrend points={history.map((h) => h.score)} labels={history.map((h) => h.ts.slice(5, 10))} />
+              <div className="flex items-center justify-between">
+                <h2 className="font-semibold text-app">Visibility Score over time</h2>
+                <a href="/company" className="text-xs font-medium text-emerald-600 hover:underline dark:text-emerald-400">Full score &amp; threats on Reputation →</a>
+              </div>
+              <div className="mt-2"><BigTrend points={history.map((h) => h.score)} labels={history.map((h) => h.ts.slice(5, 10))} /></div>
             </Card>
           )}
 

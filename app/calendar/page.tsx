@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useAppState } from "@/components/useAppState";
 import { Banner, Button, Card, ErrorBanner, LoadingState, PageHeader } from "@/components/ui";
@@ -84,7 +85,9 @@ export default function CalendarPage() {
 
   return (
     <div>
-      <PageHeader title="IR Calendar" subtitle="Your earnings dates, filing deadlines, conferences, lock-ups, meetings, and reminders in one place. Set a quiet period whenever you need one to lock publishing during a blackout." />
+      <PageHeader title="Calendar" subtitle="Your IR dates — earnings, filing deadlines, conferences, lock-ups, and quiet periods.">
+        <Link href="/calendars" className="rounded-lg border border-app px-3.5 py-2 text-sm text-app hover:bg-app-hover">Team &amp; personal calendars →</Link>
+      </PageHeader>
       {notice && <Banner message={notice.text} tone={notice.tone} onDismiss={() => setNotice(null)} />}
 
       <Card className="mb-6">
