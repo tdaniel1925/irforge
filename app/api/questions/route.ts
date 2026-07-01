@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { addBoardPost } from "@/lib/publicStats";
+import { notifyNewQuestion } from "@/lib/boardNotify";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +30,10 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ error: "Couldn't post your question — try again." }, { status: 500 });
   }
+
+  // Notify the company immediately (best-effort, non-blocking — never delay or fail
+  // the investor's post on a notification hiccup).
+  void notifyNewQuestion(ticker, author, question);
 
   return NextResponse.json({ ok: true });
 }

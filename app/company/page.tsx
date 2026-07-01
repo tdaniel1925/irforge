@@ -7,6 +7,7 @@ import { Banner, Button, Card, ErrorBanner, LoadingState, PageHeader, timeAgo } 
 import type { Notice } from "@/components/ui";
 import type { ThreatReport } from "@/lib/threats";
 import Term from "@/components/Term";
+import BoardQA from "@/components/BoardQA";
 import type { Scorecard } from "@/lib/score";
 
 const SEV: Record<string, { ring: string; chip: string; label: string }> = {
@@ -53,8 +54,6 @@ export default function CompanyCommandCenter() {
   const grade = card?.grade ?? last?.grade ?? "F";
   const delta = card && last ? card.score - last.score : last && prev ? last.score - prev.score : 0;
 
-  const pending = db.drafts.filter((d) => d.status === "pending");
-  const openQ = db.publicQuestions.filter((q) => q.status === "open");
   const posted30 = db.drafts.filter((d) => d.status === "posted").length;
   const highThreats = threats?.threats.filter((t) => t.severity === "high").length ?? 0;
 
@@ -100,8 +99,8 @@ export default function CompanyCommandCenter() {
   return (
     <div>
       <PageHeader
-        title="Defend Your Name"
-        subtitle="Threats to your reputation right now — each with a one-tap factual response — plus your investor visibility score."
+        title="Reputation"
+        subtitle="Threats to your reputation, live investor questions to answer, and your visibility score — all in one place."
       >
         <Link href={`/t/${db.company.ticker}`} target="_blank" className="rounded-lg border border-app px-3.5 py-2 text-sm text-app hover:bg-app-hover">
           View public page ↗
@@ -130,9 +129,9 @@ export default function CompanyCommandCenter() {
         <Card className="border-emerald-500/30">
           <p className="text-xs font-semibold tracking-wide text-faint">🎙 CONTROL</p>
           <p className="mt-1 text-2xl font-semibold text-app">
-            {openQ.length} <span className="text-base font-normal text-muted">questions waiting</span>
+            {db.openQuestions ?? 0} <span className="text-base font-normal text-muted">questions waiting</span>
           </p>
-          <p className="mt-1 text-xs text-muted">{pending.length} drafts ready for your approval</p>
+          <p className="mt-1 text-xs text-muted">Answer them on the record below</p>
         </Card>
       </div>
 
@@ -195,16 +194,22 @@ export default function CompanyCommandCenter() {
 
           <Card>
             <h2 className="mb-2 font-semibold text-app">🎙 Control</h2>
-            <p className="text-sm text-muted">Your verified voice in the conversation.</p>
-            <ul className="mt-3 space-y-1.5 text-sm text-muted">
-              <li>· {openQ.length} investor question{openQ.length === 1 ? "" : "s"} awaiting your answer</li>
-              <li>· {pending.length} draft{pending.length === 1 ? "" : "s"} ready to approve</li>
-            </ul>
-            <Link href="/do" className="mt-3 inline-block rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3.5 py-2 text-sm font-semibold text-emerald-600 hover:bg-emerald-500/20 dark:text-emerald-300">
-              Go to your queue →
-            </Link>
+            <p className="text-sm text-muted">Your verified voice in the conversation. Answer investor questions on the record — see the Investor Q&amp;A below.</p>
           </Card>
         </div>
+      </div>
+
+      {/* Investor Q&A — live questions from your public board, answered with a
+          verified reply. This is the real board <-> company loop. */}
+      <div className="mt-6">
+        <Card>
+          <div className="mb-1 flex items-center justify-between">
+            <h2 className="font-semibold text-app">💬 Investor Q&amp;A</h2>
+            <Link href={`/t/${db.company.ticker}`} target="_blank" className="text-xs text-emerald-600 hover:underline dark:text-emerald-400">See your public board ↗</Link>
+          </div>
+          <p className="mb-3 text-xs text-muted">Questions investors asked on your public board. Draft a compliant answer with AI, edit it, and post it as a verified reply — investors see you respond on the record.</p>
+          <BoardQA ticker={db.company.ticker} />
+        </Card>
       </div>
     </div>
   );

@@ -12,6 +12,7 @@ export type AppState = Database & {
   // allow, so the UI can disable/explain a blocked action before it 403s.
   fullAccess?: boolean;
   capabilities?: Record<Capability, boolean>;
+  openQuestions?: number;   // unanswered investor questions on the public board
 };
 
 export function useAppState() {

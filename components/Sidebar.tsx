@@ -70,6 +70,7 @@ export default function Sidebar() {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [superAdmin, setSuperAdmin] = useState(false);
   const [ticker, setTicker] = useState("");
+  const [openQuestions, setOpenQuestions] = useState(0); // unanswered investor board questions
 
   // Restore collapsed-section state, OR — on first visit (no saved state) — collapse
   // every section by default EXCEPT the one containing the current page, so the nav
@@ -101,6 +102,7 @@ export default function Sidebar() {
         if (cancelled) return;
         setSuperAdmin(Boolean(d?.superAdmin));
         setTicker(String(d?.company?.ticker ?? "").trim());
+        setOpenQuestions(Number(d?.openQuestions ?? 0));
       } catch {
         if (cancelled || attempt >= 2) return;
         setTimeout(() => { void loadState(attempt + 1); }, 800 * (attempt + 1));
@@ -182,7 +184,12 @@ export default function Sidebar() {
                           }`}
                         >
                           <span className="w-4 text-center">{item.icon}</span>
-                          {item.label}
+                          <span className="flex-1">{item.label}</span>
+                          {item.href === "/company" && openQuestions > 0 && (
+                            <span title={`${openQuestions} unanswered investor question${openQuestions === 1 ? "" : "s"}`} className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-600 px-1.5 text-[11px] font-bold text-white">
+                              {openQuestions > 99 ? "99+" : openQuestions}
+                            </span>
+                          )}
                         </Link>
                         {item.detail && (
                           <button

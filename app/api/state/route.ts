@@ -3,6 +3,7 @@ import { getDb } from "@/lib/db";
 import { getFullDb, getMyRole } from "@/lib/supabase/store";
 import { stripeMode } from "@/lib/billing";
 import { isSuperAdmin, effectiveCompanyAccess, IROS_FEATURES } from "@/lib/platform";
+import { countOpenQuestions } from "@/lib/board";
 
 export const dynamic = "force-dynamic";
 
@@ -37,8 +38,13 @@ export async function GET() {
     // every dashboard tool. `capabilities` carries the per-capability truth so the UI
     // can disable/explain a specific blocked ACTION before the user clicks.
     const company = access.fullAccess ? { ...co, tier: "pro" } : co;
+    // Unanswered investor questions on the company's public board — drives the badge
+    // on Home + the Reputation nav. Best-effort so it never blocks the dashboard.
+    let openQuestions = 0;
+    const coTicker = String(co.ticker ?? "").trim();
+    if (coTicker) { try { openQuestions = await countOpenQuestions(coTicker); } catch { /* ignore */ } }
     return NextResponse.json(
-      { ...mine, company, ...flags, role, authed: true, fullAccess: access.fullAccess, capabilities: access.features },
+      { ...mine, company, ...flags, role, authed: true, fullAccess: access.fullAccess, capabilities: access.features, openQuestions },
       { headers: NO_STORE }
     );
   }
