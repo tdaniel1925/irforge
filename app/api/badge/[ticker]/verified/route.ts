@@ -5,8 +5,9 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // "Verified by PubcoZone" trust seal — companies show it on their IR site once
-// they've claimed their page:
-//   <img src="https://pubcozone.com/api/badge/BQST/verified.svg" alt="Verified by PubcoZone">
+// they've claimed their page (URL matches what EmbedCenter emits — NO .svg suffix;
+// a ".svg" on this literal segment would 404):
+//   <img src="https://pubcozone.com/api/badge/BQST/verified" alt="Verified by PubcoZone">
 export async function GET(_req: Request, { params }: { params: { ticker: string } }) {
   const ticker = params.ticker.replace(/\.svg$/i, "").toUpperCase().slice(0, 8);
 
