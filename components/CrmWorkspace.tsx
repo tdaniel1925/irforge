@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import InlineConfirm from "./InlineConfirm";
 
 // ── shared types (mirror lib/crm.ts) ──
@@ -128,8 +128,17 @@ function Contacts({ contacts, setContacts, companies }: { contacts: Contact[]; s
     catch (e) { setErr(e instanceof Error ? e.message : "Couldn't delete that contact."); }
   };
 
-  const shown = contacts.filter((c) => (!q || `${c.fullName} ${c.email} ${c.title}`.toLowerCase().includes(q.toLowerCase())) && (!cat || c.category === cat));
+  const shown = contacts.filter((c) => (!q || `${c.fullName} ${c.email} ${c.title} ${c.phone}`.toLowerCase().includes(q.toLowerCase())) && (!cat || c.category === cat));
   const compName = (id: string | null) => companies.find((co) => co.id === id)?.name ?? "";
+
+  // Pagination — imported lists can be thousands of rows; render a page at a time.
+  const PAGE_SIZE = 50;
+  const [page, setPage] = useState(0);
+  const pageCount = Math.max(1, Math.ceil(shown.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount - 1);
+  const pageRows = shown.slice(safePage * PAGE_SIZE, safePage * PAGE_SIZE + PAGE_SIZE);
+  // Reset to page 1 whenever the filter/search narrows the set.
+  useEffect(() => { setPage(0); }, [q, cat]);
 
   if (editing) {
     return (
@@ -159,21 +168,35 @@ function Contacts({ contacts, setContacts, companies }: { contacts: Contact[]; s
       </div>
       <div className="overflow-x-auto rounded-xl border border-app">
         <table className="w-full text-sm">
-          <thead><tr className="border-b border-app bg-surface text-left text-xs text-faint"><th className="px-3 py-2">Name</th><th className="px-3 py-2">Company</th><th className="px-3 py-2">Category</th><th className="px-3 py-2">Email</th><th className="px-3 py-2"></th></tr></thead>
+          <thead><tr className="border-b border-app bg-surface text-left text-xs text-faint"><th className="px-3 py-2">Name</th><th className="px-3 py-2">Company</th><th className="px-3 py-2">Category</th><th className="px-3 py-2">Email</th><th className="px-3 py-2">Phone</th><th className="px-3 py-2">AUM</th><th className="px-3 py-2"></th></tr></thead>
           <tbody>
-            {shown.map((c) => (
+            {pageRows.map((c) => (
               <tr key={c.id} className="border-b border-app bg-surface">
                 <td className="px-3 py-2.5"><span className="font-medium text-app">{c.fullName}</span>{c.title && <span className="block text-xs text-faint">{c.title}</span>}</td>
                 <td className="px-3 py-2.5 text-muted">{compName(c.crmCompanyId)}</td>
                 <td className="px-3 py-2.5"><span className="rounded bg-surface-2 px-1.5 py-0.5 text-[11px] text-muted">{c.category}</span></td>
-                <td className="px-3 py-2.5 text-muted">{c.email}</td>
+                <td className="px-3 py-2.5 text-muted">{c.email || <span className="text-faint">—</span>}</td>
+                <td className="px-3 py-2.5 text-muted">{c.phone ? <a href={`tel:${c.phone}`} className="hover:text-app">{c.phone}</a> : <span className="text-faint">—</span>}</td>
+                <td className="px-3 py-2.5 text-muted">{c.aum || <span className="text-faint">—</span>}</td>
                 <td className="px-3 py-2.5 text-right"><button onClick={() => setEditing(c)} className="text-xs text-emerald-600 hover:underline dark:text-emerald-400">Edit</button> <span className="ml-2 inline-block"><InlineConfirm onConfirm={() => del(c.id)} label="Del" confirmLabel="Delete" className="text-xs text-faint hover:text-red-500" /></span></td>
               </tr>
             ))}
-            {shown.length === 0 && <tr><td colSpan={5} className="px-3 py-8 text-center text-sm text-faint">No contacts. Add one or import a CSV.</td></tr>}
+            {shown.length === 0 && <tr><td colSpan={7} className="px-3 py-8 text-center text-sm text-faint">No contacts. Add one or import a CSV.</td></tr>}
           </tbody>
         </table>
       </div>
+      {shown.length > PAGE_SIZE && (
+        <div className="mt-3 flex items-center justify-between text-sm">
+          <span className="text-faint">
+            {safePage * PAGE_SIZE + 1}–{Math.min((safePage + 1) * PAGE_SIZE, shown.length)} of {shown.length}
+          </span>
+          <div className="flex gap-2">
+            <button onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={safePage === 0} className="rounded-lg border border-app px-3 py-1.5 text-app transition hover:bg-app-hover disabled:opacity-40">← Prev</button>
+            <span className="px-1 py-1.5 text-muted">Page {safePage + 1} / {pageCount}</span>
+            <button onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))} disabled={safePage >= pageCount - 1} className="rounded-lg border border-app px-3 py-1.5 text-app transition hover:bg-app-hover disabled:opacity-40">Next →</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
