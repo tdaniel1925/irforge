@@ -12,7 +12,8 @@ export const maxDuration = 90;
 // real address/phone/EDGAR/ADV links. Fallback: AI-suggested target types when
 // there are no peers set or SEC returns nothing.
 export async function POST() {
-  const { db, save } = await getStore();
+  const { db, save, authed } = await getStore();
+  if (process.env.AUTH_ENABLED === "1" && !authed) return NextResponse.json({ error: "Sign in first." }, { status: 401 });
   const now = Date.now();
   let investors: InvestorTarget[] = [];
   let engine = "sec_13f";

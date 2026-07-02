@@ -14,7 +14,8 @@ export async function POST(req: Request) {
   const evidence = body.evidence ? String(body.evidence).slice(0, 400) : undefined;
   if (!title) return NextResponse.json({ error: "Missing threat." }, { status: 422 });
 
-  const { db, save } = await getStore();
+  const { db, save, authed } = await getStore();
+  if (process.env.AUTH_ENABLED === "1" && !authed) return NextResponse.json({ error: "Sign in first." }, { status: 401 });
   const publicContext = db.filings.slice(0, 4).map((f) => `${f.form} (${f.filedAt.slice(0, 10)}): ${f.summary}`).join(" | ");
   const { tweets, engine } = await generateRebuttal(title, evidence, db.company, publicContext);
 

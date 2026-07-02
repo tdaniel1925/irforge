@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getStore, logAudit, newId } from "@/lib/db";
+import { safeFetchText } from "@/lib/safeFetch";
 import type { Filing } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -8,34 +9,31 @@ export const maxDuration = 30;
 // POST — a claimed company adds a disclosure we can't reach via EDGAR
 // (OTC/SEDAR alternative reporting). Accepts a URL to fetch, or pasted text.
 export async function POST(req: Request) {
+  // Auth gate: this fetches a URL + writes to the company's filings.
+  const { db, save, authed } = await getStore();
+  if (process.env.AUTH_ENABLED === "1" && !authed) return NextResponse.json({ error: "Sign in first." }, { status: 401 });
+
   const body = await req.json().catch(() => ({}));
   const form = String(body.form ?? "").trim().slice(0, 20) || "Disclosure";
   const title = String(body.title ?? "").trim().slice(0, 200);
   const url = String(body.url ?? "").trim().slice(0, 500);
-  let text = String(body.text ?? "").trim();
+  let text = String(body.text ?? "").trim().slice(0, 100_000);
   const date = String(body.date ?? "").trim() || new Date().toISOString().slice(0, 10);
 
   if (!title) return NextResponse.json({ error: "Give the disclosure a title." }, { status: 422 });
 
-  // If a URL is provided and no text, fetch and strip it server-side.
+  // If a URL is provided and no text, fetch and strip it server-side (SSRF-guarded —
+  // an arbitrary user URL must not reach internal/metadata hosts).
   if (url && !text) {
-    try {
-      const res = await fetch(url, {
-        headers: { "User-Agent": "PubcoZone IR disclosure importer (company-authorized)" },
-        signal: AbortSignal.timeout(15000),
-      });
-      if (!res.ok) return NextResponse.json({ error: `Couldn't fetch that URL (HTTP ${res.status}). Paste the text instead.` }, { status: 422 });
-      const html = await res.text();
-      text = html
-        .replace(/<script[\s\S]*?<\/script>/gi, " ")
-        .replace(/<style[\s\S]*?<\/style>/gi, " ")
-        .replace(/<[^>]+>/g, " ")
-        .replace(/&[a-z]+;/gi, " ")
-        .replace(/\s+/g, " ")
-        .trim();
-    } catch {
-      return NextResponse.json({ error: "Couldn't reach that URL. Paste the disclosure text instead." }, { status: 422 });
-    }
+    const r = await safeFetchText(url);
+    if (!r.ok) return NextResponse.json({ error: `${r.error ?? "Couldn't fetch that URL."} Paste the text instead.` }, { status: 422 });
+    text = r.text
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/&[a-z]+;/gi, " ")
+      .replace(/\s+/g, " ")
+      .trim();
   }
 
   if (!text || text.length < 40) {
@@ -45,7 +43,6 @@ export async function POST(req: Request) {
   const fullText = text.slice(0, 8000);
   const summary = fullText.slice(0, 400) + (fullText.length > 400 ? "…" : "");
 
-  const { db, save } = await getStore();
   const filing: Filing = {
     id: newId("cmp"),
     form,

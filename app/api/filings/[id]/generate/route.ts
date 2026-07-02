@@ -7,7 +7,8 @@ import type { Draft } from "@/lib/types";
 export const dynamic = "force-dynamic";
 
 export async function POST(_req: Request, { params }: { params: { id: string } }) {
-  const { db, save } = await getStore();
+  const { db, save, authed } = await getStore();
+  if (process.env.AUTH_ENABLED === "1" && !authed) return NextResponse.json({ error: "Sign in first." }, { status: 401 });
   const filing = db.filings.find((f) => f.id === params.id);
   if (!filing) return NextResponse.json({ error: "Filing not found" }, { status: 404 });
   if (filing.draftId) return NextResponse.json({ error: "Draft already exists for this filing" }, { status: 409 });

@@ -12,13 +12,14 @@ export const dynamic = "force-dynamic";
 // text for blocked language; never drops the disclosure.
 export async function POST(req: Request) {
   const { text, channel } = (await req.json().catch(() => ({}))) as { text?: string; channel?: string };
-  const body = String(text ?? "").trim();
+  const body = String(text ?? "").trim().slice(0, 20_000); // cap so a huge paste can't burn tokens
   const ch = String(channel ?? "").trim();
   if (!body) return NextResponse.json({ error: "Nothing to fit." }, { status: 422 });
   const limit = CHANNEL_LIMITS[ch];
   if (!limit) return NextResponse.json({ error: "Unknown channel." }, { status: 422 });
 
-  const { db } = await getStore();
+  const { db, authed } = await getStore();
+  if (process.env.AUTH_ENABLED === "1" && !authed) return NextResponse.json({ error: "Sign in first." }, { status: 401 });
 
   // Reserve room for the disclosure: overhead = full-with-disclosure length minus
   // body length, so the rewritten body + disclosure lands under the channel limit.

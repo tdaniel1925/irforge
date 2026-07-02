@@ -9,10 +9,11 @@ export const dynamic = "force-dynamic";
 // is returned for the user to edit, preview, and approve — it does NOT publish.
 export async function POST(req: Request) {
   const { topic } = (await req.json().catch(() => ({}))) as { topic?: string };
-  const t = String(topic ?? "").trim();
+  const t = String(topic ?? "").trim().slice(0, 2_000); // cap the topic length
   if (!t) return NextResponse.json({ error: "Tell the AI what to write about." }, { status: 422 });
 
-  const { db } = await getStore();
+  const { db, authed } = await getStore();
+  if (process.env.AUTH_ENABLED === "1" && !authed) return NextResponse.json({ error: "Sign in first." }, { status: 401 });
   const text = await writePostFromTopic(t, db.company);
   if (!text) return NextResponse.json({ error: "Couldn't draft that — try a different topic." }, { status: 502 });
   return NextResponse.json({ text });

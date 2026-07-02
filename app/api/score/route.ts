@@ -8,7 +8,8 @@ export const maxDuration = 60;
 
 // POST — refresh the company's Visibility Score from live sources + internal activity.
 export async function POST() {
-  const { db, save } = await getStore();
+  const { db, save, authed } = await getStore();
+  if (process.env.AUTH_ENABLED === "1" && !authed) return NextResponse.json({ error: "Sign in first." }, { status: 401 });
 
   let audit = null;
   try {

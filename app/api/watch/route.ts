@@ -32,8 +32,13 @@ export async function POST(req: Request) {
 
   if (!EMAIL_RE.test(email)) return Response.json({ error: "Enter a valid email." }, { status: 400 });
 
-  const allowed = await rateAllow(`watch:${email}`, 10);
-  if (!allowed) return Response.json({ error: "Too many requests — try again in a minute." }, { status: 429 });
+  // Per-IP cap in ADDITION to per-email — the confirmation email is sent to an
+  // attacker-controlled address, so an email-only limit is bypassed by rotating the
+  // target (email-bombing from our domain).
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "anon";
+  if (!(await rateAllow(`watch-ip:${ip}`, 10)) || !(await rateAllow(`watch:${email}`, 10))) {
+    return Response.json({ error: "Too many requests — try again in a minute." }, { status: 429 });
+  }
 
   const { already } = await addWatch({ ticker, email, ts: new Date().toISOString(), memberId });
 

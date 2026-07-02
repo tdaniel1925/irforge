@@ -16,7 +16,14 @@ export async function GET(req: Request) {
   const { data, error } = await svc.from("outreach_leads").select("*").eq("list_id", listId).order("fit_score", { ascending: false });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  // CSV-quote AND neutralize spreadsheet formula injection: a cell starting with
+  // = + - @ (or tab/CR) is executed as a formula by Excel/Sheets. Lead data comes
+  // from EDGAR + user input, so prefix a leading ' to force text.
+  const esc = (v: unknown) => {
+    let s = String(v ?? "");
+    if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+    return `"${s.replace(/"/g, '""')}"`;
+  };
   const csv = [COLS.join(","), ...(data ?? []).map((r) => COLS.map((c) => esc((r as Record<string, unknown>)[c])).join(","))].join("\n");
 
   return new NextResponse(csv, {

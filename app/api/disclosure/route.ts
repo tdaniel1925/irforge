@@ -12,7 +12,8 @@ export async function POST(req: Request) {
   const event = String(body.event ?? "").trim().slice(0, 400);
   if (event.length < 8) return NextResponse.json({ error: "Describe the event in a sentence or two." }, { status: 422 });
 
-  const { db, save } = await getStore();
+  const { db, save, authed } = await getStore();
+  if (process.env.AUTH_ENABLED === "1" && !authed) return NextResponse.json({ error: "Sign in first." }, { status: 401 });
   const { likelyMaterial, form, reasoning, draftLanguage } = await checkDisclosure(event, db.company);
 
   const check: DisclosureCheck = {

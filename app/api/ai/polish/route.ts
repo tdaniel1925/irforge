@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { polishText } from "@/lib/ai";
+import { getMyCompany } from "@/lib/supabase/store";
 
 export const dynamic = "force-dynamic";
 
@@ -8,6 +9,10 @@ export const dynamic = "force-dynamic";
 // "Polish" button across compose surfaces. Compliance-safe: it only tidies, it does
 // not invent facts, numbers, or promotional language.
 export async function POST(req: Request) {
+  // Auth gate: spends AI tokens. (No getStore() here, so check the company directly.)
+  if (process.env.AUTH_ENABLED === "1" && !(await getMyCompany())) {
+    return NextResponse.json({ error: "Sign in first." }, { status: 401 });
+  }
   const { text } = (await req.json().catch(() => ({}))) as { text?: string };
   const input = String(text ?? "").trim();
   if (!input) return NextResponse.json({ error: "Nothing to polish." }, { status: 422 });
