@@ -65,6 +65,36 @@ export async function listPosts(): Promise<IrosPost[]> {
   return (data ?? []).map(rowToPost);
 }
 
+// Published posts for the Results/Proof page — reads the REAL first-class iros_posts
+// table (status=published), not the legacy JSONB drafts collection. Returns just the
+// display fields (title, when, where it went, who approved).
+export interface PublishedPost {
+  id: string;
+  title: string;
+  channels: string[];
+  postUrl: string;
+  postedAt: string | null;
+}
+export async function listPublishedPosts(): Promise<PublishedPost[]> {
+  const supabase = await createServerSupabase();
+  const cid = await myCompanyId();
+  if (!cid) return [];
+  const { data } = await supabase
+    .from("iros_posts")
+    .select("id, title, body, channels, post_url, posted_at, updated_at")
+    .eq("company_id", cid)
+    .eq("status", "published")
+    .order("posted_at", { ascending: false, nullsFirst: false })
+    .limit(500);
+  return (data ?? []).map((r) => ({
+    id: String(r.id),
+    title: (r.title as string) || (r.body as string || "").slice(0, 80) || "Post",
+    channels: (r.channels as string[]) ?? [],
+    postUrl: (r.post_url as string) ?? "",
+    postedAt: r.posted_at ? String(r.posted_at) : (r.updated_at ? String(r.updated_at) : null),
+  }));
+}
+
 export async function getPost(id: string): Promise<IrosPost | null> {
   const supabase = await createServerSupabase();
   const { data } = await supabase.from("iros_posts").select("*").eq("id", id).maybeSingle();

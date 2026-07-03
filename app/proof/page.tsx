@@ -1,15 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAppState } from "@/components/useAppState";
 import { Card, EmptyState, ErrorBanner, LoadingState, PageHeader, timeAgo } from "@/components/ui";
 
 const TABS = ["results", "record"] as const;
 type Tab = (typeof TABS)[number];
 
+interface PublishedPost { id: string; title: string; channels: string[]; postUrl: string; postedAt: string | null }
+
 export default function ProofPage() {
   const { db, error } = useAppState();
   const [tab, setTab] = useState<Tab>("results");
+
+  // REAL published posts from iros_posts (not the legacy JSONB drafts collection).
+  const [posted, setPosted] = useState<PublishedPost[]>([]);
+  useEffect(() => {
+    fetch("/api/iros/published", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : { posts: [] }))
+      .then((d) => setPosted(Array.isArray(d.posts) ? d.posts : []))
+      .catch(() => {});
+  }, []);
 
   if (error) return <ErrorBanner message={error} />;
   if (!db) return <LoadingState />;
@@ -17,7 +28,6 @@ export default function ProofPage() {
   const history = db.scoreHistory;
   const first = history[0];
   const last = history[history.length - 1];
-  const posted = db.drafts.filter((d) => d.status === "posted");
   const metrics = db.metrics ?? [];
   const hasMetrics = metrics.length > 0;
   const latestMetric = metrics[metrics.length - 1];
@@ -69,11 +79,11 @@ export default function ProofPage() {
                     <div className="min-w-0">
                       <p className="truncate text-sm text-app">{d.title}</p>
                       <p className="text-xs text-faint">
-                        posted {d.postedAt ? timeAgo(d.postedAt) : ""} · approved by {d.decidedBy ?? "—"}
+                        posted {d.postedAt ? timeAgo(d.postedAt) : ""}{d.channels.length ? ` · ${d.channels.join(", ")}` : ""}
                         {d.postUrl && (
                           <>
                             {" · "}
-                            <a href={d.postUrl} target="_blank" rel="noreferrer" className="text-emerald-600 hover:underline dark:text-emerald-400">view on X ↗</a>
+                            <a href={d.postUrl} target="_blank" rel="noreferrer" className="text-emerald-600 hover:underline dark:text-emerald-400">view ↗</a>
                           </>
                         )}
                       </p>
