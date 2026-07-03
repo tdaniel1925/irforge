@@ -89,3 +89,45 @@ unused, this is a delete, not a migration.
 Net: the scary "dual store" is mostly a naming problem + one genuinely stale page
 (Proof) + one redundant legacy queue (/do). Not a multi-week rewrite — ~3 scoped,
 reversible slices.
+
+---
+
+## EXECUTION LOG
+
+### Phase 1 — DONE (commit ec94133..4e3d801)
+Results/Proof now reads live `iros_posts` (status=published) via `listPublishedPosts()`
++ `/api/iros/published`, instead of the legacy JSONB `drafts` collection. Verified: the
+query returns the real published AMFN posts. The board-facing count no longer diverges.
+
+### Phase 2 — DONE (commit 4e3d801..0a1bb42)
+`/do` and `/approvals` (standalone views of the same `db.drafts` inbox) now redirect to
+`/posts`, whose "Needs approval" tab embeds the same `ApprovalsInbox`. Neither was in the
+nav. No data touched; 283 lines of redundant UI removed. Usage check first confirmed only
+9 legacy draft rows (test data, 3 companies) and 0 legacy publicQuestions.
+
+### Phase 3 — RESOLVED BY AUDIT (no code change needed)
+After Phase 2, an audit of remaining callers found the legacy generation flows are
+effectively DEAD — nothing in the UI reaches them:
+- `/api/press` — NO callers. The press-release editor (StudioEditor) uses
+  `/api/studio/revise`, not this. Dead.
+- `/api/questions/[id]/draft` — NO callers. The live Investor Q&A inbox (BoardQA →
+  `/api/board/questions/draft` on `public_board`) replaced it. Dead.
+- `/api/mentions/[id]/reply` — NO callers. Dead.
+- `/api/drafts` + `/api/drafts/[id]` — STILL LIVE via `/filings` page (generate a cadence
+  post) and `ApprovalsInbox` (the retained `/posts` approval tab). `/filings` is not in
+  the nav but is a working feature.
+
+DECISION: do NOT delete the dead routes. They're already auth-gated + rate-limited (from
+the API security pass), harmless, and deleting them risks breaking a bookmark or a future
+re-link for zero user benefit. They're documented here as deprecated. The `db.drafts`
+JSONB flow that ApprovalsInbox/`/filings` still use is functional and RLS-isolated —
+migrating it to `iros_posts` is possible but is pure churn now that the divergent *views*
+(Proof, /do) are fixed. Leave it.
+
+## FINAL STATE
+The dual-store risk is closed for practical purposes: the one page that showed wrong
+numbers (Proof) reads live data, the redundant approval queue is gone, and the legacy
+generation endpoints are dead-but-harmless. No remaining feature shows divergent data.
+The `company_data` JSONB store remains as the backing for filings/contacts/capTable/etc.
+(no twin, works fine) and for the `/filings`+ApprovalsInbox draft flow — intentionally
+left in place. `lib/db.ts` local store stays as the demo/dev path, unreachable in prod.
