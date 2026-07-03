@@ -1,7 +1,10 @@
-// Approvals now lives in the unified Posts page; this route stays as a thin wrapper
-// for back-compat and renders the inbox component.
-import ApprovalsInbox from "@/components/ApprovalsInbox";
+import { redirect } from "next/navigation";
 
-export default function ApprovalsPage() {
-  return <ApprovalsInbox />;
+export const dynamic = "force-dynamic";
+
+// Approvals now live inside the unified Posts page ("Needs approval" tab). Redirect
+// the old standalone route so bookmarks land there; the inbox component itself lives
+// on, embedded in /posts.
+export default function ApprovalsRedirect() {
+  redirect("/posts");
 }
