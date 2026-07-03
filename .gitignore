@@ -40,3 +40,16 @@ next-env.d.ts
 # local data store
 /data
 .vercel
+
+# Claude Code / plugin tooling (local dev infrastructure, not app code)
+/.agents/
+/.claude/
+/skills/
+/skills-lock.json
+/CLAUDE.md
+/.forge/skills/
+# one-off local scripts (kept out of the repo; prefix _ or clearly throwaway)
+/scripts/_*.mjs
+/scripts/cleanup-demo-data.mjs
+/scripts/fix-tavares-amfn.mjs
+/scripts/walkthrough-amfn.mjs
