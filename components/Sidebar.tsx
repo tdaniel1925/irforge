@@ -66,7 +66,10 @@ const NAV: NavGroup[] = [
 
 const COLLAPSE_KEY = "pz-sidebar-collapsed";
 
-export default function Sidebar() {
+// On mobile the sidebar is an off-canvas DRAWER controlled by AppFrame: `mobileOpen`
+// slides it in over an overlay, `onNavigate` closes it after a link tap. On >=lg it's
+// the normal static rail and these props are inert.
+export default function Sidebar({ mobileOpen = false, onNavigate }: { mobileOpen?: boolean; onNavigate?: () => void } = {}) {
   const pathname = usePathname();
   const [info, setInfo] = useState<NavItem | null>(null);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
@@ -141,15 +144,26 @@ export default function Sidebar() {
 
   // The whole aside is fixed full-height; only the nav list scrolls, so links out
   // of view are reachable without scrolling the page content.
+  //   >=lg : static sticky rail (unchanged desktop behavior).
+  //   <lg  : off-canvas drawer — fixed, slides in/out with mobileOpen, over an overlay.
   return (
-    <aside className="sticky top-0 flex h-screen w-56 shrink-0 flex-col border-r border-app bg-app">
+    <>
+      {/* Mobile overlay — tap to close the drawer. */}
+      {mobileOpen && <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={onNavigate} aria-hidden />}
+      <aside
+        className={`z-50 flex h-screen w-64 shrink-0 flex-col border-r border-app bg-app transition-transform lg:sticky lg:top-0 lg:z-auto lg:w-56 lg:translate-x-0 max-lg:fixed max-lg:inset-y-0 max-lg:left-0 ${mobileOpen ? "max-lg:translate-x-0" : "max-lg:-translate-x-full"}`}
+      >
       <div className="flex items-center justify-between px-4 py-4">
-        <Link href="/app" className="flex items-baseline gap-1">
+        <Link href="/app" onClick={onNavigate} className="flex items-baseline gap-1">
           <span className="text-xl font-bold text-app">Pubco</span>
           <span className="text-xl font-bold text-emerald-400">Zone</span>
           <span className="text-emerald-400">.</span>
         </Link>
-        <ThemeToggle />
+        <div className="flex items-center gap-1">
+          <ThemeToggle />
+          {/* Close button, mobile only. */}
+          <button onClick={onNavigate} className="rounded-lg p-1 text-muted hover:bg-app-hover hover:text-app lg:hidden" aria-label="Close menu">✕</button>
+        </div>
       </div>
 
       <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 pb-4">
@@ -179,6 +193,7 @@ export default function Sidebar() {
                         <Link
                           href={item.href}
                           title={item.hint}
+                          onClick={onNavigate}
                           className={`flex flex-1 items-center gap-2.5 rounded-lg px-3 py-1 text-sm transition ${
                             active
                               ? "bg-emerald-500/10 font-medium text-emerald-600 dark:text-emerald-300"
@@ -221,7 +236,8 @@ export default function Sidebar() {
       </div>
 
       {info && <InfoModal item={info} onClose={() => setInfo(null)} />}
-    </aside>
+      </aside>
+    </>
   );
 }
 

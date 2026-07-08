@@ -31,6 +31,7 @@ export default function AuditPage() {
         <EmptyState message="No events yet." />
       ) : (
         <Card>
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-800 text-left text-xs text-slate-500">
@@ -55,6 +56,7 @@ export default function AuditPage() {
               ))}
             </tbody>
           </table>
+          </div>
         </Card>
       )}
     </div>

@@ -348,7 +348,7 @@ export default function QuickPostComposer({ embedded = false }: { embedded?: boo
               value={brandColors}
               onChange={(e) => setBrandColors(e.target.value)}
               placeholder="Brand colors (optional) — e.g. navy blue and red"
-              className="w-64 rounded-lg border border-app bg-surface-2 px-3 py-1.5 text-xs text-app focus:border-emerald-500 focus:outline-none"
+              className="w-full max-w-full sm:w-64 rounded-lg border border-app bg-surface-2 px-3 py-1.5 text-xs text-app focus:border-emerald-500 focus:outline-none"
             />
             <span className="text-[11px] text-faint">AI-generated · click again to regenerate a fresh look</span>
           </div>

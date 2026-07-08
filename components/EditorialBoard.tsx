@@ -207,7 +207,7 @@ export default function EditorialBoard({ initialPosts, voices, canPublish = fals
 
       {error && !composing && <p className="mb-3 text-sm text-red-500">{error}</p>}
 
-      <div className="grid gap-4 lg:grid-cols-5">
+      <div className="-mx-1 flex snap-x gap-4 overflow-x-auto px-1 pb-2 lg:mx-0 lg:grid lg:grid-cols-5 lg:overflow-visible lg:px-0 lg:pb-0">
         {COLUMNS.map((col) => {
           const items = posts.filter((p) => p.status === col.key);
           const canDropHere = dragId ? allowedTargets(posts.find((x) => x.id === dragId) ?? ({} as Post)).includes(col.key) : false;
@@ -217,7 +217,7 @@ export default function EditorialBoard({ initialPosts, voices, canPublish = fals
               onDragOver={(e) => { if (dragId) { e.preventDefault(); setDragOverCol(col.key); } }}
               onDragLeave={() => setDragOverCol((c) => (c === col.key ? null : c))}
               onDrop={(e) => { e.preventDefault(); dropOnColumn(col.key); }}
-              className={`rounded-xl border bg-surface-2/40 p-2 transition-colors duration-200 ${dragOverCol === col.key && canDropHere ? "border-emerald-500 bg-emerald-500/5" : dragOverCol === col.key ? "border-red-400/50" : "border-app"}`}
+              className={`w-64 shrink-0 snap-start rounded-xl border bg-surface-2/40 p-2 transition-colors duration-200 lg:w-auto lg:shrink ${dragOverCol === col.key && canDropHere ? "border-emerald-500 bg-emerald-500/5" : dragOverCol === col.key ? "border-red-400/50" : "border-app"}`}
             >
               <p className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-faint">{col.label} · {items.length}</p>
               <div className="space-y-2">

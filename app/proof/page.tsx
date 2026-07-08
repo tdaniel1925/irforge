@@ -130,6 +130,7 @@ export default function ProofPage() {
           {db.audit.length === 0 ? (
             <EmptyState message="No events yet." />
           ) : (
+            <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-app text-left text-xs text-faint">
@@ -154,6 +155,7 @@ export default function ProofPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </Card>
       )}

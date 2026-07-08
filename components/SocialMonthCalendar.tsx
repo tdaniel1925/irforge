@@ -162,6 +162,10 @@ export default function SocialMonthCalendar({ year, month }: { year: number; mon
         </div>
       </div>
 
+      {/* On a phone a 7-day month is tight — let it scroll horizontally with a floor
+          width so cells stay tappable instead of collapsing. */}
+      <div className="overflow-x-auto">
+      <div className="min-w-[560px]">
       {/* Weekday header */}
       <div className="grid grid-cols-7 gap-px text-center text-xs font-medium text-faint">
         {DOW.map((d) => <div key={d} className="py-1">{d}</div>)}
@@ -219,6 +223,8 @@ export default function SocialMonthCalendar({ year, month }: { year: number; mon
             </div>
           );
         })}
+      </div>
+      </div>
       </div>
 
       {loading && <p className="mt-2 text-xs text-faint">Loading…</p>}

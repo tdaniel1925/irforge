@@ -85,6 +85,9 @@ export default function TeamCalendars({ initialCalendars, isAdmin }: { initialCa
         <button onClick={() => { const n = new Date(); setView({ y: n.getFullYear(), m: n.getMonth() }); }} className="ml-1 rounded-lg border border-app px-2.5 py-1 text-xs">Today</button>
       </div>
 
+      {/* Horizontal-scroll on phones so the 7-day grid stays tappable. */}
+      <div className="overflow-x-auto">
+      <div className="min-w-[560px]">
       {/* Weekday header */}
       <div className="grid grid-cols-7 gap-px text-center text-xs font-medium text-faint">
         {DOW.map((d) => <div key={d} className="py-1">{d}</div>)}
@@ -115,6 +118,8 @@ export default function TeamCalendars({ initialCalendars, isAdmin }: { initialCa
             </div>
           );
         })}
+      </div>
+      </div>
       </div>
 
       {createFor && <AddEventModal date={createFor} calendars={calendars.filter((c) => !c.ownerUserId || true)} onClose={() => setCreateFor(null)} onAdded={() => { setCreateFor(null); load(); }} />}

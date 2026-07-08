@@ -41,7 +41,7 @@ export default function CapTablePage() {
       <PageHeader title="Cap Table" subtitle="Your fully-diluted ownership — common, preferred, options, warrants, and what convertible notes turn into." />
       {notice && <Banner message={notice.text} tone={notice.tone} onDismiss={() => setNotice(null)} />}
 
-      <div className="mb-4 flex items-center gap-2 rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm">
+      <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm">
         <label className="font-medium text-app">Current share price</label>
         <span className="text-faint">$</span>
         <input value={priceInput} onChange={(e) => setPriceInput(e.target.value)} type="number" step="0.01" min="0"

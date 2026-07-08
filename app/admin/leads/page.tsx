@@ -223,7 +223,7 @@ export default function LeadFinder() {
                     <h2 className="font-semibold text-app">{active.name}</h2>
                     <p className="text-xs text-muted">{leads.length} companies · {emailCount} with a verified email · {active.sent} contacted</p>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <a href={`/api/admin/leads/export?list=${active.id}`} className="rounded-lg border border-app px-3 py-1.5 text-sm text-app hover:bg-app-hover">⬇ CSV</a>
                     <Button variant="secondary" onClick={() => setComposeOpen((v) => !v)}>{composeOpen ? "Hide compose" : "✉ Compose & send"}</Button>
                     <InlineConfirm onConfirm={() => deleteList(active.id)} label="Delete list" confirmLabel="Delete list & leads" className="rounded-lg border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-500/10" />
