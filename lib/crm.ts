@@ -15,8 +15,9 @@ async function tenant(): Promise<{ cid: string; email: string; uid: string } | n
 
 // ── Types ──
 export interface CrmContact {
-  id: string; crmCompanyId: string | null; fullName: string; title: string; email: string; phone: string;
+  id: string; crmCompanyId: string | null; companyName: string; fullName: string; title: string; email: string; phone: string;
   category: string; stage: string; linkedinUrl: string; xHandle: string; topics: string[]; aum: string;
+  sharesHeld: number | null; optedIn: boolean;
   peersHeld: string[]; notes: string; ownerEmail: string; lastTouchAt: string | null; nextFollowup: string | null;
 }
 export interface CrmCompany { id: string; name: string; domain: string; type: string; industry: string; city: string; state: string; website: string; notes: string; ownerEmail: string }
@@ -27,10 +28,12 @@ export interface CrmTask { id: string; title: string; dueDate: string | null; do
 // ── mappers ──
 const contact = (r: Record<string, unknown>): CrmContact => ({
   id: String(r.id), crmCompanyId: r.crm_company_id ? String(r.crm_company_id) : null,
+  companyName: (r.company_name as string) ?? "",
   fullName: (r.full_name as string) ?? "", title: (r.title as string) ?? "", email: (r.email as string) ?? "",
   phone: (r.phone as string) ?? "", category: (r.category as string) ?? "investor", stage: (r.stage as string) ?? "new",
   linkedinUrl: (r.linkedin_url as string) ?? "", xHandle: (r.x_handle as string) ?? "", topics: (r.topics as string[]) ?? [],
-  aum: (r.aum as string) ?? "", peersHeld: (r.peers_held as string[]) ?? [], notes: (r.notes as string) ?? "",
+  aum: (r.aum as string) ?? "", sharesHeld: r.shares_held != null ? Number(r.shares_held) : null, optedIn: Boolean(r.opted_in),
+  peersHeld: (r.peers_held as string[]) ?? [], notes: (r.notes as string) ?? "",
   ownerEmail: (r.owner_email as string) ?? "", lastTouchAt: r.last_touch_at ? String(r.last_touch_at) : null,
   nextFollowup: r.next_followup ? String(r.next_followup) : null,
 });
@@ -73,9 +76,11 @@ export async function upsertContact(input: Partial<CrmContact> & { id?: string }
   const t = await tenant(); if (!t) return null;
   const sb = await createServerSupabase();
   const row: Record<string, unknown> = {
-    company_id: t.cid, crm_company_id: input.crmCompanyId ?? null, full_name: input.fullName ?? "", title: input.title ?? "",
+    company_id: t.cid, crm_company_id: input.crmCompanyId ?? null, company_name: input.companyName ?? "",
+    full_name: input.fullName ?? "", title: input.title ?? "",
     email: input.email ?? "", phone: input.phone ?? "", category: input.category ?? "investor", stage: input.stage ?? "new",
     linkedin_url: input.linkedinUrl ?? "", x_handle: input.xHandle ?? "", topics: input.topics ?? [], aum: input.aum ?? "",
+    shares_held: input.sharesHeld ?? null, opted_in: input.optedIn ?? false,
     peers_held: input.peersHeld ?? [], notes: input.notes ?? "",
     next_followup: input.nextFollowup ?? null, updated_at: new Date().toISOString(),
   };

@@ -4,7 +4,10 @@ import { useState, useEffect } from "react";
 import InlineConfirm from "./InlineConfirm";
 
 // ── shared types (mirror lib/crm.ts) ──
-interface Contact { id: string; crmCompanyId: string | null; fullName: string; title: string; email: string; phone: string; category: string; stage: string; topics: string[]; aum: string; peersHeld: string[]; notes: string; nextFollowup: string | null; lastTouchAt: string | null; ownerEmail?: string }
+interface Contact { id: string; crmCompanyId: string | null; companyName: string; fullName: string; title: string; email: string; phone: string; category: string; stage: string; topics: string[]; aum: string; sharesHeld: number | null; optedIn: boolean; peersHeld: string[]; notes: string; nextFollowup: string | null; lastTouchAt: string | null; ownerEmail?: string }
+
+// Category values are stored lowercase (back-compat); shown Title Case in the UI.
+const catLabel = (c: string) => c.charAt(0).toUpperCase() + c.slice(1);
 interface Company { id: string; name: string; type: string; industry: string; website: string; notes: string; ownerEmail?: string }
 interface Deal { id: string; title: string; stage: string; value: number; currency: string; contactId: string | null; crmCompanyId: string | null; closeDate: string | null; status: string; notes: string; ownerEmail?: string }
 interface Task { id: string; title: string; dueDate: string | null; done: boolean; contactId: string | null; dealId?: string | null; ownerEmail?: string }
@@ -128,8 +131,33 @@ function Contacts({ contacts, setContacts, companies }: { contacts: Contact[]; s
     catch (e) { setErr(e instanceof Error ? e.message : "Couldn't delete that contact."); }
   };
 
-  const shown = contacts.filter((c) => (!q || `${c.fullName} ${c.email} ${c.title} ${c.phone}`.toLowerCase().includes(q.toLowerCase())) && (!cat || c.category === cat));
-  const compName = (id: string | null) => companies.find((co) => co.id === id)?.name ?? "";
+  const compNameOf = (c: Contact) => c.companyName || companies.find((co) => co.id === c.crmCompanyId)?.name || "";
+
+  // Sort — click a column header to sort; click again to flip direction.
+  type SortKey = "fullName" | "company" | "category" | "email" | "sharesHeld";
+  const [sortKey, setSortKey] = useState<SortKey>("fullName");
+  const [sortDir, setSortDir] = useState<1 | -1>(1);
+  const toggleSort = (k: SortKey) => {
+    if (k === sortKey) setSortDir((d) => (d === 1 ? -1 : 1));
+    else { setSortKey(k); setSortDir(1); }
+  };
+  const sortVal = (c: Contact): string | number => {
+    switch (sortKey) {
+      case "company": return compNameOf(c).toLowerCase();
+      case "category": return c.category.toLowerCase();
+      case "email": return c.email.toLowerCase();
+      case "sharesHeld": return c.sharesHeld ?? -1; // blanks sort last ascending
+      default: return c.fullName.toLowerCase();
+    }
+  };
+
+  const filtered = contacts.filter((c) => (!q || `${c.fullName} ${c.email} ${c.title} ${c.phone} ${compNameOf(c)}`.toLowerCase().includes(q.toLowerCase())) && (!cat || c.category === cat));
+  const shown = [...filtered].sort((a, b) => {
+    const av = sortVal(a), bv = sortVal(b);
+    if (av < bv) return -1 * sortDir;
+    if (av > bv) return 1 * sortDir;
+    return 0;
+  });
 
   // Pagination — imported lists can be thousands of rows; render a page at a time.
   const PAGE_SIZE = 50;
@@ -137,8 +165,14 @@ function Contacts({ contacts, setContacts, companies }: { contacts: Contact[]; s
   const pageCount = Math.max(1, Math.ceil(shown.length / PAGE_SIZE));
   const safePage = Math.min(page, pageCount - 1);
   const pageRows = shown.slice(safePage * PAGE_SIZE, safePage * PAGE_SIZE + PAGE_SIZE);
-  // Reset to page 1 whenever the filter/search narrows the set.
-  useEffect(() => { setPage(0); }, [q, cat]);
+  // Reset to page 1 whenever the filter/search/sort changes the set.
+  useEffect(() => { setPage(0); }, [q, cat, sortKey, sortDir]);
+  // Clickable sort header cell.
+  const Th = ({ k, children }: { k: SortKey; children: React.ReactNode }) => (
+    <th className="cursor-pointer select-none px-3 py-2 hover:text-app" onClick={() => toggleSort(k)}>
+      {children}{sortKey === k && <span className="ml-0.5">{sortDir === 1 ? "▲" : "▼"}</span>}
+    </th>
+  );
 
   if (editing) {
     return (
@@ -148,11 +182,16 @@ function Contacts({ contacts, setContacts, companies }: { contacts: Contact[]; s
           <Inp label="Title" v={editing.title ?? ""} on={(v) => setEditing({ ...editing, title: v })} />
           <Inp label="Email" v={editing.email ?? ""} on={(v) => setEditing({ ...editing, email: v })} />
           <Inp label="Phone" v={editing.phone ?? ""} on={(v) => setEditing({ ...editing, phone: v })} />
-          <Sel label="Category" v={editing.category ?? "investor"} opts={CONTACT_CATS} on={(v) => setEditing({ ...editing, category: v })} />
-          <Sel label="Company" v={editing.crmCompanyId ?? ""} opts={["", ...companies.map((c) => c.id)]} labels={["—", ...companies.map((c) => c.name)]} on={(v) => setEditing({ ...editing, crmCompanyId: v || null })} />
+          <Sel label="Category" v={editing.category ?? "investor"} opts={CONTACT_CATS} labels={CONTACT_CATS.map(catLabel)} on={(v) => setEditing({ ...editing, category: v })} />
+          <Inp label="Company" v={editing.companyName ?? ""} on={(v) => setEditing({ ...editing, companyName: v })} />
           <Inp label="AUM (funds)" v={editing.aum ?? ""} on={(v) => setEditing({ ...editing, aum: v })} />
+          <Inp label="Shares held" type="number" v={editing.sharesHeld != null ? String(editing.sharesHeld) : ""} on={(v) => setEditing({ ...editing, sharesHeld: v.trim() === "" ? null : Number(v) })} />
           <Inp label="Next follow-up" type="date" v={editing.nextFollowup ?? ""} on={(v) => setEditing({ ...editing, nextFollowup: v })} />
         </div>
+        <label className="mt-3 flex items-center gap-2 text-sm text-app">
+          <input type="checkbox" checked={!!editing.optedIn} onChange={(e) => setEditing({ ...editing, optedIn: e.target.checked })} className="h-4 w-4" />
+          Opted in to updates
+        </label>
         <Inp label="Notes" textarea v={editing.notes ?? ""} on={(v) => setEditing({ ...editing, notes: v })} />
       </RecordForm>
     );
@@ -163,25 +202,27 @@ function Contacts({ contacts, setContacts, companies }: { contacts: Contact[]; s
       {err && <p className="mb-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-600 dark:text-red-300">{err}</p>}
       <div className="mb-3 flex flex-wrap gap-2">
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="🔍 Search contacts…" className="flex-1 rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:border-emerald-500 focus:outline-none" />
-        <select value={cat} onChange={(e) => setCat(e.target.value)} className="rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:outline-none"><option value="">All categories</option>{CONTACT_CATS.map((c) => <option key={c} value={c}>{c}</option>)}</select>
+        <select value={cat} onChange={(e) => setCat(e.target.value)} className="rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:outline-none"><option value="">All categories</option>{CONTACT_CATS.map((c) => <option key={c} value={c}>{catLabel(c)}</option>)}</select>
         <button onClick={() => setEditing({ category: "investor" })} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">+ Add</button>
       </div>
       <div className="overflow-x-auto rounded-xl border border-app">
         <table className="w-full text-sm">
-          <thead><tr className="border-b border-app bg-surface text-left text-xs text-faint"><th className="px-3 py-2">Name</th><th className="px-3 py-2">Company</th><th className="px-3 py-2">Category</th><th className="px-3 py-2">Email</th><th className="px-3 py-2">Phone</th><th className="px-3 py-2">AUM</th><th className="px-3 py-2"></th></tr></thead>
+          <thead><tr className="border-b border-app bg-surface text-left text-xs text-faint"><Th k="fullName">Name</Th><Th k="company">Company</Th><Th k="category">Category</Th><Th k="email">Email</Th><th className="px-3 py-2">Phone</th><th className="px-3 py-2">AUM</th><Th k="sharesHeld">Shares</Th><th className="px-3 py-2">Updates</th><th className="px-3 py-2"></th></tr></thead>
           <tbody>
             {pageRows.map((c) => (
               <tr key={c.id} className="border-b border-app bg-surface">
                 <td className="px-3 py-2.5"><span className="font-medium text-app">{c.fullName}</span>{c.title && <span className="block text-xs text-faint">{c.title}</span>}</td>
-                <td className="px-3 py-2.5 text-muted">{compName(c.crmCompanyId)}</td>
-                <td className="px-3 py-2.5"><span className="rounded bg-surface-2 px-1.5 py-0.5 text-[11px] text-muted">{c.category}</span></td>
+                <td className="px-3 py-2.5 text-muted">{compNameOf(c) || <span className="text-faint">—</span>}</td>
+                <td className="px-3 py-2.5"><span className="rounded bg-surface-2 px-1.5 py-0.5 text-[11px] text-muted">{catLabel(c.category)}</span></td>
                 <td className="px-3 py-2.5 text-muted">{c.email || <span className="text-faint">—</span>}</td>
                 <td className="px-3 py-2.5 text-muted">{c.phone ? <a href={`tel:${c.phone}`} className="hover:text-app">{c.phone}</a> : <span className="text-faint">—</span>}</td>
                 <td className="px-3 py-2.5 text-muted">{c.aum || <span className="text-faint">—</span>}</td>
+                <td className="px-3 py-2.5 text-muted">{c.sharesHeld != null ? c.sharesHeld.toLocaleString() : <span className="text-faint">—</span>}</td>
+                <td className="px-3 py-2.5">{c.optedIn ? <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-300">✓ Opted in</span> : <span className="text-faint">—</span>}</td>
                 <td className="px-3 py-2.5 text-right"><button onClick={() => setEditing(c)} className="text-xs text-emerald-600 hover:underline dark:text-emerald-400">Edit</button> <span className="ml-2 inline-block"><InlineConfirm onConfirm={() => del(c.id)} label="Del" confirmLabel="Delete" className="text-xs text-faint hover:text-red-500" /></span></td>
               </tr>
             ))}
-            {shown.length === 0 && <tr><td colSpan={7} className="px-3 py-8 text-center text-sm text-faint">No contacts. Add one or import a CSV.</td></tr>}
+            {shown.length === 0 && <tr><td colSpan={9} className="px-3 py-8 text-center text-sm text-faint">No contacts. Add one or import a CSV.</td></tr>}
           </tbody>
         </table>
       </div>
