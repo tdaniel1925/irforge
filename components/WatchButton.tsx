@@ -7,6 +7,7 @@ import { useState } from "react";
 export default function WatchButton({ ticker }: { ticker: string }) {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
+  const [irOptin, setIrOptin] = useState(false);
   const [state, setState] = useState<"idle" | "busy" | "done" | "already">("idle");
   const [error, setError] = useState("");
 
@@ -17,7 +18,7 @@ export default function WatchButton({ ticker }: { ticker: string }) {
       const res = await fetch("/api/watch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ticker, email }),
+        body: JSON.stringify({ ticker, email, irOptin }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Couldn't subscribe.");
@@ -67,6 +68,10 @@ export default function WatchButton({ ticker }: { ticker: string }) {
           {state === "busy" ? "…" : "Notify me"}
         </button>
       </div>
+      <label className="flex items-start gap-1.5 text-[11px] text-muted">
+        <input type="checkbox" checked={irOptin} onChange={(e) => setIrOptin(e.target.checked)} className="mt-0.5 h-3.5 w-3.5" />
+        <span>Also send me updates directly from the company (IR news &amp; announcements).</span>
+      </label>
       <p className="text-[11px] text-faint">
         Alerts on new filings, insider trades, halts &amp; grade changes. No spam, unsubscribe anytime.
       </p>

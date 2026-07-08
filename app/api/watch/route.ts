@@ -2,6 +2,7 @@ import { addWatch, rateAllow, removeWatchByMember } from "@/lib/publicStats";
 import { sendWatchConfirmation } from "@/lib/email";
 import { getMyMember } from "@/lib/members";
 import { createServerSupabase } from "@/lib/supabase/server";
+import { optInInvestorByTicker } from "@/lib/crm";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -9,7 +10,7 @@ export const dynamic = "force-dynamic";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function POST(req: Request) {
-  let payload: { ticker?: string; email?: string };
+  let payload: { ticker?: string; email?: string; irOptin?: boolean; name?: string };
   try {
     payload = await req.json();
   } catch {
@@ -50,7 +51,16 @@ export async function POST(req: Request) {
     }
   }
 
-  return Response.json({ ok: true, already });
+  // If they also opted in to updates DIRECTLY from the company, record that as an
+  // opted-in investor contact in the company's CRM (best-effort; never fails the
+  // watch). No-op if the ticker isn't a claimed company.
+  let optedIn = false;
+  if (payload.irOptin) {
+    const r = await optInInvestorByTicker(ticker, email, payload.name);
+    optedIn = r.ok;
+  }
+
+  return Response.json({ ok: true, already, optedIn });
 }
 
 // Remove a watch (members only — from their watchlist).

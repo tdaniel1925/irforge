@@ -1,4 +1,4 @@
-import { createServerSupabase } from "./supabase/server";
+import { createServerSupabase, createServiceClient } from "./supabase/server";
 import { getMyCompany } from "./supabase/store";
 import { writeAudit } from "./platform";
 
@@ -232,4 +232,49 @@ export async function crmMetrics() {
       (m[d.stage] ??= { count: 0, value: 0 }); m[d.stage].count++; m[d.stage].value += d.value || 0; return m;
     }, {}),
   };
+}
+
+// PUBLIC opt-in: an investor on a company's public page opted in to receive updates
+// directly from the company. Runs with the SERVICE role (the subscriber isn't the
+// company, and isn't necessarily logged in), scoped by looking up the onboarded
+// company that owns the ticker. Creates or flags a CRM contact as opted-in so the
+// opt-in shows up in the company's investor list. Best-effort; never throws.
+export async function optInInvestorByTicker(ticker: string, email: string, name?: string): Promise<{ ok: boolean; created?: boolean }> {
+  try {
+    const clean = email.trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(clean)) return { ok: false };
+    const svc = createServiceClient();
+    const { data: co } = await svc
+      .from("companies")
+      .select("id")
+      .ilike("ticker", ticker)
+      .eq("onboarding_complete", true)
+      .limit(1)
+      .maybeSingle();
+    if (!co) return { ok: false }; // ticker not a claimed company — nothing to attach to
+
+    // Already a contact for this company + email? Flag it opted-in; else create one.
+    const { data: existing } = await svc
+      .from("crm_contacts")
+      .select("id")
+      .eq("company_id", co.id)
+      .ilike("email", clean)
+      .limit(1)
+      .maybeSingle();
+    if (existing) {
+      await svc.from("crm_contacts").update({ opted_in: true, updated_at: new Date().toISOString() }).eq("id", existing.id);
+      return { ok: true, created: false };
+    }
+    await svc.from("crm_contacts").insert({
+      company_id: co.id,
+      full_name: (name ?? "").trim() || clean,
+      email: clean,
+      category: "investor",
+      opted_in: true,
+      notes: "Opted in to updates from the public investor page.",
+    });
+    return { ok: true, created: true };
+  } catch {
+    return { ok: false };
+  }
 }
