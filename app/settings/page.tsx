@@ -92,25 +92,26 @@ export default function SettingsPage() {
       <Card className="mb-6">
         <h2 className="mb-4 font-semibold text-app">Company profile</h2>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Company name" value={form.name} onChange={(v) => set("name", v)} />
-          <Field label="Ticker" value={form.ticker} onChange={(v) => set("ticker", v.toUpperCase())} />
-          <Field label="Exchange" value={form.exchange} onChange={(v) => set("exchange", v)} />
-          <Field label="SEC CIK (for EDGAR sync)" value={form.cik} onChange={(v) => set("cik", v)} />
-          <Field label="X handle" value={form.xHandle} onChange={(v) => set("xHandle", v)} />
-          <Field label="Sector" value={form.sector} onChange={(v) => set("sector", v)} />
-          <Field label="Approver name" value={form.approverName} onChange={(v) => set("approverName", v)} />
-          <Field label="Approver title" value={form.approverTitle} onChange={(v) => set("approverTitle", v)} />
+          <Field label="Company name" value={form.name} onChange={(v) => set("name", v)} disabled={!isAdmin} />
+          <Field label="Ticker" value={form.ticker} onChange={(v) => set("ticker", v.toUpperCase())} disabled={!isAdmin} />
+          <Field label="Exchange" value={form.exchange} onChange={(v) => set("exchange", v)} disabled={!isAdmin} />
+          <Field label="SEC CIK (for EDGAR sync)" value={form.cik} onChange={(v) => set("cik", v)} disabled={!isAdmin} />
+          <Field label="X handle" value={form.xHandle} onChange={(v) => set("xHandle", v)} disabled={!isAdmin} />
+          <Field label="Sector" value={form.sector} onChange={(v) => set("sector", v)} disabled={!isAdmin} />
+          <Field label="Approver name" value={form.approverName} onChange={(v) => set("approverName", v)} disabled={!isAdmin} />
+          <Field label="Approver title" value={form.approverTitle} onChange={(v) => set("approverTitle", v)} disabled={!isAdmin} />
         </div>
         <div className="mt-4">
-          <Field label="Brand colors (used by AI image generation — e.g. “navy blue and red”)" value={form.brandColors ?? ""} onChange={(v) => set("brandColors", v)} />
+          <Field label="Brand colors (used by AI image generation — e.g. “navy blue and red”)" value={form.brandColors ?? ""} onChange={(v) => set("brandColors", v)} disabled={!isAdmin} />
         </div>
         <div className="mt-4">
           <Label text="Company description (used by AI drafting — public facts only)" />
           <textarea
             value={form.description ?? ""}
             onChange={(e) => set("description", e.target.value)}
+            disabled={!isAdmin}
             rows={3}
-            className="w-full rounded-lg border border-app bg-surface-2 p-3 text-sm text-app focus:border-emerald-500 focus:outline-none"
+            className="w-full rounded-lg border border-app bg-surface-2 p-3 text-sm text-app focus:border-emerald-500 focus:outline-none disabled:opacity-60"
           />
         </div>
         <div className="mt-4">
@@ -118,7 +119,8 @@ export default function SettingsPage() {
           <input
             value={form.peers.join(", ")}
             onChange={(e) => set("peers", e.target.value.split(",").map((p) => p.trim().toUpperCase()).filter(Boolean))}
-            className="w-full rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:border-emerald-500 focus:outline-none"
+            disabled={!isAdmin}
+            className="w-full rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:border-emerald-500 focus:outline-none disabled:opacity-60"
           />
         </div>
       </Card>
@@ -132,19 +134,22 @@ export default function SettingsPage() {
         <textarea
           value={form.disclosureText}
           onChange={(e) => set("disclosureText", e.target.value)}
+          disabled={!isAdmin}
           rows={3}
-          className="mb-4 w-full rounded-lg border border-app bg-surface-2 p-3 text-sm text-app focus:border-emerald-500 focus:outline-none"
+          className="mb-4 w-full rounded-lg border border-app bg-surface-2 p-3 text-sm text-app focus:border-emerald-500 focus:outline-none disabled:opacity-60"
         />
         <label className="mb-1 block text-xs font-medium text-muted"><Term id="fls">Forward-looking statements</Term> notice</label>
         <textarea
           value={form.flsText}
           onChange={(e) => set("flsText", e.target.value)}
+          disabled={!isAdmin}
           rows={2}
-          className="w-full rounded-lg border border-app bg-surface-2 p-3 text-sm text-app focus:border-emerald-500 focus:outline-none"
+          className="w-full rounded-lg border border-app bg-surface-2 p-3 text-sm text-app focus:border-emerald-500 focus:outline-none disabled:opacity-60"
         />
       </Card>
 
-      <AddDisclosure onDone={(msg) => setNotice({ text: msg, tone: "success" })} />
+      {/* Disclosures are compliance content — admin-only, like the rest of settings. */}
+      {isAdmin && <AddDisclosure onDone={(msg) => setNotice({ text: msg, tone: "success" })} />}
 
       <SocialConnections />
 
@@ -263,14 +268,15 @@ function Label({ text }: { text: string }) {
   return <label className="mb-1 block text-xs font-medium text-muted">{text}</label>;
 }
 
-function Field({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+function Field({ label, value, onChange, disabled }: { label: string; value: string; onChange: (v: string) => void; disabled?: boolean }) {
   return (
     <div>
       <Label text={label} />
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:border-emerald-500 focus:outline-none"
+        disabled={disabled}
+        className="w-full rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:border-emerald-500 focus:outline-none disabled:opacity-60"
       />
     </div>
   );

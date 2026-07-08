@@ -523,12 +523,14 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
               </div>
             ))}
           </div>
-          <p className="mt-4 rounded-lg border border-amber-500/40 bg-amber-500/15 px-3 py-2.5 text-sm font-medium text-amber-300 dark:text-amber-200">
-            {questionCount > 0
-              ? `${questionCount} of these messages ${questionCount === 1 ? "is a question" : "are questions"}. Replies from the company: 0.`
-              : "Replies from the company in this conversation: 0."}{" "}
-            Investors are writing ${audit.ticker}&apos;s story without it.
-          </p>
+          {!claimed && (
+            <p className="mt-4 rounded-lg border border-amber-500/40 bg-amber-500/15 px-3 py-2.5 text-sm font-medium text-amber-300 dark:text-amber-200">
+              {questionCount > 0
+                ? `${questionCount} of these messages ${questionCount === 1 ? "is a question" : "are questions"}. Replies from the company: 0.`
+                : "Replies from the company in this conversation: 0."}{" "}
+              Investors are writing ${audit.ticker}&apos;s story without it.
+            </p>
+          )}
         </Section>
       )}
 
@@ -752,10 +754,14 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
         </Section>
       )}
 
-      {/* Claim — the business hook */}
-      <div id="claim">
-        <ClaimCard ticker={audit.ticker} />
-      </div>
+      {/* Claim — the business hook. Only for UNCLAIMED pages; a claimed company
+          already owns this page, so the claim box would contradict the "claimed"
+          badge shown at the top. */}
+      {!claimed && (
+        <div id="claim">
+          <ClaimCard ticker={audit.ticker} />
+        </div>
+      )}
         </>
         }
       />

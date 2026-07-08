@@ -255,7 +255,12 @@ export default function AdminCustomers() {
       <Card>
         <h2 className="mb-3 font-semibold text-app">Companies</h2>
         <div className="space-y-3">
-          {companies.map((c) => (
+          {companies.map((c) => {
+            // A company is already provisioned once it has an active/paid subscription.
+            // Don't offer "subscribe again" / "comp" actions in that state — they contradict
+            // the "active" status shown right above and would double-bill or re-comp.
+            const isActive = c.subscription_status === "active";
+            return (
             <div key={c.id} className="rounded-lg border border-app bg-surface p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
@@ -266,19 +271,24 @@ export default function AdminCustomers() {
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <select defaultValue={c.tier} id={`tier-${c.id}`} className="rounded border border-app bg-surface-2 px-2 py-1.5 text-xs text-app focus:outline-none">
-                    <option value="starter">Starter</option><option value="growth">Growth</option><option value="pro">Command</option>
-                  </select>
-                  <Button onClick={() => subscribe(c, (document.getElementById(`tier-${c.id}`) as HTMLSelectElement).value)} disabled={busy === c.id}>{busy === c.id ? "…" : "Send subscription invoice"}</Button>
+                  {!isActive && (
+                    <>
+                      <select defaultValue={c.tier} id={`tier-${c.id}`} className="rounded border border-app bg-surface-2 px-2 py-1.5 text-xs text-app focus:outline-none">
+                        <option value="starter">Starter</option><option value="growth">Growth</option><option value="pro">Command</option>
+                      </select>
+                      <Button onClick={() => subscribe(c, (document.getElementById(`tier-${c.id}`) as HTMLSelectElement).value)} disabled={busy === c.id}>{busy === c.id ? "…" : "Send subscription invoice"}</Button>
+                      <Button variant="secondary" onClick={() => comp(c)} disabled={busy === c.id + "comp"}>Comp</Button>
+                      <Button variant="secondary" onClick={() => compFull(c)} disabled={busy === c.id + "full"} title="Command tier + every feature, free">{busy === c.id + "full" ? "…" : "🎁 Comp full (free)"}</Button>
+                    </>
+                  )}
                   <Button variant="secondary" onClick={() => setupFee(c)} disabled={busy === c.id + "fee"}>Setup fee</Button>
-                  <Button variant="secondary" onClick={() => comp(c)} disabled={busy === c.id + "comp"}>Comp</Button>
-                  <Button variant="secondary" onClick={() => compFull(c)} disabled={busy === c.id + "full"} title="Command tier + every feature, free">{busy === c.id + "full" ? "…" : "🎁 Comp full (free)"}</Button>
                   <Button variant="secondary" onClick={() => impersonate(c)} disabled={busy === c.id + "imp"} title="Log in as this company to make changes">{busy === c.id + "imp" ? "…" : "👁 Act as"}</Button>
                   {c.stripe_subscription_id && <Button variant="danger" onClick={() => cancel(c)} disabled={busy === c.id + "cancel"}>Cancel</Button>}
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
           {companies.length === 0 && <p className="py-6 text-center text-sm text-faint">No companies yet.</p>}
         </div>
       </Card>

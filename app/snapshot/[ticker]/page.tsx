@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { buildSnapshot } from "@/lib/snapshot";
+import { isTickerClaimed } from "@/lib/supabase/store";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -38,6 +39,10 @@ function Bar({ score }: { score: number | null }) {
 export default async function SnapshotPage({ params }: { params: { ticker: string } }) {
   const ticker = params.ticker.toUpperCase();
   const snap = await buildSnapshot(ticker);
+  // If the company already claimed this ticker, don't show the "claim it" CTA —
+  // point them to their dashboard instead (same class of bug as the ticker page:
+  // a claimed company shouldn't see claim-pressure).
+  const claimed = await isTickerClaimed(ticker).catch(() => false);
 
   if (!snap) {
     return (
@@ -110,21 +115,36 @@ export default async function SnapshotPage({ params }: { params: { ticker: strin
         )}
       </div>
 
-      {/* CTA */}
-      <div className="mt-8 rounded-2xl border border-emerald-500/40 bg-emerald-500/[0.06] p-7 text-center">
-        <h2 className="text-xl font-bold text-app">This is your company&apos;s story — are you telling it?</h2>
-        <p className="mx-auto mt-2 max-w-xl text-muted">
-          PubcoZone turns your SEC filings into compliant updates you approve, answers investors on the record, and helps you
-          reach the funds that hold your peers — so ${snap.ticker} stops leaving attention on the table. You control everything; nothing posts without your approval.
-        </p>
-        <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
-          <Link href={`/login?ticker=${snap.ticker}`} className="rounded-lg bg-emerald-600 px-6 py-3 font-semibold text-white hover:bg-emerald-700">
-            Claim ${snap.ticker} &amp; get the full report →
-          </Link>
-          <Link href="/sample-brief" className="rounded-lg border border-app px-6 py-3 font-medium text-app hover:bg-app-hover">See what you get</Link>
+      {/* CTA — claimed companies get a "go to your dashboard" prompt instead of a
+          "claim this page" pitch. */}
+      {claimed ? (
+        <div className="mt-8 rounded-2xl border border-emerald-500/40 bg-emerald-500/[0.06] p-7 text-center">
+          <h2 className="text-xl font-bold text-app">✓ ${snap.ticker} is on PubcoZone</h2>
+          <p className="mx-auto mt-2 max-w-xl text-muted">
+            This company has claimed its page and is telling its story on the record. Manage updates, answer investors,
+            and track visibility from the dashboard.
+          </p>
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+            <Link href="/app" className="rounded-lg bg-emerald-600 px-6 py-3 font-semibold text-white hover:bg-emerald-700">Open the dashboard →</Link>
+            <Link href={`/t/${snap.ticker}`} className="rounded-lg border border-app px-6 py-3 font-medium text-app hover:bg-app-hover">View public page</Link>
+          </div>
         </div>
-        <p className="mt-3 text-xs text-faint">Free to claim. No card required.</p>
-      </div>
+      ) : (
+        <div className="mt-8 rounded-2xl border border-emerald-500/40 bg-emerald-500/[0.06] p-7 text-center">
+          <h2 className="text-xl font-bold text-app">This is your company&apos;s story — are you telling it?</h2>
+          <p className="mx-auto mt-2 max-w-xl text-muted">
+            PubcoZone turns your SEC filings into compliant updates you approve, answers investors on the record, and helps you
+            reach the funds that hold your peers — so ${snap.ticker} stops leaving attention on the table. You control everything; nothing posts without your approval.
+          </p>
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+            <Link href={`/login?ticker=${snap.ticker}`} className="rounded-lg bg-emerald-600 px-6 py-3 font-semibold text-white hover:bg-emerald-700">
+              Claim ${snap.ticker} &amp; get the full report →
+            </Link>
+            <Link href="/sample-brief" className="rounded-lg border border-app px-6 py-3 font-medium text-app hover:bg-app-hover">See what you get</Link>
+          </div>
+          <p className="mt-3 text-xs text-faint">Free to claim. No card required.</p>
+        </div>
+      )}
     </div>
   );
 }
