@@ -76,11 +76,21 @@ function CapHolders({ db, cap, refresh, setNotice }: { db: { capTable: CapTableE
   const [f, setF] = useState({ holder: "", class: "common", shares: "", costBasis: "", intent: "unknown", notes: "" });
 
   const add = async () => {
-    const res = await fetch("/api/captable", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...f, shares: Number(f.shares), costBasis: f.costBasis ? Number(f.costBasis) : undefined }) });
-    if (res.ok) { setNotice({ text: `Added ${f.holder}.`, tone: "success" }); setF({ holder: "", class: "common", shares: "", costBasis: "", intent: "unknown", notes: "" }); setAdding(false); await refresh(); }
-    else setNotice({ text: (await res.json()).error ?? "Failed.", tone: "error" });
+    try {
+      const res = await fetch("/api/captable", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...f, shares: Number(f.shares), costBasis: f.costBasis ? Number(f.costBasis) : undefined }) });
+      if (res.ok) { setNotice({ text: `Added ${f.holder}.`, tone: "success" }); setF({ holder: "", class: "common", shares: "", costBasis: "", intent: "unknown", notes: "" }); setAdding(false); await refresh(); }
+      else setNotice({ text: (await res.json().catch(() => ({}))).error ?? "Couldn't add that holder.", tone: "error" });
+    } catch { setNotice({ text: "Network error — couldn't add that holder.", tone: "error" }); }
   };
-  const patch = async (body: object) => { await fetch("/api/captable", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }); await refresh(); };
+  // Surface failures: previously a failed edit/delete was silent and the value just
+  // snapped back on refresh, misleading the user into thinking nothing happened.
+  const patch = async (body: object) => {
+    try {
+      const res = await fetch("/api/captable", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      if (!res.ok) { setNotice({ text: (await res.json().catch(() => ({}))).error ?? "Couldn't save that change.", tone: "error" }); return; }
+    } catch { setNotice({ text: "Network error — that change didn't save.", tone: "error" }); return; }
+    await refresh();
+  };
 
   return (
     <div>

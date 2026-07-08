@@ -26,12 +26,19 @@ export default function TeamManager() {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"admin" | "member">("member");
 
+  const [loadErr, setLoadErr] = useState("");
   const load = async () => {
+    setLoadErr("");
     try {
       const res = await fetch("/api/team");
+      if (!res.ok) throw new Error(String(res.status));
       const d = await res.json();
       setMembers(d.members ?? []);
       setIsAdmin(Boolean(d.isAdmin));
+    } catch {
+      // Don't leave an admin staring at an empty roster with no invite controls and
+      // no idea why — say so and offer a retry.
+      setLoadErr("Couldn't load your team. Refresh to try again.");
     } finally {
       setLoading(false);
     }
@@ -84,7 +91,13 @@ export default function TeamManager() {
         </div>
       )}
 
-      {!isAdmin && (
+      {loadErr && (
+        <div className="mt-4 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-600 dark:text-red-300">
+          {loadErr}
+        </div>
+      )}
+
+      {!isAdmin && !loadErr && (
         <div className="mt-4 rounded-lg border border-app bg-surface-2 px-4 py-3 text-sm text-muted">
           You&apos;re a member of this team. Only admins can invite or manage teammates.
         </div>

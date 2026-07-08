@@ -299,10 +299,14 @@ function Deals({ deals, setDeals, contacts }: { deals: Deal[]; setDeals: (f: (d:
     setBusy(true); setErr("");
     try { const d = await api({ entity: "deal", action: "save", data: { ...editing, value: Number(editing.value) || 0 } }); setDeals((ds) => { const ex = ds.some((x) => x.id === d.deal.id); return ex ? ds.map((x) => x.id === d.deal.id ? d.deal : x) : [d.deal, ...ds]; }); setEditing(null); } catch (e) { setErr(e instanceof Error ? e.message : "Couldn't save that deal."); } finally { setBusy(false); }
   };
+  // Guard against overlapping writes when a select/checkbox is clicked rapidly.
+  const [savingId, setSavingId] = useState<string | null>(null);
   const move = async (id: string, stage: string) => {
-    setErr("");
+    if (savingId === "deal:" + id) return;
+    setErr(""); setSavingId("deal:" + id);
     try { await api({ entity: "deal", action: "move", id, stage }); setDeals((ds) => ds.map((d) => d.id === id ? { ...d, stage, status: stage === "won" ? "won" : stage === "lost" ? "lost" : "open" } : d)); }
     catch (e) { setErr(e instanceof Error ? e.message : "Couldn't move that deal."); }
+    finally { setSavingId(null); }
   };
 
   if (editing) {
@@ -357,12 +361,13 @@ function Deals({ deals, setDeals, contacts }: { deals: Deal[]; setDeals: (f: (d:
 function Tasks({ tasks, setTasks, contacts }: { tasks: Task[]; setTasks: (f: (t: Task[]) => Task[]) => void; contacts: Contact[] }) {
   const [title, setTitle] = useState(""); const [due, setDue] = useState(""); const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [savingId, setSavingId] = useState<string | null>(null); // guard rapid checkbox toggles
   const add = async () => {
     if (!title.trim()) return;
     setBusy(true); setErr("");
     try { const d = await api({ entity: "task", action: "save", data: { title, dueDate: due || null } }); setTasks((ts) => [...ts, d.task]); setTitle(""); setDue(""); } catch (e) { setErr(e instanceof Error ? e.message : "Couldn't add that task."); } finally { setBusy(false); }
   };
-  const toggle = async (t: Task) => { setErr(""); try { const d = await api({ entity: "task", action: "save", data: { ...t, done: !t.done } }); setTasks((ts) => ts.map((x) => x.id === t.id ? d.task : x)); } catch (e) { setErr(e instanceof Error ? e.message : "Couldn't update that task."); } };
+  const toggle = async (t: Task) => { if (savingId === "task:" + t.id) return; setErr(""); setSavingId("task:" + t.id); try { const d = await api({ entity: "task", action: "save", data: { ...t, done: !t.done } }); setTasks((ts) => ts.map((x) => x.id === t.id ? d.task : x)); } catch (e) { setErr(e instanceof Error ? e.message : "Couldn't update that task."); } finally { setSavingId(null); } };
   const del = async (id: string) => {
     setErr("");
     try { await api({ entity: "task", action: "delete", id }); setTasks((ts) => ts.filter((t) => t.id !== id)); }
