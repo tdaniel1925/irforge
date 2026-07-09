@@ -17,6 +17,7 @@ interface Question {
   replyCount: number;
 }
 interface Flag { rule: string; severity: string }
+interface Cluster { theme: string; count: number; representativeQuestion: string; questionIds: string[] }
 
 function timeAgo(iso: string) {
   const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
@@ -40,15 +41,35 @@ export default function BoardQA({ ticker }: { ticker: string }) {
   useEffect(() => { try { setAlsoX(localStorage.getItem("boardqa_also_x") === "1"); } catch { /* ignore */ } }, []);
   const toggleAlsoX = (v: boolean) => { setAlsoX(v); try { localStorage.setItem("boardqa_also_x", v ? "1" : "0"); } catch { /* ignore */ } };
 
+  // Recurring themes — AI groups duplicate/related open questions so the company
+  // answers the demand once instead of five copies. Chips filter the list.
+  const [clusters, setClusters] = useState<Cluster[]>([]);
+  const [activeTheme, setActiveTheme] = useState<string | null>(null);
+
   const load = async () => {
     try {
       const r = await fetch("/api/board/questions", { cache: "no-store" });
       if (!r.ok) { setErr("Couldn't load investor questions."); return; }
       const d = await r.json();
-      setQuestions(Array.isArray(d.questions) ? d.questions : []);
+      const qs: Question[] = Array.isArray(d.questions) ? d.questions : [];
+      setQuestions(qs);
       // Clear any prior error — load() re-runs on every realtime insert, and a sticky
       // error was permanently replacing the (still-working) list with the banner.
       setErr("");
+      // Themes only pay off with volume; the endpoint also short-circuits below 3.
+      if (qs.length >= 3) {
+        fetch("/api/questions/clusters", { cache: "no-store" })
+          .then((cr) => (cr.ok ? cr.json() : null))
+          .then((cd) => {
+            const cs: Cluster[] = Array.isArray(cd?.clusters) ? cd.clusters : [];
+            // Only multi-question themes are worth a chip.
+            setClusters(cs.filter((c) => c.count >= 2));
+          })
+          .catch(() => { /* themes are additive — fail silent */ });
+      } else {
+        setClusters([]);
+        setActiveTheme(null);
+      }
     } catch {
       setErr("Couldn't reach the board.");
     }
@@ -134,6 +155,9 @@ export default function BoardQA({ ticker }: { ticker: string }) {
     );
   }
 
+  const activeCluster = clusters.find((c) => c.theme === activeTheme) ?? null;
+  const visible = activeCluster ? questions.filter((q) => activeCluster.questionIds.includes(q.id)) : questions;
+
   return (
     <div className="space-y-3">
       {liveNote && (
@@ -141,7 +165,34 @@ export default function BoardQA({ ticker }: { ticker: string }) {
           🟢 New investor question just came in.
         </p>
       )}
-      {questions.map((q) => {
+      {clusters.length > 0 && (
+        <div className="rounded-xl border border-app bg-surface px-4 py-3">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-faint">Recurring themes — shareholders keep asking about</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {clusters.map((c) => (
+              <button
+                key={c.theme}
+                onClick={() => setActiveTheme(activeTheme === c.theme ? null : c.theme)}
+                title={c.representativeQuestion}
+                className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
+                  activeTheme === c.theme
+                    ? "border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                    : "border-app text-app hover:bg-app-hover"
+                }`}
+              >
+                {c.theme} · {c.count}
+              </button>
+            ))}
+            {activeTheme && (
+              <button onClick={() => setActiveTheme(null)} className="rounded-full px-2 py-1 text-xs text-faint hover:text-app">
+                ✕ show all
+              </button>
+            )}
+          </div>
+          <p className="mt-1.5 text-[11px] text-faint">Answer one question in a theme on the record and it covers everyone asking the same thing.</p>
+        </div>
+      )}
+      {visible.map((q) => {
         const draft = drafts[q.id];
         const b = busy[q.id];
         return (

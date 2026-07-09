@@ -10,6 +10,9 @@ import type { CompanyStatRow } from "./companyStats";
 // so readers verify claims against filings before acting.
 
 const HYPE_FLAGS = new Set(["hype"]);
+// Coordinated FEAR campaigns (bear raids) are the mirror image of hype pumps —
+// the AI already labels baseless fear-mongering as "fud", so cluster those too.
+const FUD_FLAGS = new Set(["fud"]);
 
 // Window we treat as "recent" for clustering (last 24h).
 const RECENT_MS = 24 * 60 * 60 * 1000;
@@ -25,10 +28,32 @@ export interface ManipulationSignals {
   signals: string[];
   counts: {
     hypePosts24h: number;
+    fudPosts24h: number;
     distinctAuthors24h: number;
     burstWindowMin: number;
     volumeRatio: number | null;
   };
+}
+
+// Densest burst of posts within the burst window: max post count and max distinct
+// authors across all window placements. Shared by the hype and fud passes.
+function densestBurst(posts: Array<{ t: number; memberId?: string; author: string }>): { count: number; authors: number } {
+  const burstMs = BURST_WINDOW_MIN * 60 * 1000;
+  let count = 0;
+  let authors = 0;
+  for (let i = 0; i < posts.length; i++) {
+    let c = 1;
+    const a = new Set<string>([posts[i].memberId || posts[i].author || ""]);
+    for (let j = i + 1; j < posts.length; j++) {
+      if (posts[j].t - posts[i].t <= burstMs) {
+        c++;
+        a.add(posts[j].memberId || posts[j].author || "");
+      } else break;
+    }
+    if (c > count) count = c;
+    if (a.size > authors) authors = a.size;
+  }
+  return { count, authors };
 }
 
 export function computeManipulationSignals(input: {
@@ -38,40 +63,24 @@ export function computeManipulationSignals(input: {
   const now = Date.now();
   const signals: string[] = [];
 
-  // Recent hype-flagged posts only.
-  const recentHype = (input.posts ?? [])
-    .filter((p) => p && HYPE_FLAGS.has((p.flag || "").toLowerCase()))
-    .map((p) => ({ ...p, t: new Date(p.ts).getTime() }))
-    .filter((p) => isFinite(p.t) && now - p.t <= RECENT_MS)
-    .sort((a, b) => a.t - b.t);
+  const recentBy = (flags: Set<string>) =>
+    (input.posts ?? [])
+      .filter((p) => p && flags.has((p.flag || "").toLowerCase()))
+      .map((p) => ({ ...p, t: new Date(p.ts).getTime() }))
+      .filter((p) => isFinite(p.t) && now - p.t <= RECENT_MS)
+      .sort((a, b) => a.t - b.t);
+
+  const recentHype = recentBy(HYPE_FLAGS);
+  const recentFud = recentBy(FUD_FLAGS);
 
   const hypePosts24h = recentHype.length;
+  const fudPosts24h = recentFud.length;
   const distinctAuthors24h = new Set(
-    recentHype.map((p) => p.memberId || p.author || "")
+    [...recentHype, ...recentFud].map((p) => p.memberId || p.author || "")
   ).size;
 
-  // Tightest cluster: largest count of hype posts within any BURST_WINDOW_MIN window.
-  let burstCount = 0;
-  const burstMs = BURST_WINDOW_MIN * 60 * 1000;
-  for (let i = 0; i < recentHype.length; i++) {
-    let c = 1;
-    for (let j = i + 1; j < recentHype.length; j++) {
-      if (recentHype[j].t - recentHype[i].t <= burstMs) c++;
-      else break;
-    }
-    if (c > burstCount) burstCount = c;
-  }
-
-  // Distinct authors inside the densest burst (proxy for "multiple/new accounts").
-  let burstAuthors = 0;
-  for (let i = 0; i < recentHype.length; i++) {
-    const a = new Set<string>();
-    for (let j = i; j < recentHype.length; j++) {
-      if (recentHype[j].t - recentHype[i].t <= burstMs) a.add(recentHype[j].memberId || recentHype[j].author || "");
-      else break;
-    }
-    if (a.size > burstAuthors) burstAuthors = a.size;
-  }
+  const hypeBurst = densestBurst(recentHype);
+  const fudBurst = densestBurst(recentFud);
 
   const volumeRatio =
     typeof input.stat?.volume_ratio === "number" && isFinite(input.stat.volume_ratio)
@@ -79,16 +88,26 @@ export function computeManipulationSignals(input: {
       : null;
 
   // ---- deterministic scoring ----
-  const clustered = burstCount >= 3 && burstAuthors >= 2; // multiple accounts, short window
+  const hypeClustered = hypeBurst.count >= 3 && hypeBurst.authors >= 2; // multiple accounts, short window
+  const fudClustered = fudBurst.count >= 3 && fudBurst.authors >= 2;    // coordinated fear campaign
+  const clustered = hypeClustered || fudClustered;
   const heavyHype = hypePosts24h >= 5;
+  const heavyFud = fudPosts24h >= 5;
   const volumeElevated = volumeRatio !== null && volumeRatio >= VOLUME_ELEVATED;
 
-  if (clustered) {
+  if (hypeClustered) {
     signals.push(
-      `${burstCount} hype-flagged posts from ${burstAuthors} accounts clustered within ${BURST_WINDOW_MIN} minutes`
+      `${hypeBurst.count} hype-flagged posts from ${hypeBurst.authors} accounts clustered within ${BURST_WINDOW_MIN} minutes`
     );
   } else if (heavyHype) {
     signals.push(`${hypePosts24h} hype-flagged posts on this board in the last 24h`);
+  }
+  if (fudClustered) {
+    signals.push(
+      `${fudBurst.count} fear-flagged posts (baseless bearish claims) from ${fudBurst.authors} accounts clustered within ${BURST_WINDOW_MIN} minutes`
+    );
+  } else if (heavyFud) {
+    signals.push(`${fudPosts24h} fear-flagged posts on this board in the last 24h`);
   }
 
   if (volumeElevated) {
@@ -97,17 +116,18 @@ export function computeManipulationSignals(input: {
 
   // Level: elevated when posting pattern AND volume both fire, or a strong cluster
   // on its own; watch for a single softer signal; none otherwise.
+  const strongCluster = hypeBurst.count >= 5 || fudBurst.count >= 5;
   let level: ManipulationSignals["level"] = "none";
-  if ((clustered && volumeElevated) || (clustered && burstCount >= 5)) {
+  if ((clustered && volumeElevated) || (clustered && strongCluster)) {
     level = "elevated";
-  } else if (clustered || heavyHype || volumeElevated) {
+  } else if (clustered || heavyHype || heavyFud || volumeElevated) {
     level = "watch";
   }
 
   return {
     level,
     signals,
-    counts: { hypePosts24h, distinctAuthors24h, burstWindowMin: BURST_WINDOW_MIN, volumeRatio },
+    counts: { hypePosts24h, fudPosts24h, distinctAuthors24h, burstWindowMin: BURST_WINDOW_MIN, volumeRatio },
   };
 }
 

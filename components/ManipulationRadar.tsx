@@ -3,17 +3,30 @@
 import { useEffect, useState } from "react";
 
 type RadarLevel = "none" | "watch" | "elevated";
+type Mix7d = { factual: number; opinion: number; hype: number; fud: number; chatter: number; question: number; verified: number; total: number };
 type RadarResult = {
   level: RadarLevel;
   signals: string[];
   caption: string;
   counts: {
     hypePosts24h: number;
+    fudPosts24h: number;
     distinctAuthors24h: number;
     burstWindowMin: number;
     volumeRatio: number | null;
   };
+  mix7d?: Mix7d;
 };
+
+// Community signal strip — the AI label mix for the last 7 days, always neutral.
+const MIX_ITEMS: Array<{ key: keyof Mix7d; label: string; cls: string }> = [
+  { key: "factual", label: "factual", cls: "text-emerald-600 dark:text-emerald-400" },
+  { key: "opinion", label: "opinion", cls: "text-sky-600 dark:text-sky-400" },
+  { key: "question", label: "questions", cls: "text-app" },
+  { key: "verified", label: "company answers", cls: "text-emerald-600 dark:text-emerald-400" },
+  { key: "hype", label: "hype", cls: "text-amber-600 dark:text-amber-400" },
+  { key: "fud", label: "fud", cls: "text-red-600 dark:text-red-400" },
+];
 
 // A dismissible amber CAUTION banner. Shown only when level !== "none".
 // COMPLIANCE: neutral description of posting patterns + public volume facts.
@@ -30,7 +43,7 @@ export default function ManipulationRadar({ ticker }: { ticker: string }) {
     fetch(`/api/board/radar?ticker=${encodeURIComponent(ticker)}`, { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((d: RadarResult | null) => {
-        if (!cancelled && d && d.level && d.level !== "none") setData(d);
+        if (!cancelled && d && d.level) setData(d);
       })
       .catch(() => {
         /* radar is advisory — fail silent */
@@ -40,9 +53,27 @@ export default function ManipulationRadar({ ticker }: { ticker: string }) {
     };
   }, [ticker]);
 
-  if (!data || dismissed) return null;
+  if (!data) return null;
+
+  // Neutral community-signal strip (always shown when the board has recent posts).
+  const mix = data.mix7d;
+  const strip = mix && mix.total > 0 && (
+    <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-app bg-surface px-4 py-2.5">
+      <span className="text-[11px] font-semibold uppercase tracking-wide text-faint">Community signal · 7d</span>
+      {MIX_ITEMS.filter((m) => (mix[m.key] as number) > 0).map((m) => (
+        <span key={m.key} className={`text-xs font-medium ${m.cls}`}>
+          {mix[m.key]} {m.label}
+        </span>
+      ))}
+      <span className="text-[11px] text-faint">· {mix.total} posts, AI-labeled</span>
+    </div>
+  );
+
+  if (data.level === "none" || dismissed) return strip || null;
 
   return (
+    <>
+    {strip}
     <div className="mb-4 overflow-hidden rounded-xl border border-amber-500/40 bg-amber-500/[0.06]">
       <div className="flex gap-3 p-4">
         <span aria-hidden className="mt-0.5 text-lg">⚠️</span>
@@ -89,5 +120,6 @@ export default function ManipulationRadar({ ticker }: { ticker: string }) {
         </div>
       </div>
     </div>
+    </>
   );
 }

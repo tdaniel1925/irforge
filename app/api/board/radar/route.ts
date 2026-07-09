@@ -42,5 +42,17 @@ export async function GET(req: Request) {
   const signals = computeManipulationSignals({ posts: radarPosts, stat });
   const { caption, engine } = await describeManipulationRisk(signals);
 
-  return NextResponse.json({ ticker, ...signals, caption, engine });
+  // Community signal: what the AI labels say about the last 7 days of posting.
+  // Pure counts — readers see the mix (factual vs opinion vs hype vs fud) at a glance.
+  const week = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const mix7d = { factual: 0, opinion: 0, hype: 0, fud: 0, chatter: 0, question: 0, verified: 0, total: 0 };
+  for (const p of posts) {
+    const t = new Date(p.ts).getTime();
+    if (!isFinite(t) || t < week) continue;
+    const f = (p.verified ? "verified" : p.flag || "chatter") as keyof typeof mix7d;
+    if (f in mix7d) mix7d[f]++;
+    mix7d.total++;
+  }
+
+  return NextResponse.json({ ticker, ...signals, caption, engine, mix7d });
 }

@@ -1,38 +1,35 @@
 import { NextResponse } from "next/server";
-import { getStore } from "@/lib/db";
+import { getMyCompany } from "@/lib/supabase/store";
+import { listOpenQuestions } from "@/lib/board";
 import { clusterQuestions, type QuestionInput } from "@/lib/questionClusters";
 
 export const dynamic = "force-dynamic";
 
-// GET — surface the top recurring THEMES across a company's open investor questions.
-// Read-only: clusters open publicQuestions so the company can see what's asked most and
-// pick what to answer on the record. No save(), so this never collides with the POST
-// create (../route.ts) or POST draft (../[id]/draft/route.ts) flows.
+// GET — surface the top recurring THEMES across the company's open investor
+// questions (live public_board data, scoped to the caller's own company). Lets the
+// company see what shareholders keep asking and pick what to answer on the record.
 //
-// COMPLIANCE: this surfaces investor demand only. It returns no answers/advice and does
-// not decide anything is material. Answering a cluster still goes through the existing
-// draft pipeline (generatePublicAnswer + Reg FD guard + checkContent).
-export async function GET(req: Request) {
-  const { db, authed } = await getStore();
-  // AI-cost guard: when auth is enforced, anonymous callers must not reach the
-  // model call below (token burn). Demo mode (AUTH_ENABLED off) still works.
-  if (process.env.AUTH_ENABLED === "1" && !authed) return NextResponse.json({ error: "Sign in first." }, { status: 401 });
+// COMPLIANCE: this surfaces investor demand only. It returns no answers/advice and
+// does not decide anything is material. Answering a cluster still goes through the
+// existing draft pipeline (compliance gates + Reg FD guard).
+export async function GET() {
+  const mine = await getMyCompany();
+  if (!mine) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
 
-  // Default to the claimed company's ticker; allow ?ticker= override for unclaimed pages.
-  const url = new URL(req.url);
-  const tickerParam = url.searchParams.get("ticker");
-  const ticker = (tickerParam ?? db.company.ticker).toUpperCase();
+  const ticker = mine.company.ticker.toUpperCase();
+  const open: QuestionInput[] = (await listOpenQuestions(ticker)).map((q) => ({
+    id: q.id,
+    question: q.body,
+    author: q.author,
+    ts: q.ts,
+  }));
 
-  const open: QuestionInput[] = db.publicQuestions
-    .filter((q) => q.status === "open" && q.ticker.toUpperCase() === ticker)
-    .map((q) => ({ id: q.id, question: q.question, author: q.author, ts: q.ts }));
+  // Below 3 open questions there's nothing meaningful to cluster (and no reason to
+  // spend an AI call).
+  if (open.length < 3) {
+    return NextResponse.json({ ticker, totalOpen: open.length, engine: "template", clusters: [] });
+  }
 
-  const { clusters, engine } = await clusterQuestions(open, db.company.name);
-
-  return NextResponse.json({
-    ticker,
-    totalOpen: open.length,
-    engine,
-    clusters,
-  });
+  const { clusters, engine } = await clusterQuestions(open, mine.company.name || ticker);
+  return NextResponse.json({ ticker, totalOpen: open.length, engine, clusters });
 }
