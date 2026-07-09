@@ -56,7 +56,8 @@ export default function Admin() {
   return (
     <div>
       <PageHeader title="Admin Console" subtitle="Every company, your revenue, and the claim-request queue. Admins only.">
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Link href="/admin/metrics" className="rounded-lg border border-app px-4 py-2 text-sm font-semibold text-app hover:bg-app-hover">📊 Platform metrics →</Link>
           <Link href="/admin/features" className="rounded-lg border border-app px-4 py-2 text-sm font-semibold text-app hover:bg-app-hover">Feature access →</Link>
           <Link href="/admin/customers" className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">Customer management →</Link>
         </div>
