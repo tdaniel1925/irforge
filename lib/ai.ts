@@ -6,8 +6,11 @@ import type { TickerAudit } from "./audit";
 // Without it, deterministic templates keep the entire app fully functional offline.
 
 const MODEL = "claude-sonnet-4-6";
+// High-volume, low-stakes classification (board post labeling) runs on Haiku —
+// ~4x cheaper and faster than Sonnet, and labeling doesn't need drafting quality.
+const FAST_MODEL = "claude-haiku-4-5-20251001";
 
-async function claude(system: string, user: string, maxTokens = 1200): Promise<string | null> {
+async function claude(system: string, user: string, maxTokens = 1200, model: string = MODEL): Promise<string | null> {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return null;
   try {
@@ -19,7 +22,7 @@ async function claude(system: string, user: string, maxTokens = 1200): Promise<s
         "content-type": "application/json",
       },
       body: JSON.stringify({
-        model: MODEL,
+        model,
         max_tokens: maxTokens,
         system,
         messages: [{ role: "user", content: user }],
@@ -207,7 +210,9 @@ export async function moderateBoardPost(text: string): Promise<ModerationVerdict
       `"abuse" = threats, doxxing, slurs, or explicit pump-and-dump coordination — this is the ONLY flag that should be blocked. ` +
       `A reasoned bearish take is "opinion", NOT "fud" — only baseless fear is "fud". ` +
       `Respond with ONLY JSON: {"flag": "...", "reason": "one short sentence explaining the flag"}.`,
-    `Label this post: "${text}"`
+    `Label this post: "${text}"`,
+    300,
+    FAST_MODEL
   );
   if (ai) {
     try {
