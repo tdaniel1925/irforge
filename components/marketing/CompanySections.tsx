@@ -347,10 +347,10 @@ export function WhyClaim() {
         ))}
       </div>
       <div className="mt-10 text-center">
-        <Link href="/login?type=company&mode=signup" className="inline-block rounded-lg bg-emerald-600 px-6 py-3 text-sm font-semibold text-white hover:bg-emerald-500">
+        <Link href="/verify" className="inline-block rounded-lg bg-emerald-600 px-6 py-3 text-sm font-semibold text-white hover:bg-emerald-500">
           Claim your company&apos;s page →
         </Link>
-        <p className="mt-2 text-xs text-faint">Free to claim. Verification required.</p>
+        <p className="mt-2 text-xs text-faint">Free to claim. Ownership verified by our team.</p>
       </div>
     </section>
   );

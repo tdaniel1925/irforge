@@ -1,14 +1,14 @@
 import Link from "next/link";
 
-// Claiming a page = signing up the company and onboarding it with this ticker.
-// We route straight into signup (company type, ticker pre-filled) instead of a
-// separate lead form — onboarding completes the claim. Authority is verified at
-// onboarding via the email domain (see /api/onboard).
+// Claim banner on an unclaimed public page. Routes to /verify — a real ownership
+// verification flow (authorization doc + government ID of the named person), reviewed
+// by our team — so the "verified company" badge actually means something. Shown at the
+// top AND bottom of the ticker page.
 export default function ClaimCard({ ticker }: { ticker: string }) {
-  const claimHref = `/login?type=company&mode=signup&next=${encodeURIComponent(`/onboarding?ticker=${ticker}`)}`;
+  const claimHref = `/verify?ticker=${encodeURIComponent(ticker)}`;
 
   return (
-    <div className="mt-8 rounded-xl border border-amber-500/40 bg-amber-500/5 p-6">
+    <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-6">
       <div className="flex flex-wrap items-start justify-between gap-6">
         <div className="min-w-0 max-w-md">
           <p className="text-xs font-bold tracking-wider text-amber-600 dark:text-amber-400">UNCLAIMED PAGE</p>
@@ -24,17 +24,17 @@ export default function ClaimCard({ ticker }: { ticker: string }) {
           <div className="rounded-xl border border-amber-500/30 bg-surface p-4">
             <p className="text-sm font-semibold text-app">Claim ${ticker} in about 2 minutes</p>
             <ol className="mt-2 space-y-1 text-xs text-muted">
-              <li><span className="font-semibold text-app">1.</span> Create your account with your work email</li>
-              <li><span className="font-semibold text-app">2.</span> We pull your profile from SEC EDGAR automatically</li>
-              <li><span className="font-semibold text-app">3.</span> Confirm it&apos;s you — your page goes live</li>
+              <li><span className="font-semibold text-app">1.</span> Tell us who you are at the company</li>
+              <li><span className="font-semibold text-app">2.</span> Upload proof — an authorization/filing + your ID</li>
+              <li><span className="font-semibold text-app">3.</span> We verify you (~1 business day) and your page goes live</li>
             </ol>
             <Link
               href={claimHref}
               className="mt-3 block w-full rounded-lg bg-amber-500 px-4 py-2.5 text-center text-sm font-bold text-white transition hover:bg-amber-400"
             >
-              Claim ${ticker} →
+              Claim &amp; verify ${ticker} →
             </Link>
-            <p className="mt-2 text-center text-[11px] text-faint">Free to claim · verified by your company email</p>
+            <p className="mt-2 text-center text-[11px] text-faint">Free to claim · ownership verified by our team</p>
           </div>
         </div>
       </div>

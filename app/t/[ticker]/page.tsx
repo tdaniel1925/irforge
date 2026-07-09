@@ -254,6 +254,13 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
         </div>
       )}
 
+      {/* Claim banner — TOP (unclaimed pages only). Also repeated at the bottom. */}
+      {!claimed && (
+        <div className="mt-6">
+          <ClaimCard ticker={audit.ticker} />
+        </div>
+      )}
+
       <div className="mt-6" />
       <TickerTabs
         ticker={audit.ticker}
@@ -762,7 +769,7 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
           already owns this page, so the claim box would contradict the "claimed"
           badge shown at the top. */}
       {!claimed && (
-        <div id="claim">
+        <div id="claim" className="mt-6">
           <ClaimCard ticker={audit.ticker} />
         </div>
       )}

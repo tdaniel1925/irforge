@@ -4,9 +4,15 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Banner, Button, Card, LoadingState, PageHeader } from "@/components/ui";
 
+interface ClaimDoc { name: string; url: string }
+interface Claim {
+  id: string; ticker: string; company_name?: string; name: string; title?: string;
+  relationship?: string; email: string; phone?: string; role: string; notes?: string;
+  status: string; created_at: string; docs?: ClaimDoc[];
+}
 interface AdminData {
   companies: { id: string; name: string; ticker: string; tier: string; subscription_status: string; onboarding_complete: boolean; created_at: string }[];
-  claims: { id: string; ticker: string; name: string; email: string; role: string; status: string; created_at: string }[];
+  claims: Claim[];
   stats: { total: number; active: number; pastDue: number; mrr: number; pendingClaims: number };
 }
 
@@ -76,19 +82,42 @@ export default function Admin() {
       {data.claims.filter((c) => c.status === "pending").length > 0 && (
         <Card className="mb-6">
           <h2 className="mb-3 font-semibold text-app">Claim requests to verify</h2>
-          <div className="space-y-2">
+          <div className="space-y-3">
             {data.claims.filter((c) => c.status === "pending").map((c) => (
-              <div key={c.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-app bg-surface-2 px-4 py-3">
-                <div className="text-sm">
-                  <span className="font-medium text-app">${c.ticker}</span> — {c.name} ({c.role || "role n/a"}) · <span className="text-muted">{c.email}</span>
-                </div>
-                <div className="flex gap-2">
-                  <Button onClick={() => claim(c.id, "verified")} disabled={busyClaim === c.id + "verified"}>{busyClaim === c.id + "verified" ? "…" : "Verify"}</Button>
-                  <Button variant="danger" onClick={() => claim(c.id, "rejected")} disabled={busyClaim === c.id + "rejected"}>{busyClaim === c.id + "rejected" ? "…" : "Reject"}</Button>
+              <div key={c.id} className="rounded-lg border border-app bg-surface-2 px-4 py-3">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0 text-sm">
+                    <p className="font-semibold text-app">${c.ticker} — {c.company_name || "(company name n/a)"}</p>
+                    <p className="mt-0.5 text-muted">
+                      {c.name}{c.title ? `, ${c.title}` : ""} · <span className="capitalize">{c.relationship || c.role || "role n/a"}</span>
+                    </p>
+                    <p className="mt-0.5 text-xs text-faint">
+                      {c.email}{c.phone ? ` · ${c.phone}` : ""} · submitted {c.created_at?.slice(0, 10)}
+                    </p>
+                    {c.notes && <p className="mt-1 text-xs italic text-muted">&ldquo;{c.notes}&rdquo;</p>}
+                    {/* Proof documents — signed private links */}
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {(c.docs ?? []).length > 0 ? (
+                        (c.docs ?? []).map((d, i) => (
+                          <a key={i} href={d.url} target="_blank" rel="noreferrer"
+                            className="inline-flex items-center gap-1 rounded-md border border-app bg-surface px-2 py-1 text-xs font-medium text-emerald-700 hover:bg-app-hover dark:text-emerald-300">
+                            📎 {d.name.length > 28 ? d.name.slice(0, 25) + "…" : d.name}
+                          </a>
+                        ))
+                      ) : (
+                        <span className="text-xs text-amber-600 dark:text-amber-400">⚠ no documents attached</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 gap-2">
+                    <Button onClick={() => claim(c.id, "verified")} disabled={busyClaim === c.id + "verified"}>{busyClaim === c.id + "verified" ? "…" : "✓ Verify"}</Button>
+                    <Button variant="danger" onClick={() => claim(c.id, "rejected")} disabled={busyClaim === c.id + "rejected"}>{busyClaim === c.id + "rejected" ? "…" : "Reject"}</Button>
+                  </div>
                 </div>
               </div>
             ))}
           </div>
+          <p className="mt-3 text-xs text-faint">Verifying marks the claim approved. Document links are private and expire in 1 hour.</p>
         </Card>
       )}
 

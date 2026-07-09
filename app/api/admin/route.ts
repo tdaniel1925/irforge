@@ -15,11 +15,24 @@ export async function GET() {
     .from("companies")
     .select("id, name, ticker, tier, subscription_status, onboarding_complete, created_at, stripe_customer_id, stripe_subscription_id")
     .order("created_at", { ascending: false });
-  const { data: claims } = await svc
+  const { data: claimsRaw } = await svc
     .from("claim_requests")
     .select("*")
     .order("created_at", { ascending: false })
     .limit(50);
+
+  // Sign the private proof documents so an admin can open them (1-hour links).
+  const claims = await Promise.all(
+    (claimsRaw ?? []).map(async (c) => {
+      const paths: string[] = Array.isArray(c.doc_paths) ? c.doc_paths : [];
+      const docs: { name: string; url: string }[] = [];
+      for (const p of paths) {
+        const { data } = await svc.storage.from("claim-docs").createSignedUrl(p, 3600);
+        if (data?.signedUrl) docs.push({ name: p.split("/").pop() ?? "document", url: data.signedUrl });
+      }
+      return { ...c, docs };
+    })
+  );
 
   const tierRevenue: Record<string, number> = { starter: 1500, growth: 3500, pro: 6000 };
   const mrr = (companies ?? [])
@@ -46,6 +59,6 @@ export async function PATCH(req: Request) {
 
   const { id, status } = await req.json().catch(() => ({}));
   if (!id || !["verified", "rejected"].includes(status)) return NextResponse.json({ error: "Bad request" }, { status: 422 });
-  await svc.from("claim_requests").update({ status }).eq("id", id);
+  await svc.from("claim_requests").update({ status, reviewed_at: new Date().toISOString() }).eq("id", id);
   return NextResponse.json({ ok: true });
 }
