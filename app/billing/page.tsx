@@ -104,7 +104,7 @@ export default function Billing() {
           </Card>
         ))}
       </div>
-      <p className="mt-6 text-xs text-faint">Plus a one-time $2,500 setup fee on first subscription. Cash/card only — we never accept stock as payment.</p>
+      <p className="mt-6 text-xs text-faint">No setup fee. Cash/card only — we never accept stock as payment.</p>
     </div>
   );
 }

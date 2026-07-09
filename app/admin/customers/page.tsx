@@ -83,14 +83,6 @@ export default function AdminCustomers() {
     setBusy("");
   };
 
-  const setupFee = async (c: Company) => {
-    setBusy(c.id + "fee");
-    if (!c.stripe_customer_id) { setNotice({ text: "Create a Stripe customer first.", tone: "error" }); setBusy(""); return; }
-    const r = await act({ action: "charge_setup_fee", customerId: c.stripe_customer_id });
-    if (r.invoiceUrl) setNotice({ text: `Setup-fee invoice created: ${r.invoiceUrl}`, tone: "success" });
-    else if (r.ok) setNotice({ text: "Setup-fee invoice created — check the Stripe dashboard for the hosted link.", tone: "info" });
-    setBusy("");
-  };
 
   const comp = async (c: Company) => { setBusy(c.id + "comp"); await act({ action: "comp", companyId: c.id, tier: c.tier }, `${c.name} comped to active.`); setBusy(""); };
   const compFull = async (c: Company) => { setBusy(c.id + "full"); await act({ action: "comp_full", companyId: c.id }, `${c.name || "Company"} now has everything free (Command tier + all features).`); setBusy(""); };
@@ -281,7 +273,6 @@ export default function AdminCustomers() {
                       <Button variant="secondary" onClick={() => compFull(c)} disabled={busy === c.id + "full"} title="Command tier + every feature, free">{busy === c.id + "full" ? "…" : "🎁 Comp full (free)"}</Button>
                     </>
                   )}
-                  <Button variant="secondary" onClick={() => setupFee(c)} disabled={busy === c.id + "fee"}>Setup fee</Button>
                   <Button variant="secondary" onClick={() => impersonate(c)} disabled={busy === c.id + "imp"} title="Log in as this company to make changes">{busy === c.id + "imp" ? "…" : "👁 Act as"}</Button>
                   {c.stripe_subscription_id && <Button variant="danger" onClick={() => cancel(c)} disabled={busy === c.id + "cancel"}>Cancel</Button>}
                 </div>

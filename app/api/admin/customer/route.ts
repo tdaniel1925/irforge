@@ -39,7 +39,7 @@ export async function GET(req: Request) {
 }
 
 // POST — admin actions for manual customer management.
-// action: create_customer | send_subscription_invoice | charge_setup_fee | cancel_sub | comp
+// action: create_customer | send_subscription_invoice | cancel_sub | comp
 export async function POST(req: Request) {
   const svc = await requireAdmin();
   if (!svc) return NextResponse.json({ error: "Admin only" }, { status: 403 });
@@ -145,18 +145,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, subscriptionId: sub.id, invoiceUrl: hostedUrl });
     }
 
-    // 3) One-time setup fee as a hosted invoice.
-    if (action === "charge_setup_fee") {
-      const customerId = String(b.customerId ?? "");
-      const setupPrice = process.env.STRIPE_PRICE_SETUP;
-      if (!customerId || !setupPrice) return NextResponse.json({ error: "Customer and setup price required." }, { status: 422 });
-      await stripe.invoiceItems.create({ customer: customerId, pricing: { price: setupPrice } });
-      const invoice = await stripe.invoices.create({ customer: customerId, collection_method: "send_invoice", days_until_due: 14 });
-      const finalized = await stripe.invoices.finalizeInvoice(invoice.id);
-      return NextResponse.json({ ok: true, invoiceUrl: finalized.hosted_invoice_url });
-    }
-
-    // 4) Cancel a subscription.
+    // Cancel a subscription.
     if (action === "cancel_sub") {
       const subId = String(b.subscriptionId ?? "");
       if (!subId) return NextResponse.json({ error: "Subscription id required." }, { status: 422 });

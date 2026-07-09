@@ -37,7 +37,7 @@ export default function Terms() {
         </Section>
 
         <Section title="6. Subscriptions, Fees &amp; Payment">
-          <p>Paid plans are billed in advance on a recurring basis (quarterly unless otherwise stated) through our payment processor, Stripe. A one-time setup fee may apply to new subscriptions. By subscribing, you authorize recurring charges until you cancel. Fees are non-refundable except as required by law or expressly stated. We may change pricing on renewal with notice. You are responsible for applicable taxes. We do not accept securities of any company as payment.</p>
+          <p>Paid plans are billed in advance on a recurring basis (quarterly unless otherwise stated) through our payment processor, Stripe. By subscribing, you authorize recurring charges until you cancel. Fees are non-refundable except as required by law or expressly stated. We may change pricing on renewal with notice. You are responsible for applicable taxes. We do not accept securities of any company as payment.</p>
         </Section>
 
         <Section title="7. Cancellation">
