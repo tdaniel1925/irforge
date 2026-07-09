@@ -8,6 +8,7 @@ import { isTickerClaimed } from "@/lib/supabase/store";
 import { buildPlainFlags } from "@/lib/flags";
 import ClaimCard from "@/components/ClaimCard";
 import AskCompany from "@/components/AskCompany";
+import BackToApp from "@/components/BackToApp";
 import BadgeEmbed from "@/components/BadgeEmbed";
 import StockChart from "@/components/StockChart";
 import WatchButton from "@/components/WatchButton";
@@ -787,8 +788,10 @@ function PageShell({ children }: { children: React.ReactNode }) {
   return (
     // pb-28 leaves room so the fixed Ask bar never covers the disclosure/claim content.
     <div className="mx-auto max-w-4xl pb-28">
-      <div className="mb-6 flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-4">
+          {/* Signed-in viewers (a company on its own page) get a way back to the app. */}
+          <BackToApp />
           <Link href="/t" className="text-sm text-muted hover:text-app">
             ← Look up a ticker
           </Link>

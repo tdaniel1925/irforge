@@ -117,14 +117,16 @@ export default function Sidebar({ mobileOpen = false, onNavigate }: { mobileOpen
     return () => { cancelled = true; };
   }, []);
 
-  // Hide the Admin section unless the user is a platform super-admin; point
-  // "Your Public Page" at the company's real ticker page when we know it.
+  // Hide the Admin section unless the user is a platform super-admin; point the
+  // "Public Page" nav item at the company's REAL ticker page (/t/TICKER) when we know
+  // it. Match by href only — matching the label broke when it was renamed from
+  // "Your Public Page" to "Public Page", leaving this pointing at the /t lookup page.
   const nav: NavGroup[] = NAV
     .filter((g) => g.section !== "Admin" || superAdmin)
     .map((g) => ({
       ...g,
       items: g.items.map((it) =>
-        it.href === "/t" && it.label === "Your Public Page" && ticker
+        it.href === "/t" && ticker
           ? { ...it, href: `/t/${ticker}` }
           : it
       ),
