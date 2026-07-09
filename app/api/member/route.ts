@@ -20,16 +20,22 @@ export async function POST(req: Request) {
     return Response.json({ error: "Bad request." }, { status: 400 });
   }
 
-  const patch: Record<string, string> = {};
+  const patch: Record<string, string | boolean> = {};
   if (typeof body.displayName === "string") patch.displayName = body.displayName.trim().slice(0, 60);
   if (typeof body.bio === "string") patch.bio = body.bio.trim().slice(0, 280);
   if (typeof body.avatarUrl === "string") patch.avatarUrl = body.avatarUrl.slice(0, 500);
+  let handleOk = false;
   if (typeof body.handle === "string") {
     const h = body.handle.trim().toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 20);
-    if (h.length >= 3) patch.handle = h;
+    if (h.length >= 3) { patch.handle = h; handleOk = true; }
+  }
+  // Once the investor saves a valid username, mark the profile complete — that's the
+  // gate for posting to a discussion board (no more auto-generated placeholder names).
+  if (handleOk || (me.member.handle && me.member.handle.length >= 3 && (patch.displayName || me.member.displayName))) {
+    patch.profileComplete = true;
   }
 
-  const updated = await updateMyMember(patch);
+  const updated = await updateMyMember(patch as Partial<import("@/lib/members").Member>);
   if (!updated) {
     // Most likely a duplicate handle.
     return Response.json({ error: "Couldn't save — that handle may be taken." }, { status: 409 });

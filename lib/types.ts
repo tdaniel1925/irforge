@@ -149,6 +149,7 @@ export interface Company {
   logoUrl?: string; // uploaded company logo (brand reference / avatar)
   imageStyle?: string; // chosen AI image style key — drives buildImagePrompt per company
   postGuidance?: string; // free-text brand guidance injected into AI post/image prompts
+  boardNotifyEmails?: string[]; // recipients emailed on new board questions + daily digest (empty = owner)
   peers: string[]; // peer tickers used for 13F targeting
   xHandle: string;
   onboarded: boolean;

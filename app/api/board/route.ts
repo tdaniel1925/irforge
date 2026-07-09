@@ -41,6 +41,11 @@ export async function POST(req: Request) {
   if (!me) {
     return NextResponse.json({ error: "Sign in as an investor to post.", needsAuth: true }, { status: 401 });
   }
+  // Require a chosen username before posting — so board posts always carry a real
+  // investor identity, never an auto-generated placeholder.
+  if (!me.member.profileComplete) {
+    return NextResponse.json({ error: "Set your investor username before you can post.", needsProfile: true }, { status: 403 });
+  }
 
   // Rate limit per member.
   if (!(await rateAllow(`board:${me.id}`, 5))) {

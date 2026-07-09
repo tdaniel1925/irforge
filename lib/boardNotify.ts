@@ -16,24 +16,35 @@ function esc(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-// Resolve the onboarded company that owns a ticker + the owner's email to notify.
+// Resolve the onboarded company that owns a ticker + the list of emails to notify.
+// Recipients are the company's configured board_notify_emails; if none are set, we
+// fall back to the owner's account email so notifications are never silently dropped.
 export async function companyNotifyTarget(
   ticker: string
-): Promise<{ companyId: string; name: string; ticker: string; email: string } | null> {
+): Promise<{ companyId: string; name: string; ticker: string; emails: string[] } | null> {
   try {
     const svc = createServiceClient();
     const { data: co } = await svc
       .from("companies")
-      .select("id, name, ticker, owner_id, onboarding_complete")
+      .select("id, name, ticker, owner_id, onboarding_complete, board_notify_emails")
       .ilike("ticker", ticker)
       .eq("onboarding_complete", true)
       .limit(1)
       .maybeSingle();
-    if (!co || !co.owner_id) return null;
-    const { data: u } = await svc.auth.admin.getUserById(String(co.owner_id));
-    const email = u?.user?.email;
-    if (!email) return null;
-    return { companyId: String(co.id), name: String(co.name || co.ticker), ticker: String(co.ticker), email };
+    if (!co) return null;
+
+    const configured = ((co.board_notify_emails as string[]) ?? [])
+      .map((e) => String(e).trim().toLowerCase())
+      .filter((e) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e));
+
+    let emails = configured;
+    if (emails.length === 0 && co.owner_id) {
+      // No explicit recipients — default to the owner's account email.
+      const { data: u } = await svc.auth.admin.getUserById(String(co.owner_id));
+      if (u?.user?.email) emails = [u.user.email.toLowerCase()];
+    }
+    if (emails.length === 0) return null;
+    return { companyId: String(co.id), name: String(co.name || co.ticker), ticker: String(co.ticker), emails };
   } catch {
     return null;
   }
@@ -55,7 +66,7 @@ export async function notifyNewQuestion(ticker: string, author: string, question
   if (!target) return;
   try {
     await sendEmail({
-      to: target.email,
+      to: target.emails,
       subject: `New investor question on your $${target.ticker} board`,
       html: shell(
         `${esc(author)} asked a question on your public board`,
@@ -73,16 +84,17 @@ export async function notifyNewQuestion(ticker: string, author: string, question
 
 // Daily digest of board activity for one company.
 export async function sendBoardDigest(
-  target: { email: string; name: string; ticker: string },
+  target: { emails: string[]; name: string; ticker: string },
   summary: { newQuestions: number; newComments: number; unansweredTotal: number }
 ): Promise<boolean> {
   if (summary.newQuestions === 0 && summary.newComments === 0) return false;
+  if (!target.emails.length) return false;
   const lines: string[] = [];
   if (summary.newQuestions > 0) lines.push(`<li><strong>${summary.newQuestions}</strong> new question${summary.newQuestions === 1 ? "" : "s"}</li>`);
   if (summary.newComments > 0) lines.push(`<li><strong>${summary.newComments}</strong> new comment${summary.newComments === 1 ? "" : "s"}</li>`);
   try {
     await sendEmail({
-      to: target.email,
+      to: target.emails,
       subject: `Your $${target.ticker} board: ${summary.newQuestions + summary.newComments} new in the last day`,
       html: shell(
         `New activity on your $${target.ticker} investor board`,

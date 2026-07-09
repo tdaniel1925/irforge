@@ -151,6 +151,13 @@ export default function SettingsPage() {
       {/* Disclosures are compliance content — admin-only, like the rest of settings. */}
       {isAdmin && <AddDisclosure onDone={(msg) => setNotice({ text: msg, tone: "success" })} />}
 
+      <NotificationsSection
+        initial={db.company.boardNotifyEmails ?? []}
+        isAdmin={isAdmin}
+        ownerHint={form.approverName || ""}
+        onSaved={(msg, ok) => setNotice({ text: msg, tone: ok ? "success" : "error" })}
+      />
+
       <SocialConnections />
 
       <TeamSection />
@@ -168,6 +175,71 @@ export default function SettingsPage() {
 // Lives here in Settings so admins find it where they expect. The full roster +
 // invite form is the /team page (works for any company admin, not just platform
 // super-admins — it is intentionally NOT under the /admin super-admin wall).
+// Who gets emailed when an investor posts a question to the company's discussion
+// board (immediate) and in the daily digest. Empty list = the owner's account email.
+function NotificationsSection({ initial, isAdmin, ownerHint, onSaved }: { initial: string[]; isAdmin: boolean; ownerHint: string; onSaved: (msg: string, ok: boolean) => void }) {
+  const [emails, setEmails] = useState<string[]>(initial);
+  const [input, setInput] = useState("");
+  const [busy, setBusy] = useState(false);
+  const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
+  const add = () => {
+    const e = input.trim().toLowerCase();
+    if (!EMAIL_RE.test(e)) { onSaved("Enter a valid email address.", false); return; }
+    if (emails.includes(e)) { setInput(""); return; }
+    setEmails([...emails, e]); setInput("");
+  };
+  const remove = (e: string) => setEmails(emails.filter((x) => x !== e));
+
+  const save = async () => {
+    setBusy(true);
+    try {
+      const res = await fetch("/api/company", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ boardNotifyEmails: emails }) });
+      if (!res.ok) { onSaved((await res.json().catch(() => ({}))).error ?? "Couldn't save notification settings.", false); return; }
+      onSaved(emails.length ? "Notification recipients saved." : "Cleared — notifications will go to the account owner.", true);
+    } catch { onSaved("Network error — couldn't save.", false); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <Card className="mb-6">
+      <h2 className="font-semibold text-app">Board notifications</h2>
+      <p className="mb-3 mt-1 text-sm text-muted">
+        Who gets emailed when an investor posts a question to your public discussion board — immediately, plus a daily digest of activity.
+        {emails.length === 0 && <> Right now these go to the account owner{ownerHint ? ` (${ownerHint})` : ""}.</>}
+      </p>
+
+      {emails.length > 0 && (
+        <div className="mb-3 flex flex-wrap gap-2">
+          {emails.map((e) => (
+            <span key={e} className="inline-flex items-center gap-1.5 rounded-lg border border-app bg-surface-2 px-2.5 py-1 text-sm text-app">
+              {e}
+              {isAdmin && <button onClick={() => remove(e)} className="text-faint hover:text-red-500" aria-label={`Remove ${e}`}>✕</button>}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {isAdmin ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            type="email"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), add())}
+            placeholder="ir@yourcompany.com"
+            className="min-w-[220px] flex-1 rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:border-emerald-500 focus:outline-none"
+          />
+          <Button variant="secondary" onClick={add} disabled={!input.trim()}>Add</Button>
+          <Button onClick={save} disabled={busy}>{busy ? "Saving…" : "Save recipients"}</Button>
+        </div>
+      ) : (
+        <p className="text-xs text-faint">Only company admins can change notification recipients.</p>
+      )}
+    </Card>
+  );
+}
+
 function TeamSection() {
   return (
     <Card className="mb-6">

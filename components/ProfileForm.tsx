@@ -97,10 +97,11 @@ export default function ProfileForm({ initial }: { initial: Member }) {
           className="w-full rounded-lg border border-app bg-surface-2 px-3 py-2.5 text-sm text-app focus:border-emerald-500 focus:outline-none" />
       </Field>
 
-      <Field label="Handle" hint="3–20 chars, letters/numbers/underscore. This is your @ on the board.">
+      <Field label="Username (handle)" hint="3–20 chars, letters/numbers/underscore. This is your @ on the board — required to post questions or comments.">
         <div className="flex items-center rounded-lg border border-app bg-surface-2 focus-within:border-emerald-500">
           <span className="pl-3 text-faint">@</span>
           <input value={handle} onChange={(e) => setHandle(e.target.value.toLowerCase())} maxLength={20}
+            placeholder="yourname"
             className="w-full bg-transparent px-2 py-2.5 text-sm text-app focus:outline-none" />
         </div>
       </Field>
@@ -111,8 +112,11 @@ export default function ProfileForm({ initial }: { initial: Member }) {
       </Field>
 
       {msg && <p className={`text-sm ${msg.ok ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`}>{msg.text}</p>}
+      {handle.replace(/[^a-z0-9_]/g, "").length < 3 && (
+        <p className="text-xs text-amber-600 dark:text-amber-300">Pick a username of at least 3 characters to post on discussion boards.</p>
+      )}
 
-      <button onClick={save} disabled={busy} className="rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-50">
+      <button onClick={save} disabled={busy || handle.replace(/[^a-z0-9_]/g, "").length < 3} className="rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-50">
         {busy ? "Saving…" : "Save profile"}
       </button>
     </div>

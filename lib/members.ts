@@ -11,6 +11,7 @@ export interface Member {
   avatarUrl: string;
   plan: "free" | "member_plus";
   subscriptionStatus: string;
+  profileComplete: boolean; // true once the investor set their own username — required to post
   stripeCustomerId?: string;
 }
 
@@ -23,6 +24,7 @@ function rowToMember(r: Record<string, unknown>): Member {
     avatarUrl: (r.avatar_url as string) ?? "",
     plan: ((r.plan as string) ?? "free") as Member["plan"],
     subscriptionStatus: (r.subscription_status as string) ?? "none",
+    profileComplete: Boolean(r.profile_complete),
     stripeCustomerId: (r.stripe_customer_id as string) ?? undefined,
   };
 }
@@ -35,6 +37,7 @@ function memberToRow(p: Partial<Member>): Record<string, unknown> {
   if (p.avatarUrl !== undefined) row.avatar_url = p.avatarUrl;
   if (p.plan !== undefined) row.plan = p.plan;
   if (p.subscriptionStatus !== undefined) row.subscription_status = p.subscriptionStatus;
+  if (p.profileComplete !== undefined) row.profile_complete = p.profileComplete;
   if (p.stripeCustomerId !== undefined) row.stripe_customer_id = p.stripeCustomerId;
   return row;
 }

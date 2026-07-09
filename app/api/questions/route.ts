@@ -1,22 +1,30 @@
 import { NextResponse } from "next/server";
 import { addBoardPost, rateAllow } from "@/lib/publicStats";
 import { notifyNewQuestion } from "@/lib/boardNotify";
+import { getMyMember } from "@/lib/members";
 
 export const dynamic = "force-dynamic";
 
 // POST — an investor asks a question from a public ticker page. Persisted to the
-// Supabase public_board (flag='question') so it survives on the serverless host
-// and appears on the ticker's board; the company answers as a verified reply.
+// Supabase public_board (flag='question'); the company answers as a verified reply.
+// Requires a signed-in investor with a chosen username — the author is taken from
+// their profile (client can't supply a name), so questions are never "Anonymous".
 export async function POST(req: Request) {
-  // This is an unauthenticated write that also emails the company — rate-limit it
-  // per IP or it's a board-spam + inbox-bombing vector.
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "anon";
-  if (!(await rateAllow(`question:${ip}`, 3))) {
+  const me = await getMyMember();
+  if (!me) {
+    return NextResponse.json({ error: "Sign in as an investor to ask a question.", needsAuth: true }, { status: 401 });
+  }
+  if (!me.member.profileComplete) {
+    return NextResponse.json({ error: "Set your investor username before you can post.", needsProfile: true }, { status: 403 });
+  }
+
+  // Rate limit per member (authenticated now — no anonymous spam vector).
+  if (!(await rateAllow(`question:${me.id}`, 3))) {
     return NextResponse.json({ error: "Slow down a moment — try again shortly." }, { status: 429 });
   }
   const body = await req.json().catch(() => ({}));
   const ticker = String(body.ticker ?? "").toUpperCase().slice(0, 8);
-  const author = String(body.author ?? "").trim().slice(0, 60) || "Anonymous investor";
+  const author = me.member.handle;
   const question = String(body.question ?? "").trim().slice(0, 500);
 
   if (!ticker || question.length < 10) {
@@ -31,6 +39,8 @@ export async function POST(req: Request) {
       verified: false,
       flag: "question",
       flagReason: "Investor question for the company.",
+      memberId: me.id,
+      authorAvatar: me.member.avatarUrl,
       ts: new Date().toISOString(),
     });
   } catch {
