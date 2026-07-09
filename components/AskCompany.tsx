@@ -74,7 +74,7 @@ export default function AskCompany({ ticker, claimed }: { ticker: string; claime
             {gate && (
               <p className="mt-1.5 text-xs text-amber-600 dark:text-amber-300">
                 {gate.kind === "auth" ? (
-                  <>Sign in as an investor to post — <a href="/login?type=investor" className="font-medium underline">create a free account</a> (takes a minute).</>
+                  <>Sign in as an investor to post — <a href={`/login?type=investor&mode=signup&next=/t/${ticker}`} className="font-medium underline">create a free account</a> (takes a minute) or <a href={`/login?next=/t/${ticker}`} className="font-medium underline">sign in</a>.</>
                 ) : (
                   <>Pick a username first so your question isn&apos;t anonymous — <a href="/member/profile" className="font-medium underline">set your investor profile</a>.</>
                 )}

@@ -135,7 +135,12 @@ export default function MessageBoard({ ticker }: { ticker: string }) {
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   // null = unknown (checking), false = guest, true = signed-in member
-  const [authed, setAuthed] = useState<boolean | null>(null);
+  // Who's viewing? Investors (members) get the composer; companies are pointed at
+  // their dashboard (they answer with verified replies, not investor posts); guests
+  // get sign-in/sign-up. A plain "signed in?" boolean showed company accounts an
+  // investor composer that could only ever 401.
+  const [viewer, setViewer] = useState<"member" | "company" | "guest" | null>(null);
+  const [reactNudge, setReactNudge] = useState(false);
 
   // Reload from the start (page 0) — used on mount and after posting/reacting.
   const load = async () => {
@@ -173,14 +178,16 @@ export default function MessageBoard({ ticker }: { ticker: string }) {
     load(); // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ticker]);
 
-  // Detect whether the visitor is signed in (members post with identity).
+  // Detect who is viewing: investor (member), company account, or guest.
   useEffect(() => {
     let cancelled = false;
     import("@/lib/supabase/client").then(({ createClient, supabaseConfigured }) => {
-      if (!supabaseConfigured()) { if (!cancelled) setAuthed(false); return; }
+      if (!supabaseConfigured()) { if (!cancelled) setViewer("guest"); return; }
       createClient().auth.getUser().then(({ data }) => {
-        if (!cancelled) setAuthed(Boolean(data.user));
-      }).catch(() => { if (!cancelled) setAuthed(false); });
+        if (cancelled) return;
+        if (!data.user) { setViewer("guest"); return; }
+        setViewer(data.user.user_metadata?.account_type === "member" ? "member" : "company");
+      }).catch(() => { if (!cancelled) setViewer("guest"); });
     });
     return () => { cancelled = true; };
   }, []);
@@ -196,6 +203,12 @@ export default function MessageBoard({ ticker }: { ticker: string }) {
       // Signed in but no username chosen yet — point at the profile page instead of
       // leaving them stuck on a bare error.
       if (data.needsProfile) setNeedsProfile(true);
+      // Not an investor account (guest or company hitting Reply) — show the nudge
+      // with real sign-in/sign-up links instead of a dead-end error string.
+      if (data.needsAuth) {
+        setReactNudge(true);
+        setTimeout(() => setReactNudge(false), 8000);
+      }
       throw new Error(data.error ?? "Couldn't post.");
     }
     setNeedsProfile(false);
@@ -207,6 +220,12 @@ export default function MessageBoard({ ticker }: { ticker: string }) {
       const res = await fetch("/api/board", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ react: kind, postId }) });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
+        if (data.needsAuth) {
+          // Guest clicked a reaction — nudge with a real path to sign up, not a dead end.
+          setReactNudge(true);
+          setTimeout(() => setReactNudge(false), 8000);
+          return;
+        }
         setError(data.error ?? (res.status === 429 ? "You're reacting too fast — try again in a moment." : "Couldn't save that reaction."));
         setTimeout(() => setError(""), 4000);
         return;
@@ -279,11 +298,21 @@ export default function MessageBoard({ ticker }: { ticker: string }) {
       {/* Manipulation radar — neutral caution about board posting patterns + public volume. */}
       <ManipulationRadar ticker={ticker} />
       {/* Transient action error (e.g. a rejected reaction) — visible regardless of auth/composer. */}
-      {error && !authed && (
+      {error && viewer !== "member" && (
         <p className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/[0.06] px-3 py-2 text-xs text-amber-600 dark:text-amber-400">{error}</p>
       )}
-      {/* Composer — members only. Guests see a sign-in CTA. */}
-      {authed ? (
+      {/* Guest tapped a reaction — one inline nudge with a real path to sign up. */}
+      {reactNudge && (
+        <p className="mb-3 rounded-lg border border-sky-500/30 bg-sky-500/[0.06] px-3 py-2 text-xs text-sky-700 dark:text-sky-300">
+          Reactions take a free investor account (one per person — that&apos;s what keeps the counts honest).{" "}
+          <a href={`/login?type=investor&mode=signup&next=/t/${ticker}`} className="font-semibold underline">Create one in a minute</a>
+          {" "}or{" "}
+          <a href={`/login?next=/t/${ticker}`} className="font-semibold underline">sign in</a>.
+        </p>
+      )}
+      {/* Composer — investors only. Companies answer from their dashboard; guests
+          get a sign-in/sign-up CTA that actually links to sign-up. */}
+      {viewer === "member" ? (
         <div className="mb-5 rounded-xl border border-app bg-surface p-4">
           <div className="flex flex-col gap-2 sm:flex-row">
             <input value={body} onChange={(e) => setBody(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submitTop()}
@@ -304,6 +333,14 @@ export default function MessageBoard({ ticker }: { ticker: string }) {
           )}
           <p className="mt-2 text-[11px] text-faint">🛡 Posts are AI-labeled by signal quality — you filter what you see. 🎤 voice posts are transcribed in your browser and moderated the same way. You post under your investor profile. Only threats and coordinated manipulation are removed.</p>
         </div>
+      ) : viewer === "company" ? (
+        <div className="mb-5 rounded-xl border border-app bg-surface px-4 py-3">
+          <p className="text-xs text-muted">
+            You&apos;re signed in as a <span className="font-semibold text-app">company account</span> — this composer is for investors.
+            Answer investor questions with verified, on-the-record replies from your{" "}
+            <a href="/app" className="font-semibold text-emerald-600 underline-offset-2 hover:underline dark:text-emerald-400">dashboard →</a>
+          </p>
+        </div>
       ) : (
         <div className="mb-5 rounded-xl border border-app bg-surface p-6 text-center">
           <p className="text-sm font-semibold text-app">Join the conversation on ${ticker}</p>
@@ -311,8 +348,8 @@ export default function MessageBoard({ ticker }: { ticker: string }) {
             Posting on PubcoZone takes a free investor account — that&apos;s how we keep it real names over anonymous pump-and-dump.
           </p>
           <div className="mt-3 flex justify-center gap-2">
-            <a href="/login" className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500">Sign in to post</a>
-            <a href="/login" className="rounded-lg border border-app px-4 py-2 text-sm font-medium text-app transition hover:bg-app-hover">Create free account</a>
+            <a href={`/login?type=investor&mode=signup&next=/t/${ticker}`} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500">Create free account</a>
+            <a href={`/login?next=/t/${ticker}`} className="rounded-lg border border-app px-4 py-2 text-sm font-medium text-app transition hover:bg-app-hover">Sign in</a>
           </div>
         </div>
       )}

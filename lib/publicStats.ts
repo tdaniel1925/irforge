@@ -280,13 +280,27 @@ function belongsTo(post: BoardPost, rootIds: Set<string>, all: BoardPost[]): boo
   return false;
 }
 
-export async function reactToPost(postId: string, kind: ReactionKind): Promise<BoardPost | null> {
+// One reaction per member per post per kind — reacting again toggles it OFF.
+// Reactions are rows in board_reactions (attributable, deduped); the JSONB
+// counters on public_board are a recomputed display cache, so counts always
+// equal real member reactions and can't be stuffed by repeat clicks.
+export async function reactToPost(postId: string, kind: ReactionKind, memberId: string): Promise<BoardPost | null> {
   if (supabaseEnabled()) {
     const svc = createServiceClient();
-    const { data: row } = await svc.from("public_board").select("reactions").eq("id", postId).single();
-    if (!row) return null;
-    const reactions = { ...EMPTY_REACTIONS, ...((row.reactions as Record<ReactionKind, number>) ?? {}) };
-    reactions[kind] = (reactions[kind] ?? 0) + 1;
+    const { error: insErr } = await svc.from("board_reactions").insert({ post_id: postId, member_id: memberId, kind });
+    if (insErr) {
+      // Unique violation = already reacted -> toggle off. Anything else (e.g. bad
+      // post id FK) = post not found.
+      if (insErr.code !== "23505") return null;
+      await svc.from("board_reactions").delete().eq("post_id", postId).eq("member_id", memberId).eq("kind", kind);
+    }
+    // Recount this post's reactions from the source of truth.
+    const { data: rows } = await svc.from("board_reactions").select("kind").eq("post_id", postId);
+    const reactions = { ...EMPTY_REACTIONS };
+    for (const r of rows ?? []) {
+      const k = r.kind as ReactionKind;
+      if (k in reactions) reactions[k]++;
+    }
     const { data } = await svc.from("public_board").update({ reactions }).eq("id", postId).select("*").single();
     return data ? rowToPost(data) : null;
   }

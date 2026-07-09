@@ -69,7 +69,7 @@ export default function ForInvestorsPage() {
             filings, flags coordinated promotion, and lets you filter out the noise — so you&apos;re not the mark.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <Link href="/login" className="rounded-xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500">
+            <Link href="/login?type=investor&mode=signup" className="rounded-xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500">
               Join free →
             </Link>
             <Link href="/t" className="rounded-xl border border-app px-6 py-3 text-sm font-semibold text-app transition hover:bg-app-hover">
@@ -141,7 +141,7 @@ export default function ForInvestorsPage() {
         <h2 className="text-3xl font-bold tracking-tight text-app sm:text-4xl">Stop being the exit liquidity.</h2>
         <p className="mx-auto mt-4 max-w-xl text-muted">Research any company free, or join to follow your watchlist, get alerts, and x-ray your holdings.</p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-          <Link href="/login" className="rounded-xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500">
+          <Link href="/login?type=investor&mode=signup" className="rounded-xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500">
             Join free →
           </Link>
           <Link href="/t" className="rounded-xl border border-app px-6 py-3 text-sm font-semibold text-app transition hover:bg-app-hover">

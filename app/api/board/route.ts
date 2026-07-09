@@ -7,10 +7,6 @@ export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 15;
 
-function clientIp(req: Request): string {
-  return (req.headers.get("x-forwarded-for")?.split(",")[0] ?? req.headers.get("x-real-ip") ?? "anon").trim();
-}
-
 export async function GET(req: Request) {
   const u = new URL(req.url);
   const ticker = u.searchParams.get("ticker") ?? "";
@@ -23,14 +19,19 @@ export async function GET(req: Request) {
 // else — a compliance-branded platform cannot host "going to $10" pump posts.
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
-  const ip = clientIp(req);
 
-  // Reaction path (looser limit — reactions are cheap).
+  // Reaction path — signed-in members only, one reaction per member per post per
+  // kind (reacting again toggles it off). Anonymous reactions allowed unlimited
+  // counter-stuffing (1,187 "agrees" on an 11-post board).
   if (body.react && body.postId) {
-    if (!(await rateAllow(`react:${ip}`, 60))) return NextResponse.json({ error: "Slow down a moment." }, { status: 429 });
+    const reactor = await getMyMember();
+    if (!reactor) {
+      return NextResponse.json({ error: "Sign in as an investor to react.", needsAuth: true }, { status: 401 });
+    }
+    if (!(await rateAllow(`react:${reactor.id}`, 30))) return NextResponse.json({ error: "Slow down a moment." }, { status: 429 });
     const valid: ReactionKind[] = ["agree", "source", "question", "report"];
     if (!valid.includes(body.react)) return NextResponse.json({ error: "bad reaction" }, { status: 422 });
-    const post = await reactToPost(String(body.postId), body.react);
+    const post = await reactToPost(String(body.postId), body.react, reactor.id);
     if (!post) return NextResponse.json({ error: "post not found" }, { status: 404 });
     return NextResponse.json({ ok: true, post });
   }
