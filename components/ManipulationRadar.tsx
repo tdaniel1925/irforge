@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 type RadarLevel = "none" | "watch" | "elevated";
 type Mix7d = { factual: number; opinion: number; hype: number; fud: number; chatter: number; question: number; verified: number; total: number };
+type Composite = { mood: string; moodLabel: string; factors: string[]; answeredRate: number | null };
 type RadarResult = {
   level: RadarLevel;
   signals: string[];
@@ -16,6 +17,15 @@ type RadarResult = {
     volumeRatio: number | null;
   };
   mix7d?: Mix7d;
+  composite?: Composite;
+};
+
+const MOOD_STYLE: Record<string, string> = {
+  quiet: "border-app text-faint",
+  constructive: "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+  curious: "border-sky-500/40 bg-sky-500/10 text-sky-700 dark:text-sky-300",
+  heated: "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+  cautious: "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300",
 };
 
 // Community signal strip — the AI label mix for the last 7 days, always neutral.
@@ -55,17 +65,30 @@ export default function ManipulationRadar({ ticker }: { ticker: string }) {
 
   if (!data) return null;
 
-  // Neutral community-signal strip (always shown when the board has recent posts).
+  // Neutral community-signal strip (always shown when the board has recent posts):
+  // measured mood + the label mix. Descriptive only — what IS, never what will be.
   const mix = data.mix7d;
+  const comp = data.composite;
   const strip = mix && mix.total > 0 && (
-    <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-app bg-surface px-4 py-2.5">
-      <span className="text-[11px] font-semibold uppercase tracking-wide text-faint">Community signal · 7d</span>
-      {MIX_ITEMS.filter((m) => (mix[m.key] as number) > 0).map((m) => (
-        <span key={m.key} className={`text-xs font-medium ${m.cls}`}>
-          {mix[m.key]} {m.label}
-        </span>
-      ))}
-      <span className="text-[11px] text-faint">· {mix.total} posts, AI-labeled</span>
+    <div className="mb-4 rounded-xl border border-app bg-surface px-4 py-3">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-faint">Community signal · 7d</span>
+        {comp && (
+          <span className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${MOOD_STYLE[comp.mood] ?? "border-app text-app"}`}>
+            {comp.moodLabel}
+          </span>
+        )}
+        {MIX_ITEMS.filter((m) => (mix[m.key] as number) > 0).map((m) => (
+          <span key={m.key} className={`text-xs font-medium ${m.cls}`}>
+            {mix[m.key]} {m.label}
+          </span>
+        ))}
+      </div>
+      {comp && comp.factors.length > 0 && (
+        <p className="mt-1.5 text-[11px] text-faint">
+          Measured from: {comp.factors.join(" · ")} · descriptive only, not advice
+        </p>
+      )}
     </div>
   );
 

@@ -207,7 +207,9 @@ export async function moderateBoardPost(text: string): Promise<ModerationVerdict
       `"hype" = pump language with no substance ("about to rip", "easy multibagger", "load up", price targets); ` +
       `"fud" = bearish claims with NO factual support, or fear-mongering designed to scare holders ("scam", "get out now") without evidence; ` +
       `"chatter" = off-topic or low-signal; ` +
-      `"abuse" = threats, doxxing, slurs, or explicit pump-and-dump coordination — this is the ONLY flag that should be blocked. ` +
+      `"abuse" = threats, doxxing, slurs, explicit pump-and-dump coordination, IMPERSONATION, or INSIDER CLAIMS — this is the ONLY flag that should be blocked. ` +
+      `IMPERSONATION = the poster claims to BE the company, its management, IR, or an employee ("I'm the CEO", "we at the company", "as an insider here"). Real company replies are posted through a separate verified channel — an investor post claiming company identity is always impersonation. ` +
+      `INSIDER CLAIMS = the poster claims access to material NON-PUBLIC information ("my buddy works there and says...", "I heard from someone inside", "before the announcement drops"). Sharing or soliciting MNPI is blocked regardless of sentiment. ` +
       `A reasoned bearish take is "opinion", NOT "fud" — only baseless fear is "fud". ` +
       `Respond with ONLY JSON: {"flag": "...", "reason": "one short sentence explaining the flag"}.`,
     `Label this post: "${text}"`,

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { addBoardPost, rateAllow } from "@/lib/publicStats";
 import { notifyNewQuestion } from "@/lib/boardNotify";
+import { moderateBoardPost } from "@/lib/ai";
 import { getMyMember } from "@/lib/members";
 
 export const dynamic = "force-dynamic";
@@ -34,6 +35,16 @@ export async function POST(req: Request) {
   }
   if (question.length < 10) {
     return NextResponse.json({ error: "Write a question of at least 10 characters." }, { status: 422 });
+  }
+
+  // Same moderation gate as board posts — questions were the one unmoderated door
+  // (impersonation, insider claims, threats could sail through as a "question").
+  const verdict = await moderateBoardPost(question);
+  if (verdict.block) {
+    return NextResponse.json(
+      { error: `This can't be posted — ${verdict.reason} Threats, impersonation, and non-public info aren't allowed.` },
+      { status: 422 }
+    );
   }
 
   try {

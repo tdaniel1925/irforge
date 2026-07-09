@@ -4,8 +4,9 @@ import Link from "next/link";
 import { useState } from "react";
 
 // Full-height split-screen hero: investor (left, sky) vs public company (right,
-// emerald). Hovering a side expands it; the other recedes. Each side routes
-// straight to the right signup. On mobile the two stack full-width.
+// emerald). Hovering a side expands it; the other recedes. Investors route to free
+// ticker research (no signup wall); companies route to company signup. On mobile
+// the two stack full-width.
 export default function SplitHero() {
   const [hover, setHover] = useState<"investor" | "company" | null>(null);
 
@@ -15,9 +16,10 @@ export default function SplitHero() {
 
   return (
     <section className="relative flex min-h-[88vh] flex-col lg:flex-row">
-      {/* INVESTOR side */}
+      {/* INVESTOR side — "Explore free" means EXPLORE: straight to ticker research,
+          no signup wall (the board/watchlist prompt signup later, in context). */}
       <Link
-        href="/login?type=investor&mode=signup"
+        href="/t"
         onMouseEnter={() => setHover("investor")}
         onMouseLeave={() => setHover(null)}
         className={`group relative flex flex-1 flex-col justify-center overflow-hidden px-8 py-16 transition-all duration-500 ease-out sm:px-12 lg:py-0 ${investorGrow}`}

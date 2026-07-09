@@ -9,6 +9,7 @@ import { buildPlainFlags } from "@/lib/flags";
 import ClaimCard from "@/components/ClaimCard";
 import AskCompany from "@/components/AskCompany";
 import BackToApp from "@/components/BackToApp";
+import FilingChanges from "@/components/FilingChanges";
 import BadgeEmbed from "@/components/BadgeEmbed";
 import StockChart from "@/components/StockChart";
 import WatchButton from "@/components/WatchButton";
@@ -487,6 +488,8 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
               </li>
             ))}
           </ul>
+          {/* Reader-triggered period-over-period XBRL diff — "what changed?" */}
+          <FilingChanges ticker={audit.ticker} />
         </Section>
       )}
 
@@ -787,21 +790,29 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
 function PageShell({ children }: { children: React.ReactNode }) {
   return (
     // pb-28 leaves room so the fixed Ask bar never covers the disclosure/claim content.
-    <div className="mx-auto max-w-4xl pb-28">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-4">
-          {/* Signed-in viewers (a company on its own page) get a way back to the app. */}
-          <BackToApp />
-          <Link href="/t" className="text-sm text-muted hover:text-app">
-            ← Look up a ticker
+    <div className="pb-28">
+      {/* Branded page header — sticky, so brand + nav travel with the reader. */}
+      <header className="sticky top-0 z-40 -mx-4 mb-6 border-b border-app bg-surface/85 backdrop-blur-md sm:-mx-6">
+        <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3 sm:px-6">
+          <Link href="/" className="group flex items-baseline gap-2.5">
+            <span className="text-lg font-bold tracking-tight text-app">
+              Pubco<span className="text-emerald-500">Zone</span>
+            </span>
+            <span className="hidden text-[11px] text-faint sm:inline">live public-data intelligence</span>
           </Link>
-          <Link href="/discover" className="text-sm text-emerald-400 hover:underline">
-            🔥 Discover
-          </Link>
+          <nav className="flex flex-wrap items-center gap-1.5">
+            <Link href="/t" className="rounded-lg px-3 py-1.5 text-sm font-medium text-muted transition hover:bg-app-hover hover:text-app">
+              🔎 Ticker lookup
+            </Link>
+            <Link href="/discover" className="rounded-lg px-3 py-1.5 text-sm font-medium text-muted transition hover:bg-app-hover hover:text-app">
+              🔥 Discover
+            </Link>
+            {/* Signed-in viewers (a company on its own page) get a way back to the app. */}
+            <BackToApp />
+          </nav>
         </div>
-        <span className="text-xs text-faint">PubcoZone · live public-data intelligence</span>
-      </div>
-      {children}
+      </header>
+      <div className="mx-auto max-w-4xl">{children}</div>
     </div>
   );
 }

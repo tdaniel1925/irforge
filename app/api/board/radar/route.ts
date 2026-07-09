@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getBoardPage } from "@/lib/publicStats";
 import { createServiceClient } from "@/lib/supabase/server";
 import { computeManipulationSignals, describeManipulationRisk } from "@/lib/manipulationRadar";
+import { computeSentimentComposite } from "@/lib/sentimentComposite";
 
 export const dynamic = "force-dynamic";
 
@@ -54,5 +55,17 @@ export async function GET(req: Request) {
     mix7d.total++;
   }
 
-  return NextResponse.json({ ticker, ...signals, caption, engine, mix7d });
+  // Descriptive multi-factor sentiment snapshot (never predictive). Question
+  // answered-rate comes from the same page of posts: root questions vs verified replies.
+  const roots = posts.filter((p) => p.flag === "question" && !p.parentId);
+  const answeredIds = new Set(posts.filter((p) => p.verified && p.parentId).map((p) => p.parentId));
+  const answeredQuestions = roots.filter((q) => answeredIds.has(q.id)).length;
+  const composite = computeSentimentComposite({
+    mix: mix7d,
+    stat,
+    openQuestions: roots.length - answeredQuestions,
+    answeredQuestions,
+  });
+
+  return NextResponse.json({ ticker, ...signals, caption, engine, mix7d, composite });
 }
