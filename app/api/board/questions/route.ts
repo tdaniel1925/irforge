@@ -43,12 +43,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "That reply tripped a compliance flag — edit it and try again." }, { status: 409 });
   }
 
-  const reply = await postVerifiedReply({
-    ticker: mine.company.ticker,
-    parentId: String(questionId),
-    body: text,
-    company: mine.company,
-  });
+  let reply;
+  try {
+    reply = await postVerifiedReply({
+      ticker: mine.company.ticker,
+      parentId: String(questionId),
+      body: text,
+      company: mine.company,
+    });
+  } catch (e) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : "Couldn't post the reply — try again." }, { status: 422 });
+  }
 
   await writeAudit({
     companyId: mine.id,

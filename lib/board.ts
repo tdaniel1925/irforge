@@ -116,6 +116,18 @@ export async function postVerifiedReply(opts: {
   body: string;
   company: Company;
 }) {
+  const T = opts.ticker.toUpperCase();
+  // The parent must be a real root QUESTION on THIS company's own board — the
+  // questionId comes from the client, so without this check a company could attach
+  // verified replies to arbitrary/foreign posts (or dangling ids).
+  const { data: parent } = await svc()
+    .from("public_board")
+    .select("id, ticker, flag, parent_id")
+    .eq("id", opts.parentId)
+    .maybeSingle();
+  if (!parent || String(parent.ticker).toUpperCase() !== T || parent.flag !== "question" || parent.parent_id) {
+    throw new Error("Question not found on your board.");
+  }
   const author = `${opts.company.name || opts.ticker} (Investor Relations)`;
   return addBoardPost({
     ticker: opts.ticker.toUpperCase(),

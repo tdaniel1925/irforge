@@ -71,17 +71,21 @@ export async function POST(req: Request) {
     );
   }
 
-  const post = await addBoardPost({
-    ticker,
-    author,
-    body: text,
-    ts: new Date().toISOString(),
-    verified: false,
-    flag: verdict.flag,
-    flagReason: verdict.reason,
-    parentId,
-    memberId: me.id,
-    authorAvatar: me.member.avatarUrl,
-  });
-  return NextResponse.json({ ok: true, post, moderation: verdict.engine });
+  try {
+    const post = await addBoardPost({
+      ticker,
+      author,
+      body: text,
+      ts: new Date().toISOString(),
+      verified: false,
+      flag: verdict.flag,
+      flagReason: verdict.reason,
+      parentId,
+      memberId: me.id,
+      authorAvatar: me.member.avatarUrl,
+    });
+    return NextResponse.json({ ok: true, post, moderation: verdict.engine });
+  } catch {
+    return NextResponse.json({ error: "Couldn't post right now — try again." }, { status: 500 });
+  }
 }

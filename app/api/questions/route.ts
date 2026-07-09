@@ -27,7 +27,12 @@ export async function POST(req: Request) {
   const author = me.member.handle;
   const question = String(body.question ?? "").trim().slice(0, 500);
 
-  if (!ticker || question.length < 10) {
+  // Strict ticker charset — this value flows into an ilike lookup for the company's
+  // notification list, so pattern characters (%/_) must never get through.
+  if (!/^[A-Z][A-Z0-9.\-]{0,7}$/.test(ticker)) {
+    return NextResponse.json({ error: "Invalid ticker." }, { status: 422 });
+  }
+  if (question.length < 10) {
     return NextResponse.json({ error: "Write a question of at least 10 characters." }, { status: 422 });
   }
 
@@ -47,9 +52,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Couldn't post your question — try again." }, { status: 500 });
   }
 
-  // Notify the company immediately (best-effort, non-blocking — never delay or fail
-  // the investor's post on a notification hiccup).
-  void notifyNewQuestion(ticker, author, question);
+  // Notify the company immediately. Awaited (notifyNewQuestion swallows its own
+  // errors, so this can never fail the post) — a fire-and-forget `void` here gets
+  // frozen mid-flight when the serverless function suspends after responding.
+  await notifyNewQuestion(ticker, author, question);
 
   return NextResponse.json({ ok: true });
 }

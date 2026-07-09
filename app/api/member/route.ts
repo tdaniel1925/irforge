@@ -29,9 +29,11 @@ export async function POST(req: Request) {
     const h = body.handle.trim().toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 20);
     if (h.length >= 3) { patch.handle = h; handleOk = true; }
   }
-  // Once the investor saves a valid username, mark the profile complete — that's the
-  // gate for posting to a discussion board (no more auto-generated placeholder names).
-  if (handleOk || (me.member.handle && me.member.handle.length >= 3 && (patch.displayName || me.member.displayName))) {
+  // Only an EXPLICIT username submission completes the profile — that's the gate for
+  // posting to a discussion board. Members get an auto-generated handle at signup, so
+  // checking the stored handle (or any other field save) would self-grant the gate
+  // without the investor ever choosing a name.
+  if (handleOk) {
     patch.profileComplete = true;
   }
 

@@ -126,6 +126,7 @@ export default function MessageBoard({ ticker }: { ticker: string }) {
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [needsProfile, setNeedsProfile] = useState(false);
   const [filter, setFilter] = useState("all");
   const [sort, setSort] = useState<Sort>("top");
   const [search, setSearch] = useState("");
@@ -191,7 +192,13 @@ export default function MessageBoard({ ticker }: { ticker: string }) {
       body: JSON.stringify({ ticker, body: text, parentId }),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error ?? "Couldn't post.");
+    if (!res.ok) {
+      // Signed in but no username chosen yet — point at the profile page instead of
+      // leaving them stuck on a bare error.
+      if (data.needsProfile) setNeedsProfile(true);
+      throw new Error(data.error ?? "Couldn't post.");
+    }
+    setNeedsProfile(false);
     await load();
   };
 
@@ -259,6 +266,16 @@ export default function MessageBoard({ ticker }: { ticker: string }) {
 
   return (
     <div>
+      {/* Response-time expectations — companies are notified of every question, but
+          they answer on their own schedule. Set that expectation up front. */}
+      <div className="mb-4 flex items-start gap-2.5 rounded-xl border border-sky-500/25 bg-sky-500/[0.06] px-4 py-3">
+        <span aria-hidden className="mt-0.5 text-sm">🔔</span>
+        <p className="text-xs leading-relaxed text-sky-700 dark:text-sky-300">
+          <span className="font-semibold">Companies on PubcoZone are notified directly the moment investors post questions or comments here.</span>{" "}
+          When they respond, answers arrive verified and on the record. Response times vary by company — some reply within hours,
+          others take longer, and not every question will receive a reply.
+        </p>
+      </div>
       {/* Manipulation radar — neutral caution about board posting patterns + public volume. */}
       <ManipulationRadar ticker={ticker} />
       {/* Transient action error (e.g. a rejected reaction) — visible regardless of auth/composer. */}
@@ -277,7 +294,14 @@ export default function MessageBoard({ ticker }: { ticker: string }) {
               {busy ? "…" : "Post"}
             </button>
           </div>
-          {error && <p className="mt-2 text-xs text-amber-500">{error}</p>}
+          {error && (
+            <p className="mt-2 text-xs text-amber-500">
+              {error}
+              {needsProfile && (
+                <> <a href="/member/profile" className="font-medium underline">Set your investor username</a> to start posting.</>
+              )}
+            </p>
+          )}
           <p className="mt-2 text-[11px] text-faint">🛡 Posts are AI-labeled by signal quality — you filter what you see. 🎤 voice posts are transcribed in your browser and moderated the same way. You post under your investor profile. Only threats and coordinated manipulation are removed.</p>
         </div>
       ) : (

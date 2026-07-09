@@ -200,13 +200,16 @@ let boardCounter = 0;
 export async function addBoardPost(p: Omit<BoardPost, "id" | "reactions">): Promise<BoardPost> {
   if (supabaseEnabled()) {
     const svc = createServiceClient();
-    const { data } = await svc.from("public_board").insert({
+    const { data, error } = await svc.from("public_board").insert({
       ticker: p.ticker, author: p.author, body: p.body, verified: p.verified,
       flag: p.flag, flag_reason: p.flagReason, parent_id: p.parentId ?? null,
       reactions: EMPTY_REACTIONS,
       member_id: p.memberId ?? null, author_avatar: p.authorAvatar ?? "",
     }).select("*").single();
-    return data ? rowToPost(data) : { ...p, id: "err", reactions: { ...EMPTY_REACTIONS } };
+    // Throw so callers report the failure — a silent fake post here meant the API
+    // returned ok:true (and emailed the company) for a post that never persisted.
+    if (error || !data) throw new Error(`board insert failed: ${error?.message ?? "no row returned"}`);
+    return rowToPost(data);
   }
   const s = readLocal();
   boardCounter = (boardCounter + 1) % 10000;

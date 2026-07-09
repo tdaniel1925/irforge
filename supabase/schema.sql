@@ -83,12 +83,13 @@ create policy company_data_owner on public.company_data
     company_id in (select id from public.companies where owner_id = auth.uid())
   );
 
--- public_board: anyone (even anon) can read; anyone authenticated-or-anon can insert
--- (the app moderates). No updates/deletes from the client.
+-- public_board: anyone (even anon) can read. NO client-side writes — all inserts go
+-- through the API with the service-role key (auth + username gate + moderation +
+-- rate limits). An open insert policy here would let anyone forge verified:true
+-- "company answer" rows straight from the browser.
 drop policy if exists board_read on public.public_board;
 create policy board_read on public.public_board for select using (true);
 drop policy if exists board_insert on public.public_board;
-create policy board_insert on public.public_board for insert with check (true);
 
 -- ---------------------------------------------------------------------------
 -- Auto-create an empty company when a user signs up.
