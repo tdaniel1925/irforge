@@ -7,8 +7,9 @@ import type { Notice } from "@/components/ui";
 
 const PLANS = [
   { tier: "free", name: "Free", price: "$0", blurb: "A verified public page on PubcoZone — your profile, filings, and data. No dashboard tools." },
-  { tier: "starter", name: "Starter", price: "$1,500", blurb: "Everything to run IR: post responses to X, filing-to-post drafting, the board, vault, monthly proof." },
-  { tier: "growth", name: "Growth", price: "$3,500", popular: true, blurb: "+ Threat Radar, AI Q&A, Investor CRM, Writing Studio, IR calendar, cap table." },
+  { tier: "board", name: "Board", price: "$399", blurb: "Own your discussion board: investor Q&A inbox with AI-drafted verified answers, question notifications, recurring themes, sentiment signal." },
+  { tier: "starter", name: "Starter", price: "$1,500", blurb: "+ Everything to run IR: post responses to X, filing-to-post drafting, approvals, vault, monthly proof." },
+  { tier: "growth", name: "Growth", price: "$3,500", popular: true, blurb: "+ Threat Radar, Investor CRM, Writing Studio, IR calendar, cap table." },
   { tier: "pro", name: "Command", price: "$6,000", blurb: "+ AI Document Analyzer, short-attack defense, dedicated onboarding." },
 ];
 
@@ -84,7 +85,7 @@ export default function Billing() {
         </div>
       </Card>
 
-      <div className="grid gap-5 lg:grid-cols-4">
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-5">
         {PLANS.map((p) => (
           <Card key={p.tier} className={p.popular ? "border-emerald-500" : ""}>
             {p.popular && <span className="mb-2 inline-block rounded-full bg-emerald-600 px-2.5 py-0.5 text-[10px] font-bold text-white">MOST POPULAR</span>}

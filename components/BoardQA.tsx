@@ -46,9 +46,15 @@ export default function BoardQA({ ticker }: { ticker: string }) {
   const [clusters, setClusters] = useState<Cluster[]>([]);
   const [activeTheme, setActiveTheme] = useState<string | null>(null);
 
+  const [needsUpgrade, setNeedsUpgrade] = useState(false);
+
   const load = async () => {
     try {
       const r = await fetch("/api/board/questions", { cache: "no-store" });
+      if (r.status === 403) {
+        const d = await r.json().catch(() => ({}));
+        if (d.needsUpgrade) { setNeedsUpgrade(true); setErr(""); return; }
+      }
       if (!r.ok) { setErr("Couldn't load investor questions."); return; }
       const d = await r.json();
       const qs: Question[] = Array.isArray(d.questions) ? d.questions : [];
@@ -144,6 +150,20 @@ export default function BoardQA({ ticker }: { ticker: string }) {
 
   const blocking = (id: string) => (flags[id] ?? []).some((f) => f.severity === "block");
 
+  if (needsUpgrade) {
+    return (
+      <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/[0.04] p-6 text-center">
+        <p className="text-sm font-semibold text-app">Answer investors on the record — with AI-drafted replies</p>
+        <p className="mx-auto mt-1 max-w-md text-xs text-muted">
+          The Q&amp;A inbox lists every open investor question from your public board, drafts a compliance-checked
+          answer with AI, and posts your approved reply as a verified company answer. Part of the <span className="font-semibold">Board plan ($399/mo)</span>.
+        </p>
+        <a href="/billing" className="mt-3 inline-block rounded-lg bg-emerald-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500">
+          See plans →
+        </a>
+      </div>
+    );
+  }
   if (err) return <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-300">{err}</p>;
   if (questions === null) return <p className="text-sm text-faint">Loading investor questions…</p>;
 

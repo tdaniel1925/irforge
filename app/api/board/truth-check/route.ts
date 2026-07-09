@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { runTickerAudit } from "@/lib/audit";
 import { truthCheckPost } from "@/lib/truthCheck";
 import { rateAllow } from "@/lib/publicStats";
+import { checkDailyQuota } from "@/lib/quota";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,19 @@ export async function POST(req: Request) {
   // Cheap path is Haiku, but a full audit hits many external APIs — rate-limit hard.
   if (!(await rateAllow(`truthcheck:${ip}`, 12))) {
     return NextResponse.json({ error: "Slow down a moment — reality-checks are rate-limited." }, { status: 429 });
+  }
+  // Daily quota: 3/day free (member or anonymous); Investor+ unlimited.
+  const quota = await checkDailyQuota("truthcheck", ip, 3);
+  if (!quota.allowed) {
+    return NextResponse.json(
+      {
+        error: quota.signedIn
+          ? "You've used today's 3 free reality-checks. Investor+ ($9/mo) is unlimited."
+          : "You've used today's 3 free reality-checks. Sign in — or go Investor+ for unlimited.",
+        needsUpgrade: true,
+      },
+      { status: 429 }
+    );
   }
 
   const body = await req.json().catch(() => ({}));

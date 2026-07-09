@@ -573,12 +573,13 @@ function TruthCheck({ ticker, post }: { ticker: string; post: BoardPost }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [quotaHit, setQuotaHit] = useState(false);
   const [result, setResult] = useState<TruthResult | null>(null);
 
   const run = async () => {
     // Toggle closed if we already have a result.
     if (result || open) { setOpen((v) => !v); return; }
-    setBusy(true); setErr("");
+    setBusy(true); setErr(""); setQuotaHit(false);
     try {
       const res = await fetch("/api/board/truth-check", {
         method: "POST",
@@ -586,7 +587,10 @@ function TruthCheck({ ticker, post }: { ticker: string; post: BoardPost }) {
         body: JSON.stringify({ ticker, body: post.body }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Couldn't run the reality-check.");
+      if (!res.ok) {
+        if (data.needsUpgrade) setQuotaHit(true);
+        throw new Error(data.error ?? "Couldn't run the reality-check.");
+      }
       setResult(data.result as TruthResult);
       setOpen(true);
     } catch (e) {
@@ -606,7 +610,12 @@ function TruthCheck({ ticker, post }: { ticker: string; post: BoardPost }) {
         {busy ? "Checking the public record…" : open ? "Hide reality-check" : "🔎 Reality-check vs filings"}
       </button>
 
-      {err && <p className="mt-1 text-[11px] text-amber-500">{err}</p>}
+      {err && (
+        <p className="mt-1 text-[11px] text-amber-500">
+          {err}
+          {quotaHit && <> <a href="/member/billing" className="font-semibold underline">Go unlimited with Investor+ →</a></>}
+        </p>
+      )}
 
       {open && result && (
         <div className="mt-2 rounded-lg border border-app bg-surface-2 p-3">

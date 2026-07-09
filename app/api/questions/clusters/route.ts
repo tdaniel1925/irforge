@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getMyCompany } from "@/lib/supabase/store";
 import { listOpenQuestions } from "@/lib/board";
 import { clusterQuestions, type QuestionInput } from "@/lib/questionClusters";
+import { companyHasTierFeature } from "@/lib/platform";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,10 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const mine = await getMyCompany();
   if (!mine) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
+  // Clustering is an AI call — same tier gate as the rest of the Q&A inbox.
+  if (!(await companyHasTierFeature(mine.id, mine.company.tier, "qa"))) {
+    return NextResponse.json({ error: "Question themes are part of the Board plan.", needsUpgrade: true, needsFeature: "qa" }, { status: 403 });
+  }
 
   const ticker = mine.company.ticker.toUpperCase();
   const open: QuestionInput[] = (await listOpenQuestions(ticker)).map((q) => ({

@@ -4,8 +4,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 const TIERS = [
-  { key: "starter", name: "Starter", price: "$1,500/mo", blurb: "Verified page, filing-to-post drafting, the board, monthly proof." },
-  { key: "growth", name: "Growth", price: "$3,500/mo", blurb: "+ Threat Radar, AI Q&A, 13F investor targeting, X publishing.", popular: true },
+  { key: "board", name: "Board", price: "$399/mo", blurb: "Investor Q&A inbox: AI-drafted verified answers, question alerts, themes, sentiment." },
+  { key: "starter", name: "Starter", price: "$1,500/mo", blurb: "+ Verified page, filing-to-post drafting, X publishing, monthly proof." },
+  { key: "growth", name: "Growth", price: "$3,500/mo", blurb: "+ Threat Radar, Investor CRM, 13F investor targeting.", popular: true },
   { key: "pro", name: "Command", price: "$6,000/mo", blurb: "+ short-attack defense, earnings support, dedicated onboarding." },
 ];
 

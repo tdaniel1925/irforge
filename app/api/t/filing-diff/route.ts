@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { computeFilingDiff } from "@/lib/filingDiff";
 import { rateAllow } from "@/lib/publicStats";
+import { checkDailyQuota } from "@/lib/quota";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -16,6 +17,19 @@ export async function GET(req: Request) {
   const ip = clientIp(req);
   if (!(await rateAllow(`fdiff:${ip}`, 12))) {
     return NextResponse.json({ error: "Slow down a moment." }, { status: 429 });
+  }
+  // Daily quota: 3/day free (member or anonymous); Investor+ unlimited.
+  const quota = await checkDailyQuota("fdiff", ip, 3);
+  if (!quota.allowed) {
+    return NextResponse.json(
+      {
+        error: quota.signedIn
+          ? "You've used today's 3 free filing comparisons. Investor+ ($9/mo) is unlimited."
+          : "You've used today's 3 free filing comparisons. Sign in — or go Investor+ for unlimited.",
+        needsUpgrade: true,
+      },
+      { status: 429 }
+    );
   }
 
   const u = new URL(req.url);

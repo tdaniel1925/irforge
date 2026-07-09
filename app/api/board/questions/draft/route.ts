@@ -3,6 +3,7 @@ import { getMyCompany } from "@/lib/supabase/store";
 import { listOpenQuestions } from "@/lib/board";
 import { generatePublicAnswer } from "@/lib/ai";
 import { checkContent } from "@/lib/compliance";
+import { companyHasTierFeature } from "@/lib/platform";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,10 @@ export const dynamic = "force-dynamic";
 export async function POST(req: Request) {
   const mine = await getMyCompany();
   if (!mine) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
+  // AI drafting burns model tokens — tier-gated server-side (UI gating alone is bypassable).
+  if (!(await companyHasTierFeature(mine.id, mine.company.tier, "qa"))) {
+    return NextResponse.json({ error: "AI answer drafting is part of the Board plan.", needsUpgrade: true, needsFeature: "qa" }, { status: 403 });
+  }
 
   const { questionId } = (await req.json().catch(() => ({}))) as { questionId?: string };
   if (!questionId) return NextResponse.json({ error: "Missing question." }, { status: 422 });

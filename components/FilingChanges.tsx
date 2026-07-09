@@ -32,13 +32,19 @@ export default function FilingChanges({ ticker }: { ticker: string }) {
   const [state, setState] = useState<"idle" | "busy" | "done" | "error">("idle");
   const [diff, setDiff] = useState<Diff | null>(null);
   const [error, setError] = useState("");
+  const [needsUpgrade, setNeedsUpgrade] = useState(false);
 
   const run = async () => {
-    setState("busy"); setError("");
+    setState("busy"); setError(""); setNeedsUpgrade(false);
     try {
       const r = await fetch(`/api/t/filing-diff?ticker=${encodeURIComponent(ticker)}`, { cache: "no-store" });
       const d = await r.json();
-      if (!r.ok) { setError(d.error ?? "Couldn't compute the changes."); setState("error"); return; }
+      if (!r.ok) {
+        setError(d.error ?? "Couldn't compute the changes.");
+        setNeedsUpgrade(Boolean(d.needsUpgrade));
+        setState("error");
+        return;
+      }
       setDiff(d.diff); setState("done");
     } catch {
       setError("Network error — try again."); setState("error");
@@ -54,7 +60,16 @@ export default function FilingChanges({ ticker }: { ticker: string }) {
     );
   }
   if (state === "error") {
-    return <p className="mt-3 text-xs text-amber-600 dark:text-amber-400">{error} <button onClick={run} className="underline">retry</button></p>;
+    return (
+      <p className="mt-3 text-xs text-amber-600 dark:text-amber-400">
+        {error}{" "}
+        {needsUpgrade ? (
+          <a href="/member/billing" className="font-semibold underline">Go unlimited with Investor+ →</a>
+        ) : (
+          <button onClick={run} className="underline">retry</button>
+        )}
+      </p>
+    );
   }
   if (!diff) return null;
 

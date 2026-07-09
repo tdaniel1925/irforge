@@ -87,6 +87,20 @@ export async function companyHasFeature(companyId: string, feature: FeatureKey):
   return Boolean(features[feature]);
 }
 
+// Tier-based feature gate for API routes (billing TIERS, not the IROS capability
+// flags above). Honors the same overrides as /api/state: super admins and
+// comped companies act as the top tier.
+export async function companyHasTierFeature(
+  companyId: string,
+  tier: import("./billing").Tier | string | undefined,
+  feature: import("./billing").Feature
+): Promise<boolean> {
+  const { tierHasFeature } = await import("./billing");
+  if (tierHasFeature((tier ?? "free") as import("./billing").Tier, feature)) return true;
+  if (await isSuperAdmin()) return true;
+  return isCompedCompany(companyId);
+}
+
 // The company's EFFECTIVE capability access in a single pass — the authoritative
 // answer the API gates (companyHasFeature) use, exposed so the UI can reflect the
 // SAME truth and disable/explain a blocked action BEFORE the user clicks and gets a

@@ -5,7 +5,7 @@ import { checkContent, hasBlockingFlags, buildChannelPost, CHANNEL_LIMITS } from
 import { classifyRegFD, fitToLimit } from "@/lib/ai";
 import { publishPerChannel } from "@/lib/ayrshare";
 import { tierHasFeature, type Tier } from "@/lib/billing";
-import { writeAudit } from "@/lib/platform";
+import { writeAudit, companyHasTierFeature } from "@/lib/platform";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +17,9 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const mine = await getMyCompany();
   if (!mine) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
+  if (!(await companyHasTierFeature(mine.id, mine.company.tier, "qa"))) {
+    return NextResponse.json({ error: "The investor Q&A inbox is part of the Board plan.", needsUpgrade: true, needsFeature: "qa" }, { status: 403 });
+  }
   const questions = await listOpenQuestions(mine.company.ticker);
   return NextResponse.json({ questions, count: questions.length });
 }
@@ -31,6 +34,9 @@ export async function GET() {
 export async function POST(req: Request) {
   const mine = await getMyCompany();
   if (!mine) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
+  if (!(await companyHasTierFeature(mine.id, mine.company.tier, "qa"))) {
+    return NextResponse.json({ error: "Answering investor questions is part of the Board plan.", needsUpgrade: true, needsFeature: "qa" }, { status: 403 });
+  }
 
   const { questionId, body, alsoPostToX } = (await req.json().catch(() => ({}))) as { questionId?: string; body?: string; alsoPostToX?: boolean };
   const text = String(body ?? "").trim();
