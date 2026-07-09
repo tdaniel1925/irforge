@@ -7,9 +7,9 @@ import { Analytics } from "@vercel/analytics/react";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "PubcoZone — Talk back to your investors. Legally.",
+  title: "PubcoZone — Research any stock. The real story, not the hype.",
   description:
-    "AI-powered investor relations for public companies. Turn SEC filings into compliant updates, answer shareholders from the public record, and defend your name — all approved by you with one tap.",
+    "Free, filing-based research on any public company — price, cash, insiders, short interest — plus a board where hype and FUD get AI-flagged and the company answers on the record. For investors who want signal over noise, and companies that want a voice.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

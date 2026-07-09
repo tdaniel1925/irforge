@@ -39,20 +39,28 @@ function Hero() {
       <div className="mx-auto grid max-w-6xl items-center gap-12 px-6 py-20 lg:grid-cols-2">
         <div>
           <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-app bg-surface px-3 py-1 text-xs font-medium text-muted">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> AI investor relations for public companies
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Where investors and public companies meet — on the record
           </div>
           <h1 className="text-4xl font-bold leading-[1.1] tracking-tight text-app sm:text-5xl">
-            Your investors are talking about you.{" "}
-            <span className="text-emerald-600 dark:text-emerald-400">Now you can talk back — legally.</span>
+            Look up any stock.{" "}
+            <span className="text-emerald-600 dark:text-emerald-400">Get the real story, not the hype.</span>
           </h1>
           <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted">
-            For years, message boards like InvestorsHub and StockTwits let anonymous pumpers and short-side bashers
-            write your story — and you were legally gagged from answering. PubcoZone is your <span className="font-semibold text-app">entire IR program in one platform</span>:
-            AI turns your filings into ready-to-post updates, a Reg FD check and counsel sign-off put the decision in your hands, a built-in CRM
-            tracks every investor, and you answer the board on the record — all approved by you with one tap.
+            Every ticker gets a free page built from the actual SEC record — price, cash, insiders, short interest, filings —
+            plus a board where <span className="font-semibold text-app">hype and FUD get AI-flagged</span> and the company answers
+            on the record. Research any company free. No signup, no pump-and-dump, no exit liquidity.
           </p>
           <TickerLookup />
-          <p className="mt-3 text-xs text-faint">Free report · no signup · uses only public data</p>
+          <p className="mt-3 text-xs text-faint">Free · no signup · public data only</p>
+
+          <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
+            <Link href="/login?type=investor&mode=signup" className="font-semibold text-sky-600 hover:underline dark:text-sky-400">
+              Create a free investor account →
+            </Link>
+            <Link href="/for-companies" className="font-semibold text-emerald-600 hover:underline dark:text-emerald-400">
+              Are you the company? Claim your page →
+            </Link>
+          </div>
         </div>
         <div>
           <HeroMock />
@@ -73,7 +81,7 @@ function TickerLookup() {
           value={ticker}
           onChange={(e) => setTicker(e.target.value.toUpperCase())}
           onKeyDown={(e) => e.key === "Enter" && ticker && router.push(`/t/${ticker}`)}
-          placeholder="Enter your ticker — e.g. LAC"
+          placeholder="Look up any ticker — e.g. LAC"
           className="w-full bg-transparent px-2 py-3 text-app uppercase tracking-wide placeholder:normal-case placeholder:tracking-normal focus:outline-none"
         />
       </div>
@@ -81,7 +89,7 @@ function TickerLookup() {
         onClick={() => ticker && router.push(`/t/${ticker}`)}
         className="rounded-xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500"
       >
-        See your company&apos;s score →
+        Research it free →
       </button>
     </div>
   );
@@ -91,24 +99,37 @@ function HeroMock() {
   return (
     <div className="relative">
       <div className="rounded-2xl border border-app bg-surface p-5 shadow-xl shadow-black/5">
-        <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-faint">About your latest SEC filing</p>
-        <p className="mb-3 text-sm font-medium text-app">We want to post this to X:</p>
+        <div className="mb-3 flex items-center justify-between">
+          <p className="text-xs font-semibold uppercase tracking-wide text-faint">$EXMPL · Discussion board</p>
+          <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">AI-LABELED</span>
+        </div>
         <div className="space-y-2">
-          <div className="rounded-lg border border-app bg-surface-2 p-3 text-sm text-app">
-            <span className="text-xs text-faint">@yourcompany · 1/3</span>
-            <p className="mt-1">We just filed our Q1 results. Three numbers shareholders ask about most: cash, burn, and runway. 🧵</p>
+          {/* A hyped post, flagged */}
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/[0.05] p-3">
+            <div className="flex items-center gap-2 text-xs">
+              <span className="font-semibold text-app">@moon_rocket</span>
+              <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400">HYPE</span>
+            </div>
+            <p className="mt-1 text-sm text-app">This is going to $10 easy, load up before it rips!! 🚀🚀</p>
           </div>
-          <div className="rounded-lg border border-app bg-surface-2 p-3 text-sm text-app">
-            <span className="text-xs text-faint">@yourcompany · 2/3</span>
-            <p className="mt-1">$11.2M cash, zero debt. Runway extends past our next milestones. Full detail in the 10-Q on EDGAR.</p>
+          {/* An investor question */}
+          <div className="rounded-lg border border-app bg-surface-2 p-3">
+            <div className="flex items-center gap-2 text-xs">
+              <span className="font-semibold text-app">@sarah_invests</span>
+              <span className="rounded bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-bold text-sky-600 dark:text-sky-400">QUESTION</span>
+            </div>
+            <p className="mt-1 text-sm text-app">What&apos;s your actual cash runway after this quarter?</p>
+          </div>
+          {/* The verified company answer */}
+          <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/[0.06] p-3">
+            <div className="flex items-center gap-2 text-xs">
+              <span className="font-semibold text-app">EXMPL, Inc. (IR)</span>
+              <span className="rounded bg-emerald-600 px-1.5 py-0.5 text-[10px] font-bold text-white">✓ VERIFIED COMPANY</span>
+            </div>
+            <p className="mt-1 text-sm text-app">$11.2M cash, zero debt — runway past our next two milestones. Detail in the 10-Q on EDGAR.</p>
           </div>
         </div>
-        <div className="mt-4 flex gap-2">
-          <button className="flex-1 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white">✓ Approve &amp; let it post</button>
-          <button className="rounded-lg border border-app px-3 py-2 text-sm text-app">✎ Edit</button>
-          <button className="rounded-lg border border-app px-3 py-2 text-sm text-app">✕ Skip</button>
-        </div>
-        <p className="mt-3 text-center text-[11px] text-faint">Disclosures attach automatically on post. Nothing goes out until you tap.</p>
+        <p className="mt-3 text-center text-[11px] text-faint">Hype gets flagged. Questions get answered on the record. You see the difference.</p>
       </div>
     </div>
   );
