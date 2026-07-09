@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { MarketingNav, MarketingFooter } from "@/components/marketing/Chrome";
+import { Compliance, Comparison, PlatformComparison, BothSides, WhyClaim } from "@/components/marketing/CompanySections";
 
 export const metadata: Metadata = {
   title: "For Public Companies — your entire IR program in one platform | PubcoZone",
@@ -62,13 +63,14 @@ export default function ForCompaniesPage() {
             answer the board on the record — all approved by you with one tap.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <Link href="/app" className="rounded-xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500">
-              Open the app →
+            <Link href="/login?type=company&mode=signup" className="rounded-xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500">
+              Claim your page free →
             </Link>
             <a href="#pricing" className="rounded-xl border border-app px-6 py-3 text-sm font-semibold text-app transition hover:bg-app-hover">
               See pricing
             </a>
           </div>
+          <p className="mt-3 text-xs text-faint">Free company report · plans from $399/mo</p>
         </div>
       </section>
 
@@ -108,6 +110,21 @@ export default function ForCompaniesPage() {
         </div>
       </section>
 
+      {/* Why companies switch — vs doing nothing / an agency */}
+      <Comparison />
+
+      {/* Control & compliance */}
+      <Compliance />
+
+      {/* Not another message board — vs StockTwits / InvestorsHub */}
+      <PlatformComparison />
+
+      {/* Both Sides free panel + Sponsored Brief */}
+      <BothSides />
+
+      {/* Why claim your page */}
+      <WhyClaim />
+
       {/* Pricing */}
       <section id="pricing" className="mx-auto max-w-6xl px-6 py-20">
         <h2 className="text-center text-3xl font-bold tracking-tight text-app">Simple pricing. Less than one junior hire.</h2>
@@ -128,9 +145,12 @@ export default function ForCompaniesPage() {
             </div>
           ))}
         </div>
-        <div className="mt-10 text-center">
-          <Link href="/app" className="rounded-xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500">
-            Get started →
+        <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
+          <Link href="/login?type=company&mode=signup" className="rounded-xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500">
+            Claim your page free →
+          </Link>
+          <Link href="/billing" className="rounded-xl border border-app px-6 py-3 text-sm font-semibold text-app transition hover:bg-app-hover">
+            Start with Board — $399/mo →
           </Link>
         </div>
       </section>

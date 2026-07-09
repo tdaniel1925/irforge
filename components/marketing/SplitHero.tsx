@@ -16,10 +16,10 @@ export default function SplitHero() {
 
   return (
     <section className="relative flex min-h-[88vh] flex-col lg:flex-row">
-      {/* INVESTOR side — "Explore free" means EXPLORE: straight to ticker research,
-          no signup wall (the board/watchlist prompt signup later, in context). */}
+      {/* INVESTOR side → the dedicated investor page (research CTA + $9 tier live
+          there). Each side owns its own pitch so neither audience wades the other's. */}
       <Link
-        href="/t"
+        href="/for-investors"
         onMouseEnter={() => setHover("investor")}
         onMouseLeave={() => setHover(null)}
         className={`group relative flex flex-1 flex-col justify-center overflow-hidden px-8 py-16 transition-all duration-500 ease-out sm:px-12 lg:py-0 ${investorGrow}`}
@@ -40,18 +40,18 @@ export default function SplitHero() {
             You&apos;re not the exit liquidity.
           </p>
           <span className="mt-7 inline-flex items-center gap-2 rounded-xl bg-white px-7 py-3.5 text-base font-semibold text-sky-700 shadow-lg transition group-hover:gap-3 group-hover:shadow-xl">
-            Explore free <span aria-hidden>→</span>
+            Explore as an investor <span aria-hidden>→</span>
           </span>
-          <p className="mt-3 text-sm text-white/80">Free to research · sign up to save a watchlist &amp; join the board</p>
+          <p className="mt-3 text-sm text-white/80">Free to research any ticker · no signup to look</p>
         </div>
       </Link>
 
       {/* Divider seam (desktop) */}
       <div className="hidden w-px shrink-0 bg-white/10 lg:block" />
 
-      {/* PUBLIC COMPANY side */}
+      {/* PUBLIC COMPANY side → the dedicated company page (full IR pitch + pricing). */}
       <Link
-        href="/login?type=company&mode=signup"
+        href="/for-companies"
         onMouseEnter={() => setHover("company")}
         onMouseLeave={() => setHover(null)}
         className={`group relative flex flex-1 flex-col justify-center overflow-hidden px-8 py-16 transition-all duration-500 ease-out sm:px-12 lg:py-0 ${companyGrow}`}
@@ -71,9 +71,9 @@ export default function SplitHero() {
             approved by you with one tap. Your whole IR program in one place.
           </p>
           <span className="mt-7 inline-flex items-center gap-2 rounded-xl bg-white px-7 py-3.5 text-base font-semibold text-emerald-700 shadow-lg transition group-hover:gap-3 group-hover:shadow-xl">
-            Start free <span aria-hidden>→</span>
+            Explore for companies <span aria-hidden>→</span>
           </span>
-          <p className="mt-3 text-sm text-white/80">Free company report · no card to start</p>
+          <p className="mt-3 text-sm text-white/80">Free company report · plans from $399/mo</p>
         </div>
       </Link>
 

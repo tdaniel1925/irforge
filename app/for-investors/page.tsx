@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { MarketingNav, MarketingFooter } from "@/components/marketing/Chrome";
+import TickerSearch from "@/components/marketing/TickerSearch";
 
 export const metadata: Metadata = {
   title: "For Investors — research stocks without the noise | PubcoZone",
@@ -68,15 +69,16 @@ export default function ForInvestorsPage() {
             Other boards are anonymous pumpers and bashers writing the story. PubcoZone checks claims against the
             filings, flags coordinated promotion, and lets you filter out the noise — so you&apos;re not the mark.
           </p>
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <Link href="/login?type=investor&mode=signup" className="rounded-xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500">
-              Join free →
-            </Link>
-            <Link href="/t" className="rounded-xl border border-app px-6 py-3 text-sm font-semibold text-app transition hover:bg-app-hover">
-              Look up any stock
-            </Link>
+          {/* Try it now — the highest-intent CTA. Let them hit the real product first. */}
+          <div className="mt-8">
+            <TickerSearch suggestions={["LAC", "AMFN", "TSLA", "RIVN"]} />
           </div>
           <p className="mt-3 text-xs text-faint">Researching any ticker is always free — no signup.</p>
+          <div className="mt-5">
+            <Link href="/login?type=investor&mode=signup" className="text-sm font-semibold text-emerald-600 hover:underline dark:text-emerald-400">
+              Or create a free account to save a watchlist &amp; join the board →
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -134,6 +136,46 @@ export default function ForInvestorsPage() {
             the company&apos;s SEC filings and do your own research.
           </p>
         </div>
+      </section>
+
+      {/* Free vs Investor+ */}
+      <section className="mx-auto max-w-4xl px-6 py-20">
+        <h2 className="text-center text-3xl font-bold tracking-tight text-app">Free to research. $9 to never miss anything.</h2>
+        <p className="mx-auto mt-3 max-w-2xl text-center text-muted">
+          Looking up any company is always free. Investor+ is for people who follow the market closely.
+        </p>
+        <div className="mx-auto mt-10 grid max-w-3xl gap-5 sm:grid-cols-2">
+          <div className="rounded-2xl border border-app bg-surface p-6">
+            <h3 className="text-lg font-semibold text-app">Free</h3>
+            <p className="mt-1 text-3xl font-bold text-app">$0</p>
+            <ul className="mt-5 space-y-2.5">
+              {["Research any ticker — full page, every source", "Post & ask questions on company boards", "Watch up to 10 tickers", "Alerts on filings & halts", "3 reality-checks + 3 filing-diffs a day"].map((f) => (
+                <li key={f} className="flex items-start gap-2 text-sm text-muted"><span className="mt-0.5 text-emerald-600 dark:text-emerald-400">✓</span> {f}</li>
+              ))}
+            </ul>
+            <Link href="/login?type=investor&mode=signup" className="mt-6 block rounded-lg border border-app px-4 py-2.5 text-center text-sm font-semibold text-app transition hover:bg-app-hover">
+              Create free account
+            </Link>
+          </div>
+          <div className="rounded-2xl border border-emerald-500 bg-surface p-6 shadow-lg">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-app">Investor+</h3>
+              <span className="rounded-full bg-emerald-600 px-2.5 py-1 text-xs font-bold text-white">UNLIMITED</span>
+            </div>
+            <p className="mt-1 text-3xl font-bold text-app">$9<span className="text-base font-normal text-faint">/mo</span></p>
+            <ul className="mt-5 space-y-2.5">
+              {["Everything in Free", "Unlimited watchlist", "Instant real-time alerts (filings, answers, radar)", "Unlimited reality-checks & filing comparisons", "Portfolio-wide alert digest", "Ad-free"].map((f) => (
+                <li key={f} className="flex items-start gap-2 text-sm text-muted"><span className="mt-0.5 text-emerald-600 dark:text-emerald-400">✓</span> {f}</li>
+              ))}
+            </ul>
+            <Link href="/member/billing" className="mt-6 block rounded-lg bg-emerald-600 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-emerald-500">
+              Go Investor+ →
+            </Link>
+          </div>
+        </div>
+        <p className="mx-auto mt-6 max-w-xl text-center text-xs text-faint">
+          One bad micro-cap trade costs more than a decade of Investor+. Cancel anytime.
+        </p>
       </section>
 
       {/* CTA */}
