@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import AppFrame from "@/components/AppFrame";
+import { Analytics } from "@vercel/analytics/react";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -24,6 +25,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className={`${inter.className} bg-app text-app`}>
         <AppFrame>{children}</AppFrame>
+        {/* Privacy-friendly site-wide visitor analytics (enable in Vercel dashboard). */}
+        <Analytics />
       </body>
     </html>
   );

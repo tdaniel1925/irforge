@@ -18,6 +18,8 @@ interface Metrics {
     leads: number | null;
   };
   topTickers: { ticker: string; views: number }[];
+  trending: { ticker: string; views: number }[];
+  email: Record<string, number>;
   recentMembers: { handle: string; displayName: string; email: string; profileComplete: boolean; joined: string }[];
 }
 
@@ -59,11 +61,35 @@ export default function AdminMetrics() {
         <Stat label="Report leads" value={n(c.leads)} />
       </div>
 
-      <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-faint">Traffic (ticker pages only — install Vercel Analytics for site-wide)</h2>
+      <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-faint">Traffic (ticker pages — see Vercel Analytics for site-wide visitors)</h2>
       <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Stat label="Ticker page views" value={c.tickerViews.toLocaleString()} />
         <Stat label="Distinct tickers viewed" value={c.tickersViewed.toLocaleString()} />
       </div>
+
+      {Object.keys(data.email).length > 0 && (
+        <>
+          <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-faint">Email deliverability (Postmark events)</h2>
+          <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+            {Object.entries(data.email).map(([status, count]) => (
+              <Stat key={status} label={status} value={count.toLocaleString()} />
+            ))}
+          </div>
+        </>
+      )}
+
+      {data.trending.length > 0 && (
+        <Card className="mb-6">
+          <h2 className="mb-3 font-semibold text-app">🔥 Trending tickers — last 7 days</h2>
+          <div className="flex flex-wrap gap-2">
+            {data.trending.map((t) => (
+              <Link key={t.ticker} href={`/t/${t.ticker}`} className="rounded-full border border-app px-3 py-1 text-sm text-app hover:bg-app-hover">
+                ${t.ticker} <span className="text-faint">· {t.views}</span>
+              </Link>
+            ))}
+          </div>
+        </Card>
+      )}
 
       <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-faint">Discussion boards</h2>
       <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">

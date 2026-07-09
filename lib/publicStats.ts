@@ -83,6 +83,9 @@ export async function bumpViews(ticker: string): Promise<number> {
   if (supabaseEnabled()) {
     const svc = createServiceClient();
     const { data } = await svc.rpc("bump_ticker_views", { t: T });
+    // Daily bucket for trending/time-series analytics — best-effort (older
+    // environments may not have run the migration yet).
+    svc.rpc("bump_ticker_views_daily", { t: T }).then(() => {}, () => {});
     return Number(data ?? 1);
   }
   const s = readLocal();

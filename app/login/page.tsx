@@ -35,6 +35,24 @@ export default function Login() {
     return n && n.startsWith("/") ? n : null;
   })();
 
+  // First-touch attribution: capture UTM params + referrer at signup so we know
+  // which channel produced each account (stored in auth user_metadata).
+  const signupAttribution = (() => {
+    if (typeof window === "undefined") return {};
+    const q = new URLSearchParams(window.location.search);
+    const out: Record<string, string> = {};
+    for (const k of ["utm_source", "utm_medium", "utm_campaign"]) {
+      const v = q.get(k);
+      if (v) out[`signup_${k}`] = v.slice(0, 100);
+    }
+    try {
+      if (document.referrer && !document.referrer.includes(window.location.host)) {
+        out.signup_referrer = document.referrer.slice(0, 200);
+      }
+    } catch { /* ignore */ }
+    return out;
+  })();
+
   // If you're already signed in, don't show the sign-in form — go to the app
   // (or the ?next= destination, e.g. accepting an invite). Skip while a password
   // reset is in progress (?mode=reset), which legitimately lands a signed-in user here.
@@ -77,7 +95,7 @@ export default function Login() {
           password,
           // account_type drives the signup trigger (only 'company' mints a company
           // row) and post-signup routing. Absence defaults to 'company' server-side.
-          options: { data: { account_type: accountType === "investor" ? "member" : "company" }, emailRedirectTo },
+          options: { data: { account_type: accountType === "investor" ? "member" : "company", ...signupAttribution }, emailRedirectTo },
         });
         if (error) { setMsg({ text: error.message, ok: false }); return; }
         // With email confirmation OFF (current setting), signUp returns a session and

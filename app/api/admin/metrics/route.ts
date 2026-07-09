@@ -25,6 +25,26 @@ export async function GET() {
   const totalViews = (viewRows ?? []).reduce((s, r) => s + Number(r.views || 0), 0);
   const topTickers = (viewRows ?? []).slice(0, 10).map((r) => ({ ticker: String(r.ticker), views: Number(r.views || 0) }));
 
+  // Trending — last 7 days from the daily buckets (empty until the migration runs).
+  let trending: { ticker: string; views: number }[] = [];
+  try {
+    const since = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+    const { data: daily } = await svc.from("ticker_views_daily").select("ticker, views").gte("day", since);
+    const byTicker = new Map<string, number>();
+    for (const r of daily ?? []) byTicker.set(String(r.ticker), (byTicker.get(String(r.ticker)) ?? 0) + Number(r.views || 0));
+    trending = Array.from(byTicker, ([ticker, views]) => ({ ticker, views })).sort((a, b) => b.views - a.views).slice(0, 10);
+  } catch { /* table not migrated yet */ }
+
+  // Email deliverability — aggregated Postmark webhook events.
+  let email: Record<string, number> = {};
+  try {
+    const { data: ev } = await svc.from("email_events").select("status");
+    for (const r of ev ?? []) {
+      const s = String(r.status ?? "unknown");
+      email[s] = (email[s] ?? 0) + 1;
+    }
+  } catch { /* table optional */ }
+
   // Board character: questions vs answered.
   const { data: board } = await svc.from("public_board").select("flag, verified, parent_id");
   const questions = (board ?? []).filter((p) => p.flag === "question" && !p.parent_id).length;
@@ -57,6 +77,8 @@ export async function GET() {
       leads,
     },
     topTickers,
+    trending,
+    email,
     recentMembers: (recentMembers ?? []).map((m) => ({
       handle: String(m.handle ?? ""),
       displayName: String(m.display_name ?? ""),
