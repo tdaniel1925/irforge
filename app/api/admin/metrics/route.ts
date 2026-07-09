@@ -30,12 +30,18 @@ export async function GET() {
   const questions = (board ?? []).filter((p) => p.flag === "question" && !p.parent_id).length;
   const answered = new Set((board ?? []).filter((p) => p.verified && p.parent_id).map((p) => p.parent_id)).size;
 
-  // Newest investor signups (handle + joined date; email stays out of this view).
+  // Newest investor signups — with email (admins already see emails in claims/customers).
+  // Email lives in Supabase auth, not the members table, so join via user_id.
   const { data: recentMembers } = await svc
     .from("members")
-    .select("handle, display_name, profile_complete, created_at")
+    .select("user_id, handle, display_name, profile_complete, created_at")
     .order("created_at", { ascending: false })
     .limit(10);
+  const emailById = new Map<string, string>();
+  try {
+    const { data: users } = await svc.auth.admin.listUsers({ perPage: 500 });
+    for (const u of users?.users ?? []) emailById.set(u.id, u.email ?? "");
+  } catch { /* emails become blank, counts still render */ }
 
   return NextResponse.json({
     counts: {
@@ -54,6 +60,7 @@ export async function GET() {
     recentMembers: (recentMembers ?? []).map((m) => ({
       handle: String(m.handle ?? ""),
       displayName: String(m.display_name ?? ""),
+      email: emailById.get(String(m.user_id)) ?? "",
       profileComplete: Boolean(m.profile_complete),
       joined: String(m.created_at ?? "").slice(0, 10),
     })),

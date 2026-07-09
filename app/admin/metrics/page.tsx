@@ -18,7 +18,7 @@ interface Metrics {
     leads: number | null;
   };
   topTickers: { ticker: string; views: number }[];
-  recentMembers: { handle: string; displayName: string; profileComplete: boolean; joined: string }[];
+  recentMembers: { handle: string; displayName: string; email: string; profileComplete: boolean; joined: string }[];
 }
 
 // Platform-wide engagement metrics — the "how is the site actually doing" page.
@@ -93,16 +93,17 @@ export default function AdminMetrics() {
         <Card>
           <h2 className="mb-3 font-semibold text-app">Newest investor accounts</h2>
           <table className="w-full text-sm">
-            <thead><tr className="border-b border-app text-left text-xs text-faint"><th className="py-2 font-medium">Investor</th><th className="py-2 font-medium">Username set</th><th className="py-2 text-right font-medium">Joined</th></tr></thead>
+            <thead><tr className="border-b border-app text-left text-xs text-faint"><th className="py-2 font-medium">Investor</th><th className="py-2 font-medium">Email</th><th className="py-2 font-medium">Username set</th><th className="py-2 text-right font-medium">Joined</th></tr></thead>
             <tbody>
               {data.recentMembers.map((m, i) => (
                 <tr key={i} className="border-b border-app">
                   <td className="py-2 text-app">@{m.handle}{m.displayName ? <span className="text-faint"> · {m.displayName}</span> : null}</td>
+                  <td className="py-2 text-muted">{m.email || <span className="text-faint">—</span>}</td>
                   <td className="py-2">{m.profileComplete ? <span className="text-emerald-600 dark:text-emerald-400">✓</span> : <span className="text-faint">not yet</span>}</td>
                   <td className="py-2 text-right text-faint">{m.joined}</td>
                 </tr>
               ))}
-              {data.recentMembers.length === 0 && <tr><td colSpan={3} className="py-6 text-center text-faint">No investor accounts yet.</td></tr>}
+              {data.recentMembers.length === 0 && <tr><td colSpan={4} className="py-6 text-center text-faint">No investor accounts yet.</td></tr>}
             </tbody>
           </table>
         </Card>
