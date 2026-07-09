@@ -106,30 +106,30 @@ function HeroMock() {
         <div className="space-y-2">
           {/* A hyped post, flagged */}
           <div className="rounded-lg border border-amber-500/30 bg-amber-500/[0.05] p-3">
-            <div className="flex items-center gap-2 text-xs">
+            <div className="flex flex-wrap items-center gap-2 text-xs">
               <span className="font-semibold text-app">@moon_rocket</span>
-              <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400">HYPE</span>
+              <span className="whitespace-nowrap rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400">HYPE</span>
             </div>
-            <p className="mt-1 text-sm text-app">This is going to $10 easy, load up before it rips!! 🚀🚀</p>
+            <p className="mt-1 text-pretty text-sm text-app">This is going to $10 easy, load up before it rips!! 🚀🚀</p>
           </div>
           {/* An investor question */}
           <div className="rounded-lg border border-app bg-surface-2 p-3">
-            <div className="flex items-center gap-2 text-xs">
+            <div className="flex flex-wrap items-center gap-2 text-xs">
               <span className="font-semibold text-app">@sarah_invests</span>
-              <span className="rounded bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-bold text-sky-600 dark:text-sky-400">QUESTION</span>
+              <span className="whitespace-nowrap rounded bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-bold text-sky-600 dark:text-sky-400">QUESTION</span>
             </div>
-            <p className="mt-1 text-sm text-app">What&apos;s your actual cash runway after this quarter?</p>
+            <p className="mt-1 text-pretty text-sm text-app">What&apos;s your actual cash runway after this quarter?</p>
           </div>
           {/* The verified company answer */}
           <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/[0.06] p-3">
-            <div className="flex items-center gap-2 text-xs">
+            <div className="flex flex-wrap items-center gap-2 text-xs">
               <span className="font-semibold text-app">EXMPL, Inc. (IR)</span>
-              <span className="rounded bg-emerald-600 px-1.5 py-0.5 text-[10px] font-bold text-white">✓ VERIFIED COMPANY</span>
+              <span className="whitespace-nowrap rounded bg-emerald-600 px-1.5 py-0.5 text-[10px] font-bold text-white">✓ VERIFIED</span>
             </div>
-            <p className="mt-1 text-sm text-app">$11.2M cash, zero debt — runway past our next two milestones. Detail in the 10-Q on EDGAR.</p>
+            <p className="mt-1 text-pretty text-sm text-app">$11.2M cash, zero debt — runway past our next two milestones. Full detail in the 10-Q.</p>
           </div>
         </div>
-        <p className="mt-3 text-center text-[11px] text-faint">Hype gets flagged. Questions get answered on the record. You see the difference.</p>
+        <p className="mt-3 text-pretty text-center text-[11px] text-faint">Hype gets flagged. Questions get answered on the record. You see the difference.</p>
       </div>
     </div>
   );
