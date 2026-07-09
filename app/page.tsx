@@ -304,7 +304,7 @@ function Compliance() {
 function Comparison() {
   const rows = [
     ["Speed (filing → post)", "—", "2–3 days", "Minutes"],
-    ["Monthly cost", "$0", "$10,000+", "From $1,500"],
+    ["Monthly cost", "$0", "$10,000+", "From $399"],
     ["Defends you from attacks", "No", "Rarely", "Yes — in minutes"],
     ["Answer shareholders on the record", "No", "Slowly", "Yes — public & simultaneous"],
     ["Proof for your board", "None", "Quarterly deck", "Live score + log"],
@@ -639,16 +639,17 @@ function Stats() {
 function Pricing() {
   const tiers = [
     { name: "Free", price: "$0", popular: false, features: ["A verified public page with live data", "Free AI Research Panel on your page", "Free Marketing Kit + share links", "Investors can find & follow you"] },
-    { name: "Starter", price: "$1,500", popular: false, features: ["Filing-to-post AI drafting", "Reg FD green/yellow/red screening", "Multi-channel publishing (X, LinkedIn)", "Investor board + document vault", "Embeddable live badges"] },
-    { name: "Growth", price: "$3,500", popular: true, features: ["Everything in Starter", "Full IR CRM — contacts, deals, tasks", "Counsel Console + signed approvals", "Threat Radar + AI rebuttals", "AI shareholder Q&A + 13F targeting"] },
+    { name: "Board", price: "$399", popular: false, features: ["Investor Q&A inbox — every question in one place", "AI-drafted, compliance-checked verified answers", "Instant alerts when investors ask", "Recurring question themes + board sentiment"] },
+    { name: "Starter", price: "$1,500", popular: false, features: ["Everything in Board", "Filing-to-post AI drafting", "Reg FD green/yellow/red screening", "Multi-channel publishing (X, LinkedIn)", "Document vault + embeddable badges"] },
+    { name: "Growth", price: "$3,500", popular: true, features: ["Everything in Starter", "Full IR CRM — contacts, deals, tasks", "Counsel Console + signed approvals", "Threat Radar + AI rebuttals", "13F investor targeting"] },
     { name: "Command", price: "$6,000", popular: false, features: ["Everything in Growth", "Quiet-period mode + custom voices", "Intelligence dashboard + board summaries", "Short-attack defense playbook", "Dedicated onboarding"] },
   ];
   return (
     <section id="pricing" className="border-y border-app bg-surface-2/40">
       <div className="mx-auto max-w-6xl px-6 py-20">
         <h2 className="text-center text-3xl font-bold tracking-tight text-app">Simple pricing. Less than one junior hire.</h2>
-        <p className="mt-3 text-center text-muted">A local IR agency charges $10,000+ a month to do less. Billed quarterly.</p>
-        <div className="mt-12 grid gap-5 lg:grid-cols-4">
+        <p className="mt-3 text-center text-muted">A local IR agency charges $10,000+ a month to do less. Start owning your board for $399.</p>
+        <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-5">
           {tiers.map((t) => (
             <div key={t.name} className={`relative rounded-2xl border p-6 ${t.popular ? "border-emerald-500 bg-surface shadow-lg" : "border-app bg-surface"}`}>
               {t.popular && <span className="absolute -top-3 left-6 rounded-full bg-emerald-600 px-3 py-1 text-xs font-bold text-white">MOST POPULAR</span>}
@@ -661,7 +662,7 @@ function Pricing() {
                   </li>
                 ))}
               </ul>
-              <Link href={t.name === "Free" ? "/login" : "/app"} className={`mt-6 block rounded-lg px-4 py-2.5 text-center text-sm font-semibold ${t.popular ? "bg-emerald-600 text-white hover:bg-emerald-500" : "border border-app text-app hover:bg-app-hover"}`}>
+              <Link href={t.name === "Free" ? "/login?type=company&mode=signup" : "/billing"} className={`mt-6 block rounded-lg px-4 py-2.5 text-center text-sm font-semibold ${t.popular ? "bg-emerald-600 text-white hover:bg-emerald-500" : "border border-app text-app hover:bg-app-hover"}`}>
                 {t.name === "Free" ? "Claim free page" : "Get started"}
               </Link>
             </div>

@@ -111,7 +111,7 @@ export default function ForCompaniesPage() {
       {/* Pricing */}
       <section id="pricing" className="mx-auto max-w-6xl px-6 py-20">
         <h2 className="text-center text-3xl font-bold tracking-tight text-app">Simple pricing. Less than one junior hire.</h2>
-        <p className="mt-3 text-center text-muted">A local IR agency charges $10,000+ a month to do less. Billed quarterly.</p>
+        <p className="mt-3 text-center text-muted">A local IR agency charges $10,000+ a month to do less. Start owning your board for $399/mo.</p>
         <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-5">
           {TIERS.map((t) => (
             <div key={t.name} className={`relative rounded-2xl border p-6 ${t.popular ? "border-emerald-500 bg-surface shadow-lg" : "border-app bg-surface"}`}>
