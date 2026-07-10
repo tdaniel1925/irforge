@@ -1,27 +1,25 @@
-// Transactional email via Postmark (https://postmarkapp.com). Uses the REST API
-// directly so we don't depend on the SDK. All senders are best-effort: callers
-// must catch — a mail failure should never break the user-facing action.
+// Transactional email via Resend (https://resend.com). Uses the REST API directly so
+// we don't depend on the SDK. All senders are best-effort: callers must catch — a mail
+// failure should never break the user-facing action.
 //
 // Required env:
-//   POSTMARK_SERVER_TOKEN   — your Postmark server API token (X-Postmark-Server-Token).
-//   EMAIL_FROM              — verified sender for transactional mail, e.g.
-//                             "PubcoZone <alerts@pubcozone.com>".
-//   OUTREACH_FROM           — verified sender for COLD OUTREACH, on a separate subdomain,
-//                             e.g. "Trent at PubcoZone <trent@outreach.pubcozone.com>".
-//   OUTREACH_REPLY_TO       — where replies to outreach should land (your inbox).
-//   POSTMARK_STREAM         — transactional Message Stream id (default "outbound").
-//   POSTMARK_BROADCAST_STREAM — the broadcast/bulk stream id for cold outreach
-//                             (default "broadcast"). Postmark requires bulk mail on a
-//                             broadcast stream, kept apart from transactional.
+//   RESEND_API_KEY   — your Resend API key (re_...).
+//   EMAIL_FROM       — verified sender for transactional mail, e.g.
+//                      "PubcoZone <alerts@pubcozone.com>".
+//   OUTREACH_FROM    — verified sender for COLD OUTREACH, ideally on a separate
+//                      subdomain, e.g. "Trent at PubcoZone <trent@outreach.pubcozone.com>".
+//   OUTREACH_REPLY_TO — where replies to outreach should land (your inbox).
+//
+// The sender domain (pubcozone.com) must be verified in Resend (SPF + DKIM). Resend
+// has no "message streams" concept; transactional vs. outreach is distinguished only
+// by the From address (and the delivery log's `kind`).
 
 const FROM = process.env.EMAIL_FROM || "PubcoZone <alerts@pubcozone.com>";
 const OUTREACH_FROM = process.env.OUTREACH_FROM || "PubcoZone <outreach@outreach.pubcozone.com>";
-const TX_STREAM = process.env.POSTMARK_STREAM || "outbound";
-const BROADCAST_STREAM = process.env.POSTMARK_BROADCAST_STREAM || "broadcast";
 const SITE = "https://pubcozone.com";
 
 export function emailEnabled(): boolean {
-  return Boolean(process.env.POSTMARK_SERVER_TOKEN);
+  return Boolean(process.env.RESEND_API_KEY);
 }
 
 // Log one email to the email_events ops table (best-effort — never throws).
@@ -52,10 +50,10 @@ export async function sendEmail(opts: {
   return Boolean(await sendEmailRaw(opts));
 }
 
-// Like sendEmail but returns the Postmark MessageID (or null) so callers (outreach)
+// Like sendEmail but returns the Resend message id (or null) so callers (outreach)
 // can persist it and match webhook delivery events back to a specific lead.
-// `stream` selects the Postmark Message Stream: "transactional" (default) or
-// "broadcast" (cold outreach / bulk).
+// `stream` is accepted for API compatibility but Resend has no streams — outreach is
+// distinguished by its From address instead.
 export async function sendEmailRaw(opts: {
   to: string | string[];
   subject: string;
@@ -67,46 +65,38 @@ export async function sendEmailRaw(opts: {
 }): Promise<string | null> {
   const toEmail = Array.isArray(opts.to) ? opts.to[0] : opts.to;
   if (!emailEnabled()) {
-    console.warn("[email] POSTMARK_SERVER_TOKEN not set — skipping send to", opts.to);
+    console.warn("[email] RESEND_API_KEY not set — skipping send to", opts.to);
     return null;
   }
-  const messageStream = opts.stream === "broadcast" ? BROADCAST_STREAM : TX_STREAM;
-  const res = await fetch("https://api.postmarkapp.com/email", {
+  const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
-      "X-Postmark-Server-Token": process.env.POSTMARK_SERVER_TOKEN!,
+      Authorization: `Bearer ${process.env.RESEND_API_KEY!}`,
       "Content-Type": "application/json",
-      Accept: "application/json",
     },
     body: JSON.stringify({
-      From: opts.from || FROM,
-      // Postmark takes a comma-separated string for multiple recipients.
-      To: Array.isArray(opts.to) ? opts.to.join(", ") : opts.to,
-      Subject: opts.subject,
-      HtmlBody: opts.html,
-      MessageStream: messageStream,
-      ...(opts.replyTo ? { ReplyTo: opts.replyTo } : {}),
+      from: opts.from || FROM,
+      // Resend takes an array of recipients.
+      to: Array.isArray(opts.to) ? opts.to : [opts.to],
+      subject: opts.subject,
+      html: opts.html,
+      ...(opts.replyTo ? { reply_to: opts.replyTo } : {}),
     }),
   });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     await logEmail({ to_email: toEmail, kind: opts.kind, subject: opts.subject, status: "failed", error: `${res.status}: ${text.slice(0, 200)}` });
-    throw new Error(`Postmark ${res.status}: ${text.slice(0, 300)}`);
+    throw new Error(`Resend ${res.status}: ${text.slice(0, 300)}`);
   }
-  // Postmark returns { MessageID, ErrorCode, Message, ... }. ErrorCode 0 = success.
-  const data = await res.json().catch(() => ({} as { MessageID?: string; ErrorCode?: number; Message?: string }));
-  if (typeof data?.ErrorCode === "number" && data.ErrorCode !== 0) {
-    await logEmail({ to_email: toEmail, kind: opts.kind, subject: opts.subject, status: "failed", error: `PM ${data.ErrorCode}: ${(data.Message ?? "").slice(0, 200)}` });
-    throw new Error(`Postmark error ${data.ErrorCode}: ${data.Message ?? ""}`);
-  }
-  await logEmail({ message_id: data?.MessageID, to_email: toEmail, kind: opts.kind, subject: opts.subject, status: "sent" });
-  return data?.MessageID ?? null;
+  // Resend returns { id } on success (or { message, name } on error with a 4xx caught above).
+  const data = await res.json().catch(() => ({} as { id?: string }));
+  await logEmail({ message_id: data?.id, to_email: toEmail, kind: opts.kind, subject: opts.subject, status: "sent" });
+  return data?.id ?? null;
 }
 
 // Cold outreach to a prospective company. Sent from the dedicated OUTREACH subdomain,
-// on Postmark's BROADCAST stream (bulk mail must be kept off the transactional stream),
 // with a reply-to to your inbox and a one-click unsubscribe footer (CAN-SPAM).
-// Returns the Postmark MessageID so the lead row can track delivery.
+// Returns the Resend message id so the lead row can track delivery.
 export async function sendOutreachEmail(o: {
   to: string;
   subject: string;

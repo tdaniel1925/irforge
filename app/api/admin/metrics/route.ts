@@ -35,7 +35,7 @@ export async function GET() {
     trending = Array.from(byTicker, ([ticker, views]) => ({ ticker, views })).sort((a, b) => b.views - a.views).slice(0, 10);
   } catch { /* table not migrated yet */ }
 
-  // Email deliverability — aggregated Postmark webhook events.
+  // Email deliverability — aggregated Resend webhook events.
   let email: Record<string, number> = {};
   try {
     const { data: ev } = await svc.from("email_events").select("status");

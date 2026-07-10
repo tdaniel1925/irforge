@@ -69,7 +69,7 @@ export default function AdminMetrics() {
 
       {Object.keys(data.email).length > 0 && (
         <>
-          <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-faint">Email deliverability (Postmark events)</h2>
+          <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-faint">Email deliverability (Resend events)</h2>
           <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
             {Object.entries(data.email).map(([status, count]) => (
               <Stat key={status} label={status} value={count.toLocaleString()} />
