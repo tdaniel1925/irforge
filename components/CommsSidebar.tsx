@@ -18,7 +18,9 @@ function timeAgo(iso: string) {
 // team chat. Present across the whole app; collapses to a thin strip. Built to
 // grow as more comms features land. Renders nothing for unauthed/empty responses.
 export default function CommsSidebar() {
-  const [open, setOpen] = useState(true);
+  // Collapsed by default — the panel is a fixed overlay, so opening it covers the
+  // right edge of the page; let the user open it deliberately when they want chat.
+  const [open, setOpen] = useState(false);
   const [ready, setReady] = useState(false);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [chat, setChat] = useState<Chat[]>([]);
@@ -138,10 +140,11 @@ export default function CommsSidebar() {
     } catch { setErr("Couldn't delete. Try again."); }
   };
 
-  // Collapsed strip.
+  // Collapsed strip. Fixed to the right edge so it overlays rather than pushing
+  // content; the app reserves the 40px gutter for it (see below).
   if (!open) {
     return (
-      <button onClick={() => setOpen(true)} className="sticky top-0 flex h-screen w-10 shrink-0 flex-col items-center gap-3 border-l border-app bg-surface py-4 text-muted hover:text-app" title={unread > 0 ? `${unread} new message${unread === 1 ? "" : "s"}` : "Open team panel"}>
+      <button onClick={() => setOpen(true)} className="fixed right-0 top-0 z-40 flex h-screen w-10 flex-col items-center gap-3 border-l border-app bg-surface py-4 text-muted hover:text-app" title={unread > 0 ? `${unread} new message${unread === 1 ? "" : "s"}` : "Open team panel"}>
         <span className="relative">
           💬
           {unread > 0 && (
@@ -157,7 +160,7 @@ export default function CommsSidebar() {
   }
 
   return (
-    <aside className="sticky top-0 flex h-screen w-72 shrink-0 flex-col border-l border-app bg-surface">
+    <aside className="fixed right-0 top-0 z-40 flex h-screen w-72 flex-col border-l border-app bg-surface shadow-2xl shadow-black/10">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-app px-3 py-2.5">
         <span className="text-sm font-semibold text-app">Team</span>
@@ -199,7 +202,7 @@ export default function CommsSidebar() {
         {chat.length === 0 && <p className="text-xs text-faint">No messages yet. Say hi 👋</p>}
         {chat.map((c) => (
           <div key={c.id} className={`group flex flex-col ${c.mine ? "items-end" : "items-start"}`}>
-            <div className={`max-w-[85%] rounded-2xl px-3 py-1.5 text-sm ${c.mine ? "bg-emerald-600 text-white" : "bg-app/50 text-app"}`}>
+            <div className={`max-w-[85%] overflow-hidden whitespace-pre-wrap break-words rounded-2xl px-3 py-1.5 text-sm ${c.mine ? "bg-emerald-600 text-white" : "bg-app/50 text-app"}`}>
               {!c.mine && <span className="mb-0.5 block text-[10px] font-medium opacity-70">{c.authorName}</span>}
               {c.body}
             </div>

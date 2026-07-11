@@ -57,7 +57,9 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen">
       <Sidebar mobileOpen={navOpen} onNavigate={() => setNavOpen(false)} />
-      <main className="flex min-w-0 flex-1 flex-col">
+      {/* lg:pr-10 reserves the fixed comms gutter (collapsed strip) so content never
+          hides behind it. The open panel floats over the right edge as an overlay. */}
+      <main className="flex min-w-0 flex-1 flex-col lg:pr-10">
         <ImpersonationBanner />
         {/* Top bar: hamburger (mobile) + Back (left) + account dropdown (right). */}
         <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-app bg-app/80 px-4 py-3 backdrop-blur sm:px-6 lg:px-8">
@@ -78,9 +80,11 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
           {feature ? <FeatureGate feature={feature}>{children}</FeatureGate> : children}
         </div>
       </main>
-      {/* Right comms rail: team presence + chat. Hidden on mobile (not a mobile-first
-          need, and it would eat the whole screen); returns on >=lg. */}
-      <div className="hidden lg:flex"><CommsSidebar /></div>
+      {/* Right comms rail: team presence + chat. Renders as a fixed OVERLAY (not a
+          flex sibling) so opening it never steals width from the main content —
+          responsive grids there are viewport-based, so shrinking main would cram
+          cards past their breakpoints and overflow. Hidden on mobile. */}
+      <div className="hidden lg:block"><CommsSidebar /></div>
       <WelcomeModal />
       <AiChat />
     </div>
