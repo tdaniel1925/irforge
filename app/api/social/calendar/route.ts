@@ -5,6 +5,9 @@ import { generateCalendar, listLatestCalendar } from "@/lib/social/calendar";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+// Planning a whole month is an LLM call; give it room so the platform doesn't
+// kill the request and return a non-JSON error page. Matches month/route.ts.
+export const maxDuration = 60;
 
 async function guard() {
   const mine = await getMyCompany();

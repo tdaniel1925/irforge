@@ -39,6 +39,18 @@ export default function SocialCalendar({ initialSlots, hasStrategy }: { initialS
   const [error, setError] = useState("");
   const [weeks, setWeeks] = useState(4);
 
+  // Parse a JSON response defensively. A timed-out or crashed API route returns
+  // an HTML/text error page ("An error occurred…"), not JSON — calling res.json()
+  // on that throws "Unexpected token 'A'…". Fall back to a readable message.
+  const readJson = async (res: Response): Promise<{ error?: string; slots?: Slot[]; remaining?: number; drafted?: number }> => {
+    const text = await res.text();
+    try {
+      return text ? JSON.parse(text) : {};
+    } catch {
+      return { error: res.ok ? "Unexpected server response." : "The server hit an error (likely a timeout). Try again or reduce the range." };
+    }
+  };
+
   const generate = async () => {
     setBusy(true); setError("");
     try {
@@ -47,8 +59,8 @@ export default function SocialCalendar({ initialSlots, hasStrategy }: { initialS
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ weeks }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Couldn't generate the calendar.");
+      const data = await readJson(res);
+      if (!res.ok) throw new Error(data.error || "Couldn't generate the calendar. It may have timed out — try fewer weeks.");
       setSlots(data.slots ?? []);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong.");
@@ -65,7 +77,7 @@ export default function SocialCalendar({ initialSlots, hasStrategy }: { initialS
       // Hard cap on iterations so a stuck "remaining" can't loop forever.
       while (guard++ < 40) {
         const res = await fetch("/api/social/draft", { method: "POST" });
-        const data = await res.json();
+        const data = await readJson(res);
         if (!res.ok) throw new Error(data.error || "Drafting failed.");
         setSlots(data.slots ?? []);
         setDraftMsg(`Drafted ${data.slots?.filter((s: Slot) => s.body).length ?? 0}/${data.slots?.length ?? 0} — ${data.remaining} to go…`);

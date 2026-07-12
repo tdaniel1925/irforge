@@ -19,8 +19,10 @@ create policy team_chat_read on public.team_chat for select using (
 );
 
 drop policy if exists team_chat_insert on public.team_chat;
+-- Members write to their own company; super-admins may write to any company they
+-- are impersonating ("acting as"), matching the read policy's escape hatch.
 create policy team_chat_insert on public.team_chat for insert with check (
-  company_id in (select public.my_company_ids())
+  company_id in (select public.my_company_ids()) or public.is_super_admin()
 );
 
 drop policy if exists team_chat_delete on public.team_chat;
