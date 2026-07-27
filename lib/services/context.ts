@@ -24,10 +24,14 @@ export type Scope =
   | "posts:read"
   | "posts:write"      // create/edit drafts
   | "posts:approve"    // record approval decisions
-  | "posts:publish";   // schedule/publish approved content
+  | "posts:publish"    // schedule/publish approved content
+  | "company:read"     // status, quiet period, compliance posture
+  | "crm:read"
+  | "crm:write";       // notes + tasks (never delete)
 
-const ADMIN_SCOPES: Scope[] = ["posts:read", "posts:write", "posts:approve", "posts:publish"];
-const MEMBER_SCOPES: Scope[] = ["posts:read", "posts:write"];
+export const ALL_SCOPES: Scope[] = ["posts:read", "posts:write", "posts:approve", "posts:publish", "company:read", "crm:read", "crm:write"];
+const ADMIN_SCOPES: Scope[] = ALL_SCOPES;
+const MEMBER_SCOPES: Scope[] = ["posts:read", "posts:write", "company:read", "crm:read", "crm:write"];
 
 export interface ActorContext {
   actorId: string;          // auth user id (session) or token subject (Phase 3)
