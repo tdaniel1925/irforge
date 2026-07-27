@@ -2,7 +2,9 @@ import { createServerSupabase, createServiceClient } from "./server";
 import type { Company } from "../types";
 
 // Maps the snake_case companies row to the app's Company shape and back.
-function rowToCompany(r: Record<string, unknown>): Company {
+// Exported for the service layer (lib/services/*), which loads companies by
+// explicit id under an ActorContext instead of from the session.
+export function rowToCompany(r: Record<string, unknown>): Company {
   return {
     name: (r.name as string) ?? "",
     ticker: (r.ticker as string) ?? "",

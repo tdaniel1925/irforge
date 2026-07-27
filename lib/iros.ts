@@ -1,4 +1,3 @@
-import crypto from "crypto";
 import { createServerSupabase } from "./supabase/server";
 import { getMyCompany } from "./supabase/store";
 import { writeAudit } from "./platform";
@@ -199,8 +198,11 @@ export function canTransition(from: string, to: string): boolean {
   return (TRANSITIONS[from] ?? []).includes(to);
 }
 
-// Record an approval / counsel decision. For RED posts at the counsel stage we
-// capture a tamper-evident signature (hash of body+decision+ts+actor + ip/ua).
+// Record an approval / counsel decision. Delegates to the canonical service
+// (lib/services/posts.ts decidePost) — the gates (RED-needs-counsel, quiet
+// period, counsel signature hash) live THERE now. This wrapper only resolves
+// the browser session into an ActorContext, preserving the old signature for
+// every existing route.
 export async function recordApproval(input: {
   postId: string;
   stage: "approver" | "counsel";
@@ -209,115 +211,27 @@ export async function recordApproval(input: {
   ip?: string;
   userAgent?: string;
 }): Promise<{ ok: boolean; error?: string }> {
-  const supabase = await createServerSupabase();
-  const { data: { user } } = await supabase.auth.getUser();
-  const cid = await myCompanyId();
-  if (!cid || !user) return { ok: false, error: "Not signed in." };
-
-  const post = await getPost(input.postId);
-  if (!post) return { ok: false, error: "Post not found." };
-
-  // RED posts cannot be approved without a counsel decision.
-  if (post.classification === "red" && input.stage === "approver" && input.decision === "approved") {
-    return { ok: false, error: "RED posts require counsel sign-off before approval." };
-  }
-
-  // During an active quiet period, RED/YELLOW posts can't be approved at all —
-  // and even counsel sign-off is blocked (no selective disclosure in the window).
-  if (input.decision === "approved" && (post.classification === "red" || post.classification === "yellow")) {
-    if (await isQuietPeriodActive()) {
-      return { ok: false, error: "A quiet period is active — sensitive (yellow/red) posts can't be approved until it ends." };
-    }
-  }
-
-  const ts = new Date().toISOString();
-  let signatureHash: string | null = null;
-  if (post.classification === "red" && input.stage === "counsel") {
-    signatureHash = crypto
-      .createHash("sha256")
-      .update(`${post.body}|${input.decision}|${ts}|${user.id}`)
-      .digest("hex");
-  }
-
-  await supabase.from("iros_approvals").insert({
-    post_id: input.postId,
-    company_id: cid,
-    stage: input.stage,
-    decision: input.decision,
-    comment: (input.comment ?? "").slice(0, 1000),
-    actor_user_id: user.id,
-    actor_email: user.email,
-    signature_hash: signatureHash,
-    signature_ip: input.ip ?? null,
-    signature_ua: input.userAgent ?? null,
-  });
-
-  // Advance / revert the post status based on the decision.
-  if (input.decision === "approved") {
-    // Counsel sign-off is final — it always lands on 'approved' (one click, even
-    // straight from draft). An approver advancing a draft lands on 'reviewed'.
-    const target = input.stage === "counsel" ? "approved" : post.status === "draft" ? "reviewed" : "approved";
-    await supabase.from("iros_posts").update({ status: target, updated_at: ts }).eq("id", input.postId);
-  } else if (input.decision === "changes" || input.decision === "rejected") {
-    // Mark rejected posts as pulled (distinct from a change-request, which returns to draft).
-    const target = input.decision === "rejected" ? "pulled" : "draft";
-    await supabase.from("iros_posts").update({ status: target, updated_at: ts }).eq("id", input.postId);
-  }
-
-  await writeAudit({
-    companyId: cid,
-    actorUserId: user.id,
-    actorEmail: user.email,
-    action: signatureHash ? "approval.signed" : `approval.${input.decision}`,
-    entityType: "approval",
-    entityId: input.postId,
-    payload: { stage: input.stage, decision: input.decision, classification: post.classification, signatureHash },
-  });
-
-  return { ok: true };
+  const { resolveSessionActor } = await import("./services/context");
+  const ctx = await resolveSessionActor();
+  if (!ctx) return { ok: false, error: "Not signed in." };
+  const { decidePost } = await import("./services/posts");
+  return decidePost(ctx, input);
 }
 
-// Bulk approve/reject for the Social Engine review screen. Records a SEPARATE,
-// named-human approval per post (never one decision for the batch) so the audit
-// log stays defensible, reusing recordApproval's full compliance gating. For an
-// "approve" decision, GREEN/YELLOW drafts are advanced straight to 'approved'
-// in one human action; RED posts are blocked here and must go through counsel.
+// Bulk approve/reject for the Social Engine review screen. Delegates to the
+// canonical service (lib/services/posts.ts bulkDecide) — one audited,
+// per-post decision each, RED blocked, same result shape as before.
 export async function bulkDecision(input: {
   postIds: string[];
   decision: "approved" | "rejected";
   ip?: string;
   userAgent?: string;
 }): Promise<{ approved: number; rejected: number; skipped: { id: string; reason: string }[] }> {
-  const out = { approved: 0, rejected: 0, skipped: [] as { id: string; reason: string }[] };
-  const supabase = await createServerSupabase();
-  const ts = new Date().toISOString();
-
-  for (const id of input.postIds.slice(0, 200)) {
-    const post = await getPost(id);
-    if (!post) { out.skipped.push({ id, reason: "not found" }); continue; }
-
-    if (input.decision === "rejected") {
-      const r = await recordApproval({ postId: id, stage: "approver", decision: "rejected" });
-      if (r.ok) out.rejected++; else out.skipped.push({ id, reason: r.error ?? "rejected failed" });
-      continue;
-    }
-
-    // approve
-    if (post.classification === "red") {
-      out.skipped.push({ id, reason: "RED — needs counsel sign-off" });
-      continue;
-    }
-    const r = await recordApproval({ postId: id, stage: "approver", decision: "approved", ip: input.ip, userAgent: input.userAgent });
-    if (!r.ok) { out.skipped.push({ id, reason: r.error ?? "approve failed" }); continue; }
-    // recordApproval lands a draft on 'reviewed'; finish the one-action approve by
-    // advancing to 'approved' (a second audited step).
-    const fresh = await getPost(id);
-    if (fresh && fresh.status === "reviewed") {
-      await supabase.from("iros_posts").update({ status: "approved", updated_at: ts }).eq("id", id);
-    }
-    out.approved++;
-  }
-  return out;
+  const { resolveSessionActor } = await import("./services/context");
+  const ctx = await resolveSessionActor();
+  if (!ctx) return { approved: 0, rejected: 0, skipped: input.postIds.map((id) => ({ id, reason: "Not signed in." })) };
+  const { bulkDecide } = await import("./services/posts");
+  return bulkDecide(ctx, input);
 }
 
 // ── Quiet periods / disclosure events ──

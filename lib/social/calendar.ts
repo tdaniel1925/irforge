@@ -3,9 +3,9 @@ import { createServerSupabase, createServiceClient } from "../supabase/server";
 import { getMyCompany } from "../supabase/store";
 import { writeAudit } from "../platform";
 import { planCalendar, generateSocialPost, classifyRegFD, generateCadencePost } from "../ai";
-import { checkContent, buildChannelPost, CHANNEL_LIMITS } from "../compliance";
+import { checkContent } from "../compliance";
 import { generateBrandedImage } from "../image";
-import { publishPerChannel, getPostStatus } from "../ayrshare";
+import { getPostStatus } from "../ayrshare";
 import { getStore } from "../db";
 import { buildStrategyContext, renderContextForPrompt, getStrategy } from "./strategy";
 
@@ -319,98 +319,17 @@ export async function draftCalendarBatch(): Promise<{ ok: boolean; error?: strin
 }
 
 // Schedule every APPROVED post in the latest batch to its slot time via Ayrshare
-// native scheduling. Disclosures (FLS + Section 17(b)) are appended HERE, in the
-// publish path — never editable out. Quiet mode blocks the whole run. Each post
-// gets its image attached and its scheduled_at handed to Ayrshare; on success the
-// row advances to 'scheduled'. Returns counts.
+// native scheduling. Delegates to the canonical service (lib/services/posts.ts
+// publishApproved) — quiet-mode gate, per-channel disclosures, channel caps,
+// RED defense-in-depth, and idempotency all live THERE. This wrapper resolves
+// the browser session into an ActorContext and preserves the old signature.
 export async function scheduleApprovedPosts(): Promise<{ ok: boolean; error?: string; scheduled: number; failed: { id: string; reason: string }[] }> {
-  const supabase = await createServerSupabase();
-  const { data: { user } } = await supabase.auth.getUser();
-  const mine = await getMyCompany();
-  if (!mine || !user) return { ok: false, error: "Sign in.", scheduled: 0, failed: [] };
-  const cid = mine.id;
-  const company = mine.company;
-
-  // Quiet mode suspends ALL publishing — same gate as the rest of the app.
-  if (company.quietMode) {
-    return { ok: false, error: "Quiet mode is ON — publishing is suspended. Turn it off to schedule.", scheduled: 0, failed: [] };
-  }
-
-  const { batchId } = await listLatestCalendar();
-  if (!batchId) return { ok: false, error: "No calendar to schedule.", scheduled: 0, failed: [] };
-
-  const { data: approved } = await supabase
-    .from("iros_posts")
-    .select("id, body, channels, platform, media_url, scheduled_at, classification")
-    .eq("company_id", cid)
-    .eq("calendar_batch", batchId)
-    .eq("status", "approved");
-
-  const todo = approved ?? [];
-  if (!todo.length) return { ok: true, scheduled: 0, failed: [] };
-
-  const failed: { id: string; reason: string }[] = [];
-  let scheduled = 0;
-
-  for (const p of todo) {
-    // Defense in depth: a RED post should never reach 'approved' (counsel only),
-    // but never schedule one even if it somehow did.
-    if (p.classification === "red") { failed.push({ id: String(p.id), reason: "RED — needs counsel sign-off" }); continue; }
-    const channels = (p.channels as string[]) ?? [];
-    if (!channels.length) { failed.push({ id: String(p.id), reason: "no channel" }); continue; }
-
-    // Append the mandatory disclosure PER CHANNEL via the same builder as Quick Post
-    // (FLS-only; compact FLS + disclosures link on X). The old code sent one combined
-    // body+FLS+third-party-disclosure blob to every channel — diverging from every
-    // other publish path AND blowing X's 280 cap silently. Channels where the final
-    // text still exceeds the cap are skipped and reported, never sent truncated.
-    const bodies: Record<string, string> = {};
-    const overLimit: string[] = [];
-    for (const ch of channels) {
-      const text = buildChannelPost(String(p.body), company, ch);
-      if (text.length > (CHANNEL_LIMITS[ch] ?? 5000)) { overLimit.push(ch); continue; }
-      bodies[ch] = text;
-    }
-    if (Object.keys(bodies).length === 0) {
-      failed.push({ id: String(p.id), reason: `over the character limit for ${overLimit.join(", ")}` });
-      await supabase.from("iros_posts").update({ publish_error: `Over the character limit for ${overLimit.join(", ")} — shorten the post.`.slice(0, 500), updated_at: new Date().toISOString() }).eq("id", p.id);
-      continue;
-    }
-
-    const result = await publishPerChannel(bodies, company.ayrshareProfileKey, {
-      scheduleDate: p.scheduled_at ? String(p.scheduled_at) : undefined,
-      mediaUrls: p.media_url ? [String(p.media_url)] : undefined,
-    });
-
-    if (!result.ok) {
-      failed.push({ id: String(p.id), reason: result.error ?? "publish failed" });
-      await supabase.from("iros_posts").update({ publish_error: (result.error ?? "publish failed").slice(0, 500), updated_at: new Date().toISOString() }).eq("id", p.id);
-      await writeAudit({ companyId: cid, actorUserId: user.id, actorEmail: user.email, action: "social.schedule_failed", entityType: "post", entityId: String(p.id), payload: { error: result.error } });
-      continue;
-    }
-
-    // Persist Ayrshare's handles so the dashboard can show + confirm delivery.
-    // posted=true means it went out now; scheduled=true means it's queued for the slot.
-    await supabase.from("iros_posts").update({
-      status: result.posted ? "published" : "scheduled",
-      ayr_post_id: result.externalId ?? "",
-      post_url: result.postUrl ?? "",
-      // Partial skip is visible, not silent: if a channel was over its cap it was
-      // held back while the rest published.
-      publish_error: overLimit.length ? `Skipped ${overLimit.join(", ")} — over the character limit.`.slice(0, 500) : "",
-      posted_at: result.posted ? new Date().toISOString() : null,
-      updated_at: new Date().toISOString(),
-    }).eq("id", p.id);
-    await writeAudit({
-      companyId: cid, actorUserId: user.id, actorEmail: user.email,
-      action: result.scheduled ? "social.post_scheduled" : "social.post_published",
-      entityType: "post", entityId: String(p.id),
-      payload: { platform: p.platform, scheduledAt: p.scheduled_at, postUrl: result.postUrl ?? null, ayrPostId: result.externalId ?? null, posted: result.posted },
-    });
-    scheduled++;
-  }
-
-  return { ok: true, scheduled, failed };
+  const { resolveSessionActor } = await import("../services/context");
+  const ctx = await resolveSessionActor();
+  if (!ctx) return { ok: false, error: "Sign in.", scheduled: 0, failed: [] };
+  const { publishApproved } = await import("../services/posts");
+  const { result } = await publishApproved(ctx);
+  return result;
 }
 
 // ── Delivery dashboard (the "outbox") ──
