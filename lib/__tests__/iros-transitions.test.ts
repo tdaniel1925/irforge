@@ -32,3 +32,15 @@ describe("canTransition — illegal moves rejected", () => {
     expect(canTransition(from, to)).toBe(false);
   });
 });
+
+describe("'pending' is not an iros_posts state", () => {
+  // Regression pin: the daily-suggestions cron wrote status 'pending' (legacy
+  // JSON-drafts vocabulary) into iros_posts — no view read it, so the rows were
+  // invisible. The insert now uses 'draft'; the DB constrains the column
+  // (RUN-THIS-post-status-canon.sql). Keep 'pending' out of the state machine.
+  it.each([["pending", "draft"], ["pending", "approved"], ["draft", "pending"], ["approved", "pending"]])(
+    "%s -> %s is rejected", (from, to) => {
+      expect(canTransition(from, to)).toBe(false);
+    }
+  );
+});

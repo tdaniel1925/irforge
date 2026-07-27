@@ -33,6 +33,13 @@ export async function POST(req: Request) {
     if (!body.id || typeof body.body !== "string") return NextResponse.json({ error: "Missing id or body." }, { status: 422 });
     const post = await getPost(String(body.id));
     if (!post) return NextResponse.json({ error: "Post not found." }, { status: 404 });
+    // Approval integrity: only pre-approval statuses are editable. Approved/
+    // scheduled/published content would otherwise be silently rewritten AFTER the
+    // human sign-off (the UI already hides Edit there; enforce it server-side too).
+    // The legal path to change approved content is pull → draft → re-review.
+    if (post.status !== "draft" && post.status !== "reviewed") {
+      return NextResponse.json({ error: `A ${post.status} post can't be edited — pull it back to draft first (this re-runs review and approval).` }, { status: 409 });
+    }
     await updatePostFields(String(body.id), { body: String(body.body).slice(0, 4000) });
     const calendar = await listLatestCalendar();
     return NextResponse.json({ ok: true, slots: calendar.slots });

@@ -723,8 +723,8 @@ export async function reschedulePost(postId: string, newScheduledAt: string): Pr
 
 // ── Daily suggested posts (cron) ─────────────────────────────────────────────
 // For each active company, draft ONE fresh suggested post and drop it into the
-// Needs-approval queue (status 'pending') so there's always something new to review
-// or reject. Service-role (no session). Skips companies that already have a pending
+// Needs-approval queue (status 'draft') so there's always something new to review
+// or reject. Service-role (no session). Skips companies that already have a
 // suggestion from today (so the queue doesn't pile up). Time-budgeted.
 export async function generateDailySuggestions(deadlineMs: number): Promise<{ companies: number; created: number }> {
   const svc = createServiceClient();
@@ -779,7 +779,10 @@ export async function generateDailySuggestions(deadlineMs: number): Promise<{ co
         title: (draft.title || "Daily suggestion").slice(0, 200),
         body,
         channels: [],
-        status: "pending",          // → lands in Needs-approval
+        // Canonical entry status. "pending" (the legacy JSON-drafts vocabulary) is
+        // NOT an iros_posts state — rows written with it matched no query and were
+        // invisible in every view. "draft" + a body = shows up in Needs-approval.
+        status: "draft",
         theme: "Daily suggestion",
         classification: cls?.classification ?? "yellow",
         class_reason: cls?.reasoning ?? null,

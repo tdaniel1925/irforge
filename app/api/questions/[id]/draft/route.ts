@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getStore, logAudit, newId } from "@/lib/db";
 import { generatePublicAnswer } from "@/lib/ai";
 import { checkContent } from "@/lib/compliance";
+import { decideAuthGate, readAuthGateEnv } from "@/lib/authGate";
 import type { Draft } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -9,9 +10,10 @@ export const dynamic = "force-dynamic";
 // POST — draft a compliance-checked answer to a public question (lands in the Do queue as a pending draft).
 export async function POST(_req: Request, { params }: { params: { id: string } }) {
   const { db, save, authed } = await getStore();
-  // AI-cost guard: when auth is enforced, anonymous callers must not reach the
-  // model call below (token burn). Demo mode (AUTH_ENABLED off) still works.
-  if (process.env.AUTH_ENABLED === "1" && !authed) return NextResponse.json({ error: "Sign in first." }, { status: 401 });
+  // AI-cost guard: anonymous callers must not reach the model call below (token
+  // burn). Uses the shared fail-closed gate — any deployment requires a session
+  // here; only true local demo mode (gate "open") skips it.
+  if (decideAuthGate(readAuthGateEnv()) !== "open" && !authed) return NextResponse.json({ error: "Sign in first." }, { status: 401 });
   const q = db.publicQuestions.find((x) => x.id === params.id);
   if (!q) return NextResponse.json({ error: "Question not found" }, { status: 404 });
   if (q.answerDraftId) return NextResponse.json({ error: "Answer already drafted" }, { status: 409 });

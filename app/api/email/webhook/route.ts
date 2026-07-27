@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import crypto from "crypto";
 import { createServiceClient } from "@/lib/supabase/server";
+import { verifySvix } from "@/lib/svix";
 
 export const dynamic = "force-dynamic";
 
@@ -12,32 +12,6 @@ export const dynamic = "force-dynamic";
 // Configure at Resend → Webhooks → Add endpoint:
 //   https://pubcozone.com/api/email/webhook
 // subscribe to email.delivered, email.bounced, email.opened, email.complained.
-
-// Verify a Svix signature (the scheme Resend uses). The signed content is
-// `${id}.${timestamp}.${payload}`, HMAC-SHA256 with the base64 secret (after the
-// "whsec_" prefix), compared constant-time against any of the space-separated
-// `v1,<sig>` values in the svix-signature header.
-function verifySvix(secret: string, headers: Headers, payload: string): boolean {
-  const id = headers.get("svix-id");
-  const timestamp = headers.get("svix-timestamp");
-  const sigHeader = headers.get("svix-signature");
-  if (!id || !timestamp || !sigHeader) return false;
-
-  const secretBytes = Buffer.from(secret.replace(/^whsec_/, ""), "base64");
-  const signedContent = `${id}.${timestamp}.${payload}`;
-  const expected = crypto.createHmac("sha256", secretBytes).update(signedContent).digest("base64");
-
-  // Header looks like: "v1,<sig1> v1,<sig2>"
-  for (const part of sigHeader.split(" ")) {
-    const sig = part.includes(",") ? part.split(",")[1] : part;
-    try {
-      if (sig && crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return true;
-    } catch {
-      /* length mismatch — try next */
-    }
-  }
-  return false;
-}
 
 // Resend posts one event object; `type` tells the kind, and the message id + email
 // live under `data`.
@@ -56,17 +30,18 @@ export async function POST(req: Request) {
   const raw = await req.text();
 
   // Enforce signature verification when configured. When it ISN'T configured, fail
-  // closed in production (anyone could otherwise flip lead delivery statuses); accept
-  // in dev.
+  // closed on ANY deployment (anyone could otherwise flip lead delivery statuses) —
+  // deployment detection uses VERCEL, not the AUTH_ENABLED feature flag, so an
+  // auth-config mistake can't also open the webhook. Unverified accept is local-dev only.
   if (secret) {
     if (!verifySvix(secret, req.headers, raw)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-  } else if (process.env.AUTH_ENABLED === "1") {
-    console.error("[email-webhook] RESEND_WEBHOOK_SECRET not set — rejecting in production");
+  } else if (process.env.VERCEL === "1" || process.env.VERCEL_ENV) {
+    console.error("[email-webhook] RESEND_WEBHOOK_SECRET not set — rejecting on deployment");
     return NextResponse.json({ error: "Webhook not configured" }, { status: 503 });
   } else {
-    console.warn("[email-webhook] RESEND_WEBHOOK_SECRET not set — accepting unverified (dev)");
+    console.warn("[email-webhook] RESEND_WEBHOOK_SECRET not set — accepting unverified (local dev)");
   }
 
   let event: ResendEvent;

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getBoardPage } from "@/lib/publicStats";
+import { getBoardPage, rateAllow } from "@/lib/publicStats";
 import { createServiceClient } from "@/lib/supabase/server";
 import { computeManipulationSignals, describeManipulationRisk } from "@/lib/manipulationRadar";
 import { computeSentimentComposite } from "@/lib/sentimentComposite";
@@ -11,9 +11,18 @@ export const dynamic = "force-dynamic";
 // (volume_ratio + sentiment + short_pct), then returns a deterministic
 // manipulation-pattern assessment. Investor-facing caution, never advice.
 export async function GET(req: Request) {
+  // Public + invokes a paid AI caption per call — rate-limit per IP (the same
+  // shared bucket truth-check uses) AND per ticker so a rotating-IP scraper
+  // can't fan out across tickers. On Vercel x-forwarded-for's first hop is
+  // platform-set (not client-spoofable); worst case a spoofer only throttles
+  // themselves into the shared per-ticker bucket.
+  const ip = (req.headers.get("x-forwarded-for")?.split(",")[0] ?? "anon").trim();
   const u = new URL(req.url);
   const ticker = (u.searchParams.get("ticker") ?? "").toUpperCase().slice(0, 8);
-  if (!ticker) return NextResponse.json({ error: "ticker required" }, { status: 422 });
+  if (!ticker || !/^[A-Z0-9.-]{1,8}$/.test(ticker)) return NextResponse.json({ error: "ticker required" }, { status: 422 });
+  if (!(await rateAllow(`radar:${ip}`, 20)) || !(await rateAllow(`radar:t:${ticker}`, 60))) {
+    return NextResponse.json({ error: "Rate limited — try again in a minute." }, { status: 429 });
+  }
 
   // (a) board posts — pull a wide page so 24h clustering is well-sampled.
   const { posts } = await getBoardPage(ticker, 0, 200);

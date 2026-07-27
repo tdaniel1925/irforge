@@ -4,13 +4,17 @@ import { NextResponse, type NextRequest } from "next/server";
 // Public routes (landing, login, public ticker pages, public APIs) stay open —
 // the allowlist + matcher live in lib/publicRoutes.ts so they're unit-testable.
 import { isPublic } from "@/lib/publicRoutes";
+import { decideAuthGate, readAuthGateEnv } from "@/lib/authGate";
 
 export async function middleware(request: NextRequest) {
-  // Auth gating is OFF until the data layer is migrated to Supabase. Flip AUTH_ENABLED=1
-  // (env) to turn on login enforcement. Until then the app runs in single-company mode
-  // and only the session cookie is refreshed.
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.AUTH_ENABLED !== "1") {
-    return NextResponse.next();
+  // Fail-closed gate decision (see lib/authGate.ts): deployed = enforce unless
+  // explicitly disabled; local dev = open. "unconfigured" (deployed without
+  // Supabase env) blocks protected routes with 503 instead of falling open.
+  const gate = decideAuthGate(readAuthGateEnv());
+  if (gate === "open") return NextResponse.next();
+  if (gate === "unconfigured") {
+    if (isPublic(request.nextUrl.pathname)) return NextResponse.next();
+    return NextResponse.json({ error: "Auth is not configured on this deployment." }, { status: 503 });
   }
 
   let response = NextResponse.next({ request });
