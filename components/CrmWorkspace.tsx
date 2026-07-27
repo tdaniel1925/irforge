@@ -193,6 +193,7 @@ function Contacts({ contacts, setContacts, companies }: { contacts: Contact[]; s
           Opted in to updates
         </label>
         <Inp label="Notes" textarea v={editing.notes ?? ""} on={(v) => setEditing({ ...editing, notes: v })} />
+        {editing.id && <ContactNotes contactId={editing.id} />}
       </RecordForm>
     );
   }
@@ -238,6 +239,70 @@ function Contacts({ contacts, setContacts, companies }: { contacts: Contact[]; s
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Timestamped notes timeline for one contact (backed by crm_activities, kind
+// 'note'). Notes are append-only — a dated record of every touch, newest first.
+// Adding a note also bumps the contact's last-touch (addActivity behavior).
+interface Note { id: string; body: string; occurredAt: string; actorEmail: string; kind: string }
+const noteWhen = (iso: string) => {
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? "" : d.toLocaleString(undefined, { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
+};
+function ContactNotes({ contactId }: { contactId: string }) {
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [draft, setDraft] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/crm?entity=activities&contactId=${encodeURIComponent(contactId)}`, { cache: "no-store" });
+        const d = await res.json().catch(() => ({}));
+        if (!cancelled) setNotes(((d.activities ?? []) as Note[]).filter((a) => a.kind === "note" && a.body));
+      } catch { /* timeline is best-effort; the add box still works */ }
+      finally { if (!cancelled) setLoaded(true); }
+    })();
+    return () => { cancelled = true; };
+  }, [contactId]);
+
+  const add = async () => {
+    const body = draft.trim();
+    if (!body || busy) return;
+    setBusy(true); setErr("");
+    try {
+      const d = await api({ entity: "activity", data: { contactId, kind: "note", body } });
+      if (d.activity) setNotes((ns) => [d.activity, ...ns]);
+      setDraft("");
+    } catch (e) { setErr(e instanceof Error ? e.message : "Couldn't save that note."); } finally { setBusy(false); }
+  };
+
+  return (
+    <div className="mt-4 border-t border-app pt-4">
+      <p className="mb-2 text-sm font-medium text-app">Note history <span className="font-normal text-faint">— timestamped, append-only</span></p>
+      <div className="flex gap-2">
+        <textarea value={draft} onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) add(); }}
+          rows={2} maxLength={4000} placeholder="Add a note… (Ctrl+Enter to save)"
+          className="flex-1 resize-none rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:border-emerald-500 focus:outline-none" />
+        <button onClick={add} disabled={busy || !draft.trim()} className="self-start rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50">{busy ? "…" : "Add"}</button>
+      </div>
+      {err && <p className="mt-2 text-xs text-red-500">{err}</p>}
+      <div className="mt-3 max-h-64 space-y-2 overflow-y-auto">
+        {notes.map((n) => (
+          <div key={n.id} className="rounded-lg border border-app bg-surface-2/60 px-3 py-2">
+            <p className="whitespace-pre-wrap text-sm text-app">{n.body}</p>
+            <p className="mt-1 text-[11px] text-faint">{noteWhen(n.occurredAt)}{n.actorEmail && <> · {n.actorEmail}</>}</p>
+          </div>
+        ))}
+        {loaded && notes.length === 0 && <p className="py-3 text-center text-xs text-faint">No notes yet — add the first one above.</p>}
+        {!loaded && <p className="py-3 text-center text-xs text-faint">Loading notes…</p>}
+      </div>
     </div>
   );
 }
