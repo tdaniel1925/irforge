@@ -1,10 +1,15 @@
-# SQL file inventory & migration plan
+# SQL file inventory & migration plan  —  ✅ COMPLETE
 
 Classifies all 56 `supabase/*.sql` files for the move to ordered, reproducible
 migrations (review finding P0 #2). The **authoritative source of truth is the
 LIVE production database** — these files are the (drifted) inputs that produced
-it. The plan: dump prod → one `0001_baseline` migration → future changes as
-numbered migrations → archive the rest.
+it.
+
+**Status: done.** Production schema was dumped to `migrations/0001_baseline.sql`
+(50 tables, 61 RLS policies, 40 indexes, 9 functions, 0 rows). A `0000_supabase_
+stubs.sql` provides the `auth`/`storage` schema stubs a vanilla CI Postgres needs.
+Verified: a clean Postgres built from `0000` + `0001` applies with **zero errors**
+and produces 51 tables + 61 policies. The 56 old files are archived below.
 
 ## Category A — SCHEMA (represented by the production baseline dump)
 
