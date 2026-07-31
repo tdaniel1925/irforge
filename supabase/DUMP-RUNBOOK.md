@@ -29,10 +29,15 @@ prompts for the DB password, it's under Dashboard → Project Settings → Datab
 ## Option B — pg_dump directly
 
 Get the connection string from Dashboard → Project Settings → Database →
-Connection string (URI). Then:
+Connection string (URI). **Put it in an env var first** (keeps the password out
+of your shell history and out of any file):
 
 ```bash
-pg_dump "postgresql://postgres:<password>@<host>:5432/postgres" \
+# Paste your connection URI when prompted — it is NOT echoed or saved to history:
+read -rs DB_URL
+export DB_URL
+
+pg_dump "$DB_URL" \
   --schema=public \
   --schema-only \
   --no-owner --no-privileges \
@@ -49,12 +54,15 @@ strips Supabase-specific role grants so a clean CI Postgres can apply it).
 ### Policies only (if Option B missed them)
 
 ```bash
-psql "postgresql://postgres:<password>@<host>:5432/postgres" -Atc \
+# reuses $DB_URL from above
+psql "$DB_URL" -Atc \
 "select 'ALTER TABLE '||schemaname||'.'||tablename||' ENABLE ROW LEVEL SECURITY;' \
  from pg_tables where schemaname='public'" >> supabase/migrations/0001_baseline.sql
 
-pg_dump "postgresql://..." --schema=public --section=post-data --no-owner \
+pg_dump "$DB_URL" --schema=public --section=post-data --no-owner \
   | grep -A100 'POLICY' >> supabase/migrations/0001_baseline.sql
+
+unset DB_URL   # clear it when done
 ```
 
 (Option A avoids this entirely — use it if you can.)
