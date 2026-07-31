@@ -285,15 +285,30 @@ export default function MessageBoard({ ticker }: { ticker: string }) {
 
   return (
     <div>
-      {/* Response-time expectations — companies are notified of every question, but
-          they answer on their own schedule. Set that expectation up front. */}
-      <div className="mb-4 flex items-start gap-2.5 rounded-xl border border-sky-500/25 bg-sky-500/[0.06] px-4 py-3">
-        <span aria-hidden className="mt-0.5 text-sm">🔔</span>
-        <p className="text-xs leading-relaxed text-sky-700 dark:text-sky-300">
-          <span className="font-semibold">Companies on PubcoZone are notified directly the moment investors post questions or comments here.</span>{" "}
-          When they respond, answers arrive verified and on the record. Response times vary by company — some reply within hours,
-          others take longer, and not every question will receive a reply.
-        </p>
+      {/* A Note Regarding Company Responses — sets response-time expectations AND
+          explains WHY certain questions can't get a substantive answer (Reg FD /
+          MNPI + trade secrets / IP / competitively sensitive). Generic wording so
+          it fits every company; a per-company custom override can come later. */}
+      <div className="mb-4 rounded-xl border border-sky-500/25 bg-sky-500/[0.06] px-4 py-3">
+        <div className="flex items-start gap-2.5">
+          <span aria-hidden className="mt-0.5 text-sm">🔔</span>
+          <div className="text-xs leading-relaxed text-sky-700 dark:text-sky-300">
+            <p className="mb-1.5 font-semibold">A Note Regarding Company Responses</p>
+            <p>
+              The company welcomes questions from shareholders and the investment community. Companies on
+              PubcoZone are notified directly the moment investors post here, and answers arrive verified and
+              on the record — but response times vary, and not every question will receive a reply.
+            </p>
+            <p className="mt-1.5">
+              As a publicly traded company, it cannot respond to questions that would require the selective
+              disclosure of Material Non-Public Information. It also cannot disclose trade secrets, confidential
+              intellectual property, or other proprietary or competitively sensitive information. Material
+              developments are communicated broadly through appropriate public channels, including SEC filings
+              and company press releases. Questions falling within these categories will be acknowledged but may
+              not receive a substantive response.
+            </p>
+          </div>
+        </div>
       </div>
       {/* Manipulation radar — neutral caution about board posting patterns + public volume. */}
       <ManipulationRadar ticker={ticker} />
