@@ -2,6 +2,7 @@ import { createServiceClient } from "../supabase/server";
 import { ServiceError, requireScope, type ActorContext, type Scope } from "../services/context";
 import * as posts from "../services/posts";
 import * as crm from "../services/crm";
+import * as events from "../services/events";
 import type { IrosPost } from "../iros";
 import { createConfirmation, consumeConfirmation, contentHash } from "../services/confirmations";
 
@@ -75,6 +76,11 @@ export const TOOLS: Record<string, ToolDef> = {
   create_crm_task: { scope: "crm:write", kind: "write", handler: (ctx, i) => crm.createTask(ctx, {
     title: str(i.title, 300), dueDate: i.dueDate ? str(i.dueDate, 30) : null, contactId: i.contactId ? str(i.contactId, 40) : null,
   }) },
+
+  // ── Notifications (outbound event subscription) ──
+  register_event_callback: { scope: "events:manage", kind: "write", handler: (ctx, i) => events.registerEventCallback(ctx, str(i.callbackUrl, 500)) },
+  set_notifications: { scope: "events:manage", kind: "write", handler: (ctx, i) => events.setNotifications(ctx, i.enabled !== false) },
+  get_notification_status: { scope: "events:manage", kind: "read", handler: (ctx) => events.getNotificationStatus(ctx) },
 
   // ── Sensitive: approve content (two-phase) ──
   prepare_approve_content: { scope: "posts:approve", kind: "prepare", handler: async (ctx, i) => {

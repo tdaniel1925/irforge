@@ -16,6 +16,7 @@ export const SCOPE_LABELS: Record<Scope, string> = {
   "company:read": "Read company status and compliance posture",
   "crm:read": "Read your CRM contacts and tasks",
   "crm:write": "Add CRM notes and tasks (never delete)",
+  "events:manage": "Turn board-question notifications on or off",
 };
 
 export interface AuthorizeParams {

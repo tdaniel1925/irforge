@@ -80,6 +80,16 @@ export async function notifyNewQuestion(ticker: string, author: string, question
   } catch (e) {
     console.error("[boardNotify] question email failed:", e instanceof Error ? e.message : e);
   }
+
+  // Also push a signed event to any connected control plane (Jordyn) so it can
+  // notify the team in chat with a suggested answer. Entirely best-effort and
+  // isolated from the email path — a webhook failure never affects the post.
+  try {
+    const { emitQuestionEvent } = await import("./events/questionEvent");
+    await emitQuestionEvent({ companyId: target.companyId, ticker: target.ticker, author, question });
+  } catch (e) {
+    console.error("[boardNotify] question event emit failed:", e instanceof Error ? e.message : e);
+  }
 }
 
 // Daily digest of board activity for one company.
