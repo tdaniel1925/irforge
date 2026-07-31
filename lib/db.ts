@@ -80,6 +80,26 @@ export async function getStore(): Promise<{ db: Database; save: () => Promise<vo
   return { db, save: async () => saveDb(db), authed: false };
 }
 
+// Save + translate a concurrency conflict into a ready 409 response. Routes that
+// want proper "someone else edited this — reload" behavior (instead of a generic
+// 500) wrap their save() with this:
+//   const conflict = await saveOr409(ctx.save);
+//   if (conflict) return conflict;
+// Returns null on success, or a 409 NextResponse when a StaleWriteError occurred.
+export async function saveOr409(save: () => Promise<void>): Promise<import("next/server").NextResponse | null> {
+  const { StaleWriteError } = await import("./supabase/store");
+  const { NextResponse } = await import("next/server");
+  try {
+    await save();
+    return null;
+  } catch (e) {
+    if (e instanceof StaleWriteError) {
+      return NextResponse.json({ error: e.message, conflict: true }, { status: 409 });
+    }
+    throw e; // not a concurrency issue — let the route's own handler deal with it
+  }
+}
+
 // Audit log is append-only by construction: this is the only writer.
 export function logAudit(db: Database, actor: string, action: string, detail: string): void {
   const event: AuditEvent = {

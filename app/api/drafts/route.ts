@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getStore, logAudit, newId } from "@/lib/db";
+import { getStore, logAudit, newId, saveOr409 } from "@/lib/db";
 import { generateCadencePost } from "@/lib/ai";
 import { checkContent, hasBlockingFlags } from "@/lib/compliance";
 import type { Draft } from "@/lib/types";
@@ -28,6 +28,7 @@ export async function POST() {
   };
   db.drafts.unshift(draft);
   logAudit(db, "system", "DRAFT_CREATED", `Generated cadence draft via ${engine}`);
-  await save();
+  const conflict = await saveOr409(save);
+  if (conflict) return conflict;
   return NextResponse.json(draft);
 }

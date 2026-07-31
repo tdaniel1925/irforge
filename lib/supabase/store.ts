@@ -260,6 +260,17 @@ export async function getCollection<T>(companyId: string, collection: string): P
   return ((data?.data as T[]) ?? []) as T[];
 }
 
+// Thrown when a concurrent write beat us — the collection changed since load.
+// Routes catch this and return 409 so the client reloads instead of losing data.
+export class StaleWriteError extends Error {
+  collection: string;
+  constructor(collection: string) {
+    super(`"${collection}" was changed by someone else — reload and try again.`);
+    this.name = "StaleWriteError";
+    this.collection = collection;
+  }
+}
+
 export async function setCollection<T>(companyId: string, collection: string, items: T[]): Promise<void> {
   const supabase = await createServerSupabase();
   await supabase
@@ -282,19 +293,20 @@ export async function loadCompanyDb(): Promise<{ db: Database; companyId: string
   const mine = await getMyCompany();
   if (!mine) return null;
   const supabase = await createServerSupabase();
-  const { data } = await supabase.from("company_data").select("collection, data").eq("company_id", mine.id);
+  const { data } = await supabase.from("company_data").select("collection, data, version").eq("company_id", mine.id);
 
   const db = { company: mine.company } as unknown as Database;
   for (const c of COLLECTIONS) (db as unknown as Record<string, unknown>)[c] = [];
-  for (const row of data ?? []) (db as unknown as Record<string, unknown>)[row.collection as string] = row.data;
+  // Version LOADED per collection — the basis for the optimistic check on save.
+  // A collection with no row yet is version -1 (so the first write must INSERT).
+  const loadedVersion: Record<string, number> = {};
+  for (const c of COLLECTIONS) loadedVersion[c] = -1;
+  for (const row of data ?? []) {
+    (db as unknown as Record<string, unknown>)[row.collection as string] = row.data;
+    loadedVersion[row.collection as string] = Number(row.version ?? 0);
+  }
 
   // Snapshot what was LOADED so save() writes only what THIS request changed.
-  // Previously save() upserted all 16 collections + the full company profile on
-  // every call — a full-document last-writer-wins: two concurrent requests (or two
-  // teammates) silently clobbered each other's unrelated writes (e.g. saving a draft
-  // overwrote a concurrent brand-colors change with stale values). Dirty-only writes
-  // shrink the race to same-collection concurrent edits (inherent to the JSONB
-  // design; per-row versioning is the eventual fix).
   const baseline: Record<string, string> = {};
   for (const c of COLLECTIONS) baseline[c] = JSON.stringify((db as unknown as Record<string, unknown>)[c] ?? []);
   const companyBaseline = JSON.stringify(db.company);
@@ -307,15 +319,36 @@ export async function loadCompanyDb(): Promise<{ db: Database; companyId: string
     );
     if (dirty.length === 0) return;
     const ts = new Date().toISOString();
-    const rows = dirty.map((c) => ({
-      company_id: mine.id,
-      collection: c,
-      data: (db as unknown as Record<string, unknown>)[c] ?? [],
-      updated_at: ts,
-    }));
-    await supabase.from("company_data").upsert(rows, { onConflict: "company_id,collection" });
-    // Refresh baselines so a second save() in the same request stays dirty-only.
-    for (const c of dirty) baseline[c] = JSON.stringify((db as unknown as Record<string, unknown>)[c] ?? []);
+
+    // OPTIMISTIC CONCURRENCY: write each dirty collection only if its version is
+    // still the one we loaded; bump it. If the row already existed, use a
+    // version-guarded UPDATE; if it never existed (loadedVersion === -1), INSERT.
+    // Zero rows affected on the guarded update = someone else wrote first =>
+    // StaleWriteError, so we reject instead of silently clobbering their change.
+    for (const c of dirty) {
+      const payload = (db as unknown as Record<string, unknown>)[c] ?? [];
+      if (loadedVersion[c] === -1) {
+        // First write for this collection. A concurrent insert would violate the
+        // (company_id, collection) unique constraint — treat that as a stale write.
+        const { error } = await supabase
+          .from("company_data")
+          .insert({ company_id: mine.id, collection: c, data: payload, version: 0, updated_at: ts });
+        if (error) throw new StaleWriteError(c);
+        loadedVersion[c] = 0;
+      } else {
+        const { data: updated } = await supabase
+          .from("company_data")
+          .update({ data: payload, version: loadedVersion[c] + 1, updated_at: ts })
+          .eq("company_id", mine.id)
+          .eq("collection", c)
+          .eq("version", loadedVersion[c])   // ← the guard
+          .select("version");
+        if (!updated || updated.length === 0) throw new StaleWriteError(c);
+        loadedVersion[c] = loadedVersion[c] + 1;
+      }
+      // Refresh baseline so a second save() in the same request stays dirty-only.
+      baseline[c] = JSON.stringify(payload);
+    }
   };
 
   return { db, companyId: mine.id, save };
