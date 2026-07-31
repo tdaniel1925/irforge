@@ -1,0 +1,55 @@
+name: DB migrations + tests
+
+# Builds a CLEAN Postgres from supabase/migrations/*.sql in order, then runs the
+# test suite against it. This is the reproducibility guard (review P0 #2): if a
+# fresh database built from the repo doesn't match what the app expects, this
+# fails. Activates fully once supabase/migrations/0001_baseline.sql exists.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-db-and-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: irforge_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 10s
+          --health-timeout 5s --health-retries 5
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/irforge_test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Apply migrations in order (clean DB)
+        run: |
+          shopt -s nullglob
+          files=(supabase/migrations/*.sql)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No migrations yet (awaiting 0001_baseline.sql) — skipping DB build."
+            exit 0
+          fi
+          for f in $(printf '%s\n' "${files[@]}" | sort); do
+            echo "── applying $f"
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$f"
+          done
+          echo "✓ clean database built from ${#files[@]} migration(s)"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Unit + integration tests
+        run: npm test
+      # Once the baseline exists, add authz/tenant integration tests here that run
+      # against $DATABASE_URL to prove page/API/RLS decisions agree on a fresh DB.
