@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getMyCompany } from "@/lib/supabase/store";
+import { requireCapability } from "@/lib/authz/guard";
 import {
   listContacts, upsertContact, deleteContact,
   listCompanies, upsertCompany, deleteCompany,
@@ -13,9 +13,11 @@ export const runtime = "nodejs";
 
 // One endpoint for the whole CRM. GET ?entity=all|contacts|companies|deals|tasks|activities
 // POST { entity, action: 'save'|'delete'|'move'|'log', ...payload }.
+// CRM is a paid capability — previously this route only checked sign-in, so a
+// free-tier company could read/write CRM data. Now gated by the canonical resolver.
 export async function GET(req: Request) {
-  const mine = await getMyCompany();
-  if (!mine) return NextResponse.json({ error: "Sign in." }, { status: 401 });
+  const g = await requireCapability("crm");
+  if (!g.ok) return g.response;
   const entity = new URL(req.url).searchParams.get("entity") ?? "all";
   const contactId = new URL(req.url).searchParams.get("contactId") ?? undefined;
   const dealId = new URL(req.url).searchParams.get("dealId") ?? undefined;
@@ -31,8 +33,8 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const mine = await getMyCompany();
-  if (!mine) return NextResponse.json({ error: "Sign in." }, { status: 401 });
+  const g = await requireCapability("crm");
+  if (!g.ok) return g.response;
   const b = await req.json().catch(() => ({}));
   const { entity, action } = b;
 

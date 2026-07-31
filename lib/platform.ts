@@ -78,27 +78,35 @@ export async function isCompedCompany(companyId: string): Promise<boolean> {
   return data?.subscription_status === "active" && !data?.stripe_subscription_id;
 }
 
+// Both feature gates below now delegate to the ONE canonical resolver
+// (lib/authz) so every server route and /api/state compute access from the same
+// place. Dynamic import avoids a static import cycle (authz/resolve imports the
+// primitives from this file). The resolver's capability map is the UNION of tier
+// features + IROS flags with the documented precedence, so:
+//   - companyHasFeature (an IROS flag key) and
+//   - companyHasTierFeature (a tier Feature)
+// both look up their key in the same map and honor super-admin/comped overrides
+// identically. Behavior is unchanged for existing callers; the SOURCE is unified.
+
 export async function companyHasFeature(companyId: string, feature: FeatureKey): Promise<boolean> {
-  // Super admins always have every feature, regardless of per-company flags.
-  if (await isSuperAdmin()) return true;
-  // Comped/promo companies (free full access) get every feature too.
-  if (await isCompedCompany(companyId)) return true;
-  const features = await getCompanyFeatures(companyId);
-  return Boolean(features[feature]);
+  const { companyCan } = await import("./authz/resolve");
+  // Tier is looked up inside the resolver via the company row; pass undefined and
+  // let it read flags — but companyHasFeature is IROS-flag-scoped, and the resolver
+  // needs the tier to compute the union. Fetch the tier cheaply.
+  const svc = createServiceClient();
+  const { data } = await svc.from("companies").select("tier").eq("id", companyId).maybeSingle();
+  return companyCan(companyId, (data?.tier as string) ?? "free", feature);
 }
 
 // Tier-based feature gate for API routes (billing TIERS, not the IROS capability
-// flags above). Honors the same overrides as /api/state: super admins and
-// comped companies act as the top tier.
+// flags above). Honors the same overrides as /api/state via the canonical resolver.
 export async function companyHasTierFeature(
   companyId: string,
   tier: import("./billing").Tier | string | undefined,
   feature: import("./billing").Feature
 ): Promise<boolean> {
-  const { tierHasFeature } = await import("./billing");
-  if (tierHasFeature((tier ?? "free") as import("./billing").Tier, feature)) return true;
-  if (await isSuperAdmin()) return true;
-  return isCompedCompany(companyId);
+  const { companyCan } = await import("./authz/resolve");
+  return companyCan(companyId, tier, feature);
 }
 
 // The company's EFFECTIVE capability access in a single pass — the authoritative

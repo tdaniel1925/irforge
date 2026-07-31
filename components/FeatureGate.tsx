@@ -3,12 +3,15 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { LoadingState } from "./ui";
-import { TIERS, FEATURE_MIN_TIER, tierHasFeature, type Feature, type Tier } from "@/lib/billing";
+import { TIERS, FEATURE_MIN_TIER, type Feature, type Tier } from "@/lib/billing";
 import { fetchAppState } from "@/lib/appStateClient";
 
-// Client-side hard gate for a tool page. Checks the logged-in company's tier against
-// the required feature; if locked (or free tier), shows an upgrade wall instead of the
-// page. When Supabase auth is off (local demo), everything is unlocked.
+// Client-side hard gate for a tool page. Reads the CANONICAL capability map from
+// /api/state (lib/authz) — the SAME answer server capability guards use — instead
+// of recomputing access from tier. This is what makes the client agree with the
+// server: a comped company, a super-admin, or a company with an IROS flag granted
+// beyond its tier all unlock correctly. When Supabase auth is off (local demo),
+// everything is unlocked.
 export default function FeatureGate({ feature, children }: { feature: Feature; children: React.ReactNode }) {
   const [state, setState] = useState<"loading" | "ok" | "locked" | "anon">("loading");
   const [tier, setTier] = useState<Tier>("free");
@@ -18,13 +21,15 @@ export default function FeatureGate({ feature, children }: { feature: Feature; c
     // load costs one /api/state request instead of 3-4.
     fetchAppState()
       .then((r) => {
-        const d = r.data as { authed?: boolean; company?: { tier?: string } };
+        const d = r.data as { authed?: boolean; company?: { tier?: string }; capabilities?: Record<string, boolean>; fullAccess?: boolean };
         // Local/demo mode (not authed against Supabase) — no gating.
         if (r.ok && !d.authed) { setState("ok"); return; }
         if (!r.ok) { setState("locked"); return; } // fail CLOSED on errors
-        const t = (d.company?.tier ?? "free") as Tier;
-        setTier(t);
-        setState(tierHasFeature(t, feature) ? "ok" : "locked");
+        setTier((d.company?.tier ?? "free") as Tier);
+        // Canonical: consume the server-computed capability map. fullAccess opens
+        // everything; otherwise the per-capability boolean is authoritative.
+        const allowed = d.fullAccess === true || d.capabilities?.[feature] === true;
+        setState(allowed ? "ok" : "locked");
       })
       // Fail CLOSED: if we can't confirm access, lock rather than unlock.
       .catch(() => setState("locked"));

@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { getFullDb, getMyRole } from "@/lib/supabase/store";
 import { stripeMode } from "@/lib/billing";
-import { isSuperAdmin, effectiveCompanyAccess, IROS_FEATURES } from "@/lib/platform";
+import { isSuperAdmin, IROS_FEATURES } from "@/lib/platform";
+import { resolveCompanyCapabilities } from "@/lib/authz/resolve";
+import { ALL_CAPABILITIES } from "@/lib/authz/capabilities";
 import { countOpenQuestions } from "@/lib/board";
 
 export const dynamic = "force-dynamic";
@@ -28,28 +30,27 @@ export async function GET() {
   // Multi-tenant: serve the logged-in user's company from Supabase.
   const mine = await getFullDb();
   if (mine) {
-    const co = mine.company as Record<string, unknown> & { id?: string };
-    // The AUTHORITATIVE access answer — the same one the API gates use. This makes
-    // the client agree with the server on comped/full-access (previously /api/state
-    // used `co.comped` while the API used subscription_status, so they could
-    // disagree and produce a click -> 403).
-    const access = co.id ? await effectiveCompanyAccess(String(co.id), superAdmin) : { fullAccess: superAdmin, comped: false, features: Object.fromEntries(IROS_FEATURES.map((f) => [f.key, superAdmin])) as Record<string, boolean> };
-    // Full-access companies report the top tier so tier-gating (FeatureGate) opens
-    // every dashboard tool. `capabilities` carries the per-capability truth so the UI
-    // can disable/explain a specific blocked ACTION before the user clicks.
-    const company = access.fullAccess ? { ...co, tier: "pro" } : co;
+    const co = mine.company as Record<string, unknown> & { id?: string; tier?: string };
+    // THE canonical capability map — the exact same resolver server capability
+    // guards use (lib/authz). `capabilities` now spans BOTH tier features and IROS
+    // flags (unioned), so FeatureGate can gate ANY feature from one truth instead
+    // of recomputing from a rewritten tier. We NO LONGER fake tier:"pro" — the real
+    // tier is reported and fullAccess/capabilities carry the access answer.
+    const cap = co.id
+      ? await resolveCompanyCapabilities(String(co.id), co.tier, { knownSuperAdmin: superAdmin })
+      : { fullAccess: superAdmin, comped: false, tier: "free" as const, capabilities: Object.fromEntries(ALL_CAPABILITIES.map((c) => [c, superAdmin])) };
     // Unanswered investor questions on the company's public board — drives the badge
     // on Home + the Reputation nav. Best-effort so it never blocks the dashboard.
     let openQuestions = 0;
     const coTicker = String(co.ticker ?? "").trim();
     if (coTicker) { try { openQuestions = await countOpenQuestions(coTicker); } catch { /* ignore */ } }
     return NextResponse.json(
-      { ...mine, company, ...flags, role, authed: true, fullAccess: access.fullAccess, capabilities: access.features, openQuestions },
+      { ...mine, company: co, ...flags, role, authed: true, fullAccess: cap.fullAccess, capabilities: cap.capabilities, openQuestions },
       { headers: NO_STORE }
     );
   }
 
   // Local fallback — no auth means no gating; report all capabilities on.
-  const allOn = Object.fromEntries(IROS_FEATURES.map((f) => [f.key, true])) as Record<string, boolean>;
+  const allOn = Object.fromEntries(ALL_CAPABILITIES.map((c) => [c, true])) as Record<string, boolean>;
   return NextResponse.json({ ...getDb(), ...flags, authed: false, fullAccess: true, capabilities: allOn }, { headers: NO_STORE });
 }

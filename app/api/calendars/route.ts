@@ -1,14 +1,17 @@
 import { NextResponse } from "next/server";
-import { getMyCompany } from "@/lib/supabase/store";
+import { requireCapability } from "@/lib/authz/guard";
 import { listMyCalendars, listCalendarEvents, addCalendarEvent, deleteCalendarEvent, createCalendar } from "@/lib/calendars";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+// Editorial calendar is a paid capability (growth+). Previously this route only
+// checked sign-in; now gated by the canonical resolver. Same return shape so the
+// GET/POST/DELETE handlers below are unchanged.
 async function guard() {
-  const mine = await getMyCompany();
-  if (!mine) return { error: NextResponse.json({ error: "Sign in." }, { status: 401 }) };
-  return { mine };
+  const g = await requireCapability("calendar");
+  if (!g.ok) return { error: g.response };
+  return { ok: true as const };
 }
 
 // GET — the caller's visible calendars + events (optionally for a date range).
