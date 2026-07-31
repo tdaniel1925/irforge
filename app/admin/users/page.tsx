@@ -20,6 +20,8 @@ export default function AdminUsers() {
   const [search, setSearch] = useState("");
   const [view, setView] = useState<"grouped" | "flat">("grouped");
   const [tab, setTab] = useState<"all" | "company_member" | "investor" | "unlinked">("all");
+  const [pageSize, setPageSize] = useState(50);
+  const [page, setPage] = useState(0);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -42,6 +44,27 @@ export default function AdminUsers() {
     ? <span className="ml-1 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-amber-700 dark:text-amber-300">Invited</span> : null;
 
   const flatRows = (data?.users ?? []).filter((u) => tab === "all" || u.kind === tab);
+
+  // Pagination — the flat list paginates ROWS; the grouped view paginates
+  // COMPANY GROUPS (one page = N companies). Reset to page 1 when the set changes.
+  useEffect(() => { setPage(0); }, [view, tab, search, pageSize]);
+  const groups = data?.byCompany ?? [];
+  const pageItemsTotal = view === "flat" ? flatRows.length : groups.length;
+  const pageCount = Math.max(1, Math.ceil(pageItemsTotal / pageSize));
+  const safePage = Math.min(page, pageCount - 1);
+  const pagedFlat = flatRows.slice(safePage * pageSize, safePage * pageSize + pageSize);
+  const pagedGroups = groups.slice(safePage * pageSize, safePage * pageSize + pageSize);
+
+  const Pager = () => pageItemsTotal <= pageSize ? null : (
+    <div className="mt-3 flex items-center justify-between text-sm">
+      <span className="text-faint">{safePage * pageSize + 1}–{Math.min((safePage + 1) * pageSize, pageItemsTotal)} of {pageItemsTotal} {view === "flat" ? "users" : "companies"}</span>
+      <div className="flex gap-2">
+        <button onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={safePage === 0} className="rounded-lg border border-app px-3 py-1.5 text-app hover:bg-app-hover disabled:opacity-40">← Prev</button>
+        <span className="px-1 py-1.5 text-muted">Page {safePage + 1} / {pageCount}</span>
+        <button onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))} disabled={safePage >= pageCount - 1} className="rounded-lg border border-app px-3 py-1.5 text-app hover:bg-app-hover disabled:opacity-40">Next →</button>
+      </div>
+    </div>
+  );
 
   return (
     <div>
@@ -67,11 +90,14 @@ export default function AdminUsers() {
             <button key={v} onClick={() => setView(v)} className={`rounded-md px-3 py-1.5 font-medium transition ${view === v ? "bg-emerald-600 text-white" : "text-muted hover:text-app"}`}>{label}</button>
           ))}
         </div>
+        <select value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))} className="rounded-lg border border-app bg-surface-2 px-2 py-2 text-sm" aria-label="Per page">
+          <option value={25}>25 / page</option><option value={50}>50 / page</option><option value={100}>100 / page</option>
+        </select>
       </div>
 
       {loading ? <LoadingState /> : !data ? null : view === "grouped" ? (
         <div className="space-y-4">
-          {data.byCompany.map((g) => (
+          {pagedGroups.map((g) => (
             <SoftCard key={g.companyId}>
               <div className="mb-2 flex items-center justify-between">
                 <h3 className="font-semibold text-app">{g.companyName} {g.companyTicker && <span className="text-faint">${g.companyTicker}</span>}</h3>
@@ -88,6 +114,7 @@ export default function AdminUsers() {
             </SoftCard>
           ))}
           {data.byCompany.length === 0 && <SoftCard><p className="py-6 text-center text-sm text-faint">No company teammates match.</p></SoftCard>}
+          <Pager />
 
           {data.counts.investors > 0 && (
             <>
@@ -119,7 +146,7 @@ export default function AdminUsers() {
                 <th className="px-4 py-3 font-medium">Company</th><th className="px-4 py-3 font-medium">Joined</th>
               </tr></thead>
               <tbody>
-                {flatRows.map((u, i) => (
+                {pagedFlat.map((u, i) => (
                   <tr key={u.userId || u.email || i} className="border-b border-app">
                     <td className="px-4 py-2.5 text-app">{u.handle ? `@${u.handle}` : u.email}{u.handle && <span className="block text-xs text-faint">{u.email}</span>}{statusChip(u)}</td>
                     <td className="px-4 py-2.5">{kindPill(u)}</td>
@@ -131,6 +158,7 @@ export default function AdminUsers() {
               </tbody>
             </table>
           </SoftCard>
+          <Pager />
         </>
       )}
     </div>
