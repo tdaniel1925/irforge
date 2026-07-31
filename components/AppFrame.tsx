@@ -12,31 +12,13 @@ import BackButton from "./BackButton";
 import AiChat from "./AiChat";
 import ImpersonationBanner from "./ImpersonationBanner";
 import CommsSidebar from "./CommsSidebar";
-import type { Feature } from "@/lib/billing";
+import { featureForPath } from "@/lib/routeFeatures";
 
 // The landing page (/) and other public routes render full-bleed with no app sidebar —
 // these are what a logged-out visitor (e.g. someone running a free ticker report) sees.
 // Everything else gets the dashboard shell.
 const BARE_EXACT = ["/", "/login", "/privacy", "/terms", "/how-its-legal", "/t", "/discover", "/sample-brief", "/for-investors", "/for-companies", "/accept-invite"];
 const BARE_PREFIXES = ["/t/", "/embed/", "/welcome/"]; // public ticker pages + embeds + investor welcome pages
-
-// Which paid feature each dashboard route requires. Routes not listed (settings,
-// billing, admin, onboarding) are always reachable when logged in.
-const ROUTE_FEATURE: Record<string, Feature> = {
-  "/app": "approvals",
-  "/do": "approvals",
-  "/approvals": "approvals",
-  "/filings": "approvals",
-  "/mentions": "approvals",
-  "/proof": "proof",
-  "/documents": "vault",
-  "/company": "threats",
-  "/crm": "crm",
-  "/studio": "studio",
-  "/calendar": "calendar",
-  "/captable": "captable",
-  "/analyzer": "analyzer",
-};
 
 export default function AppFrame({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -52,7 +34,7 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
   // dashboard sidebar / tier gating.
   if (pathname.startsWith("/member")) return <MemberShell>{children}</MemberShell>;
 
-  const feature = ROUTE_FEATURE[pathname];
+  const feature = featureForPath(pathname);
 
   return (
     <div className="flex min-h-screen">
