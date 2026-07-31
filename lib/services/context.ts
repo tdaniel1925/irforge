@@ -15,7 +15,7 @@ import { getMyCompany, getMyRole } from "../supabase/store";
 // authMethod is recorded in audit payloads so "a human clicked this in the UI"
 // and "an integration token did this" stay distinguishable after the fact.
 
-export type AuthMethod = "session" | "integration_token";
+export type AuthMethod = "session" | "integration_token" | "oauth";
 
 // Fine-grained scopes. Session actors get them derived from role; token actors
 // (Phase 3) will carry an explicit grant. Write scopes imply nothing about
