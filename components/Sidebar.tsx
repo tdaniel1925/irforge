@@ -8,7 +8,11 @@ import { fetchAppState } from "@/lib/appStateClient";
 import { HELP, getArticle } from "@/lib/helpContent";
 
 type NavItem = { href: string; label: string; icon: string; hint?: string; detail?: string; helpKey?: string };
-type NavGroup = { section: string; items: NavItem[] };
+// platformOnly marks a section visible only to platform super-admins. An
+// explicit flag (not a name match) so the display label can change without
+// breaking the visibility gate — the string-match version silently exposed the
+// section when the label was renamed.
+type NavGroup = { section: string; items: NavItem[]; platformOnly?: boolean };
 
 // Grouped by the job to be done, in the order an IR person actually works:
 // create & schedule content → calendars/events → stay compliant → manage
@@ -29,7 +33,7 @@ const NAV: NavGroup[] = [
       { href: "/stakeholders", label: "Investor Inbox", icon: "📥", hint: "Paste any inbound message — AI drafts a reply for your review", detail: "Paste any inbound DM, email, or comment and AI tells you who it's likely from, categorizes it, and drafts a reply — grounded in your public record — that you review and approve before sending. Keeps your investor/press relationships organized and your responses on the record." },
       { href: "/calendar", label: "Calendar", icon: "📅", hint: "IR dates, team & personal calendars, quiet periods", detail: "Every date in one place — earnings, filing deadlines, conferences, lock-ups, plus team and personal calendars. Set a quiet period to block sensitive posts during a blackout window." },
       { href: "/intelligence", label: "Analytics", icon: "📊", hint: "Your IR program at a glance + weekly summary", detail: "A live snapshot of how your investor-relations program is performing: what shipped, your Reg FD mix, inbound volume, and stakeholder counts. Generate a one-click weekly summary written for your board or execs and emailed to them." },
-      { href: "/team", label: "Team", icon: "🧑‍🤝‍🧑", hint: "Invite teammates & manage roles", detail: "Manage who can access this company account: invite teammates by email, set each person as an admin or member, and remove people. Admins can invite and manage roles; members get the full dashboard plus their own private workspace." },
+      { href: "/team", label: "Team", icon: "🧑‍🤝‍🧑", hint: "Invite teammates & manage roles", detail: "Manage who can access this company account: invite teammates by email, set each person as an admin or member, and remove people. Only company ADMINS can invite, change roles, remove people, and change company settings or billing. Members can use the IR tools their plan includes but not manage the account." },
     ],
   },
   {
@@ -56,10 +60,15 @@ const NAV: NavGroup[] = [
     ],
   },
   {
-    section: "Admin",
+    // PLATFORM OPERATIONS — the super-admin surface for running the whole
+    // platform. Deliberately NOT called "Admin": company-level administration
+    // (team, roles, settings) is a different thing done elsewhere by a company
+    // admin. This section is only visible to platform super-admins.
+    section: "Platform Operations",
+    platformOnly: true,
     items: [
-      { href: "/admin", label: "Back Office", icon: "🛠", hint: "All companies, revenue, claims (admins only)", detail: "Admin-only operations console: every company on the platform, your revenue and subscriptions, the claim-request queue, per-company feature toggles, and the full audit log." },
-      { href: "/admin/leads", label: "Lead Finder", icon: "🧲", hint: "Build outreach lists from SEC EDGAR (admins only)", detail: "Build prospecting lists from live SEC EDGAR filings (company, ticker, phone, address, recent filing), add verified IR emails, export to CSV, and send capped, approved cold outreach tracked back to delivery status." },
+      { href: "/admin", label: "Operations Console", icon: "🛠", hint: "Customers, users, investors, metrics, claims (platform admins only)", detail: "Platform-operator console: customers and prospects, all users grouped by company, investor accounts, platform metrics, per-company feature toggles, the claim-request queue, and the audit log. This runs the whole platform — separate from any single company's own settings." },
+      { href: "/admin/leads", label: "Lead Finder", icon: "🧲", hint: "Build outreach lists from SEC EDGAR (platform admins only)", detail: "Build prospecting lists from live SEC EDGAR filings (company, ticker, phone, address, recent filing), add verified IR emails, export to CSV, and send capped, approved cold outreach tracked back to delivery status." },
     ],
   },
 ];
@@ -122,7 +131,7 @@ export default function Sidebar({ mobileOpen = false, onNavigate }: { mobileOpen
   // it. Match by href only — matching the label broke when it was renamed from
   // "Your Public Page" to "Public Page", leaving this pointing at the /t lookup page.
   const nav: NavGroup[] = NAV
-    .filter((g) => g.section !== "Admin" || superAdmin)
+    .filter((g) => !g.platformOnly || superAdmin)
     .map((g) => ({
       ...g,
       items: g.items.map((it) =>

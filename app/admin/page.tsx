@@ -75,7 +75,7 @@ export default function Admin() {
 
   return (
     <div>
-      <PageHeader title="Admin Console" subtitle="Your operations hub. Admins only." />
+      <PageHeader title="Platform Operations" subtitle="Run the whole platform — customers, users, metrics, claims. Platform admins only. (Company-level settings live inside each company's own workspace.)" />
 
       {notice && <Banner message={notice.text} tone={notice.tone} onDismiss={() => setNotice(null)} />}
 
