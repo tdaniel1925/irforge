@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isSuperAdmin } from "@/lib/platform";
 import { createServiceClient } from "@/lib/supabase/server";
+import { summarizeEmail } from "@/lib/emailMetrics";
 
 export const dynamic = "force-dynamic";
 
@@ -78,7 +79,8 @@ export async function GET() {
     },
     topTickers,
     trending,
-    email,
+    email,                          // raw per-status (kept for back-compat)
+    emailSummary: summarizeEmail(email),  // honest bucketed view + health flag
     recentMembers: (recentMembers ?? []).map((m) => ({
       handle: String(m.handle ?? ""),
       displayName: String(m.display_name ?? ""),

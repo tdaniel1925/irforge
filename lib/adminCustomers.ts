@@ -1,6 +1,7 @@
 import { createServiceClient } from "./supabase/server";
 import { isSuperAdmin, IROS_FEATURES, getCompanyFeatures, writeAudit, getCurrentUser } from "./platform";
 import { TIERS, type Tier } from "./billing";
+import { classifyCompany, type CompanyKind } from "./customerClassify";
 
 // Admin Customer-Management data layer. Service-role (bypasses RLS) — every entry
 // point re-checks isSuperAdmin(). Surfaces billing, usage (from audit_log), team,
@@ -20,6 +21,8 @@ export interface CustomerRow {
   postsTotal: number;
   lastActive: string | null;
   active30d: boolean;
+  kind: CompanyKind;   // customer | prospect | phantom (see lib/customerClassify)
+  onboardingComplete: boolean;
 }
 
 const PAID_ACTIONS = new Set([
@@ -42,13 +45,16 @@ async function emailFor(svc: ReturnType<typeof createServiceClient>, ownerId: st
   }
 }
 
-// Overview list: one row per company with billing + headline usage.
-export async function listCustomers(opts: { includeArchived?: boolean } = {}): Promise<CustomerRow[]> {
+// Overview list: one row per company with billing + headline usage, each tagged
+// with its kind. Defaults to CUSTOMERS ONLY (the money definition); pass a kind
+// to get prospects or everything. This is what stops phantom team-member
+// companies from showing up as customers.
+export async function listCustomers(opts: { includeArchived?: boolean; kind?: CompanyKind | "all" } = {}): Promise<CustomerRow[]> {
   if (!(await isSuperAdmin())) return [];
   const svc = createServiceClient();
   const { data: cos } = await svc
     .from("companies")
-    .select("id, name, ticker, owner_id, tier, subscription_status, stripe_subscription_id, created_at, archived_at")
+    .select("id, name, ticker, owner_id, tier, subscription_status, stripe_subscription_id, onboarding_complete, created_at, archived_at")
     .order("created_at", { ascending: false })
     .limit(500);
   const companies = (cos ?? []).filter((c) => opts.includeArchived || !c.archived_at);
@@ -71,6 +77,13 @@ export async function listCustomers(opts: { includeArchived?: boolean } = {}): P
   const rows: CustomerRow[] = [];
   for (const c of companies) {
     const comped = c.subscription_status === "active" && !c.stripe_subscription_id;
+    const postsTotal = postCounts[String(c.id)] ?? 0;
+    const kind = classifyCompany({
+      name: c.name as string, ticker: c.ticker as string,
+      onboardingComplete: Boolean(c.onboarding_complete),
+      subscriptionStatus: (c.subscription_status as string) || "none",
+      comped, postsTotal,
+    });
     rows.push({
       id: String(c.id),
       name: (c.name as string) || "(unnamed)",
@@ -82,12 +95,17 @@ export async function listCustomers(opts: { includeArchived?: boolean } = {}): P
       mrr: mrrFor((c.tier as string) || "free", comped, (c.subscription_status as string) || "none"),
       createdAt: String(c.created_at ?? ""),
       archivedAt: c.archived_at ? String(c.archived_at) : null,
-      postsTotal: postCounts[String(c.id)] ?? 0,
+      postsTotal,
       lastActive: lastActive[String(c.id)] ?? null,
       active30d: Boolean(lastActive[String(c.id)]),
+      kind,
+      onboardingComplete: Boolean(c.onboarding_complete),
     });
   }
-  return rows;
+  // Default: customers only (the money definition). "all" returns every kind;
+  // an explicit kind filters to it. Phantoms are never returned unless kind==="all".
+  const want = opts.kind ?? "customer";
+  return want === "all" ? rows : rows.filter((r) => r.kind === want);
 }
 
 export interface CustomerDetail {

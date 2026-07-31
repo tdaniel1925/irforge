@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Banner, Button, Card, LoadingState, PageHeader } from "@/components/ui";
+import { SectionLabel, SoftCard, MetricTile } from "@/components/admin/ui";
 
 interface ClaimDoc { name: string; url: string }
 interface Claim {
@@ -59,31 +60,57 @@ export default function Admin() {
 
   const money = (n: number) => `$${n.toLocaleString()}`;
 
+  const pendingClaims = data.claims.filter((c) => c.status === "pending");
+
+  // The admin console's destinations — grouped so the console is a clear HUB, not
+  // a scattered pile of links. Each card is one place with one purpose.
+  const DESTINATIONS: { href: string; icon: string; title: string; desc: string; badge?: number }[] = [
+    { href: "/admin/customers", icon: "🏢", title: "Customers", desc: "Paying & comped companies — billing, comp, act-as, delete" },
+    { href: "/admin/users", icon: "👥", title: "Users", desc: "Every teammate, grouped by their company" },
+    { href: "/admin/investors", icon: "👤", title: "Investors", desc: "Individual investor accounts — suspend, plan, delete" },
+    { href: "/admin/metrics", icon: "📊", title: "Metrics", desc: "Platform-wide engagement, traffic & email health" },
+    { href: "/admin/features", icon: "🎚", title: "Feature access", desc: "Per-company feature toggles" },
+    { href: "/admin/leads", icon: "🧲", title: "Lead Finder", desc: "Build outreach lists from SEC EDGAR" },
+  ];
+
   return (
     <div>
-      <PageHeader title="Admin Console" subtitle="Every company, your revenue, and the claim-request queue. Admins only.">
-        <div className="flex flex-wrap gap-2">
-          <Link href="/admin/metrics" className="rounded-lg border border-app px-4 py-2 text-sm font-semibold text-app hover:bg-app-hover">📊 Platform metrics →</Link>
-          <Link href="/admin/features" className="rounded-lg border border-app px-4 py-2 text-sm font-semibold text-app hover:bg-app-hover">Feature access →</Link>
-          <Link href="/admin/customers" className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">Customer management →</Link>
-        </div>
-      </PageHeader>
+      <PageHeader title="Admin Console" subtitle="Your operations hub. Admins only." />
 
       {notice && <Banner message={notice.text} tone={notice.tone} onDismiss={() => setNotice(null)} />}
 
-      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-5">
-        <Stat label="Companies" value={data.stats.total} />
-        <Stat label="Active subs" value={data.stats.active} />
-        <Stat label="MRR" value={money(data.stats.mrr)} />
-        <Stat label="Past due" value={data.stats.pastDue} accent={data.stats.pastDue > 0} />
-        <Stat label="Pending claims" value={data.stats.pendingClaims} accent={data.stats.pendingClaims > 0} />
+      {/* Headline KPIs */}
+      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <MetricTile label="Active subs" value={data.stats.active} />
+        <MetricTile label="MRR" value={money(data.stats.mrr)} />
+        <MetricTile label="Past due" value={data.stats.pastDue} trend={data.stats.pastDue > 0 ? "up" : null} upIsGood={false} />
+        <MetricTile label="Pending claims" value={data.stats.pendingClaims} trend={data.stats.pendingClaims > 0 ? "up" : null} upIsGood={false} />
       </div>
 
-      {data.claims.filter((c) => c.status === "pending").length > 0 && (
-        <Card className="mb-6">
-          <h2 className="mb-3 font-semibold text-app">Claim requests to verify</h2>
+      {/* Destination hub */}
+      <SectionLabel>Manage</SectionLabel>
+      <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {DESTINATIONS.map((d) => (
+          <Link key={d.href} href={d.href} className="group rounded-2xl border border-app bg-surface p-5 shadow-sm transition hover:border-emerald-500/40 hover:shadow-md">
+            <div className="flex items-start gap-3">
+              <span className="text-2xl">{d.icon}</span>
+              <div>
+                <p className="font-semibold text-app group-hover:text-emerald-600 dark:group-hover:text-emerald-400">{d.title} →</p>
+                <p className="mt-0.5 text-xs text-muted">{d.desc}</p>
+              </div>
+            </div>
+          </Link>
+        ))}
+      </div>
+
+      {/* Claims queue — the one action that needs the admin's attention lives here. */}
+      {pendingClaims.length > 0 && (
+        <>
+          <SectionLabel>Action needed — claim requests to verify ({pendingClaims.length})</SectionLabel>
+          <SoftCard className="mb-6"><div className="-mt-1">
+          <h2 className="sr-only">Claim requests to verify</h2>
           <div className="space-y-3">
-            {data.claims.filter((c) => c.status === "pending").map((c) => (
+            {pendingClaims.map((c) => (
               <div key={c.id} className="rounded-lg border border-app bg-surface-2 px-4 py-3">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0 text-sm">
@@ -118,40 +145,9 @@ export default function Admin() {
             ))}
           </div>
           <p className="mt-3 text-xs text-faint">Verifying marks the claim approved. Document links are private and expire in 1 hour.</p>
-        </Card>
+          </div></SoftCard>
+        </>
       )}
-
-      <Card>
-        <h2 className="mb-3 font-semibold text-app">All companies</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead><tr className="border-b border-app text-left text-xs text-faint"><th className="py-2 pr-4 font-medium">Company</th><th className="py-2 pr-4 font-medium">Ticker</th><th className="py-2 pr-4 font-medium">Tier</th><th className="py-2 pr-4 font-medium">Status</th><th className="py-2 font-medium">Joined</th></tr></thead>
-            <tbody>
-              {data.companies.map((c) => (
-                <tr key={c.id} className="border-b border-app">
-                  <td className="py-2 pr-4 text-app">{c.name || <span className="text-faint">(not onboarded)</span>}</td>
-                  <td className="py-2 pr-4 text-muted">{c.ticker ? "$" + c.ticker : "—"}</td>
-                  <td className="py-2 pr-4 text-muted">{c.tier}</td>
-                  <td className="py-2 pr-4"><span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${c.subscription_status === "active" ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300" : c.subscription_status === "past_due" ? "bg-red-500/15 text-red-500" : "bg-app-hover text-faint"}`}>{c.subscription_status || "—"}</span></td>
-                  <td className="py-2 text-faint">{c.created_at?.slice(0, 10)}</td>
-                </tr>
-              ))}
-              {data.companies.length === 0 && (
-                <tr><td colSpan={5} className="py-8 text-center text-faint">No companies yet.</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </Card>
     </div>
-  );
-}
-
-function Stat({ label, value, accent }: { label: string; value: string | number; accent?: boolean }) {
-  return (
-    <Card className={accent ? "border-amber-500/40" : ""}>
-      <p className="text-xs text-faint">{label}</p>
-      <p className="mt-1 text-2xl font-semibold text-app">{value}</p>
-    </Card>
   );
 }

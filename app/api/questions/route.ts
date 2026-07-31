@@ -15,6 +15,9 @@ export async function POST(req: Request) {
   if (!me) {
     return NextResponse.json({ error: "Sign in as an investor to ask a question.", needsAuth: true }, { status: 401 });
   }
+  if (me.member.suspended) {
+    return NextResponse.json({ error: "Your account is suspended and can't post." }, { status: 403 });
+  }
   if (!me.member.profileComplete) {
     return NextResponse.json({ error: "Set your investor username before you can post.", needsProfile: true }, { status: 403 });
   }

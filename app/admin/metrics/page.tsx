@@ -2,28 +2,25 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Banner, Card, LoadingState, PageHeader } from "@/components/ui";
+import { Banner, LoadingState, PageHeader } from "@/components/ui";
+import { SectionLabel, SoftCard, KpiBand, Kpi, MetricTile } from "@/components/admin/ui";
+import type { EmailSummary } from "@/lib/emailMetrics";
 
 interface Metrics {
   counts: {
-    investors: number | null;
-    companies: number | null;
-    watchlistAdds: number | null;
-    tickerViews: number;
-    tickersViewed: number;
-    boardPosts: number | null;
-    questions: number;
-    questionsAnswered: number;
-    reactions: number | null;
-    leads: number | null;
+    investors: number | null; companies: number | null; watchlistAdds: number | null;
+    tickerViews: number; tickersViewed: number; boardPosts: number | null;
+    questions: number; questionsAnswered: number; reactions: number | null; leads: number | null;
   };
   topTickers: { ticker: string; views: number }[];
   trending: { ticker: string; views: number }[];
   email: Record<string, number>;
+  emailSummary: EmailSummary;
   recentMembers: { handle: string; displayName: string; email: string; profileComplete: boolean; joined: string }[];
 }
 
 // Platform-wide engagement metrics — the "how is the site actually doing" page.
+// Back-office design system (hlpy-adapted): hero KPI band + metric tiles.
 export default function AdminMetrics() {
   const [data, setData] = useState<Metrics | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -46,6 +43,8 @@ export default function AdminMetrics() {
 
   const c = data.counts;
   const n = (v: number | null) => (v === null ? "—" : v.toLocaleString());
+  const answerRate = c.questions > 0 ? Math.round((c.questionsAnswered / c.questions) * 100) : null;
+  const em = data.emailSummary;
 
   return (
     <div>
@@ -53,33 +52,63 @@ export default function AdminMetrics() {
         <Link href="/admin" className="rounded-lg border border-app px-4 py-2 text-sm font-semibold text-app hover:bg-app-hover">← Admin console</Link>
       </PageHeader>
 
-      <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-faint">Audience</h2>
+      {/* Hero KPI band — the at-a-glance headline numbers. */}
+      <KpiBand title="Platform at a glance">
+        <Kpi value={n(c.investors)} label="Investor accounts" />
+        <Kpi value={n(c.companies)} label="Companies" />
+        <Kpi value={c.tickerViews.toLocaleString()} label="Ticker page views" />
+        <Kpi value={c.questions.toLocaleString()} label="Investor questions" info="Root questions on public boards" />
+        <Kpi value={answerRate === null ? "—" : `${answerRate}`} unit={answerRate === null ? "" : "%"} label="Answered by companies" upIsGood info="Share of questions a company replied to" />
+      </KpiBand>
+
+      {/* Audience */}
+      <SectionLabel>Audience</SectionLabel>
       <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Stat label="Investor accounts" value={n(c.investors)} />
-        <Stat label="Companies" value={n(c.companies)} />
-        <Stat label="Watchlist adds" value={n(c.watchlistAdds)} />
-        <Stat label="Report leads" value={n(c.leads)} />
+        <MetricTile label="Investor accounts" value={n(c.investors)} />
+        <MetricTile label="Companies" value={n(c.companies)} />
+        <MetricTile label="Watchlist adds" value={n(c.watchlistAdds)} />
+        <MetricTile label="Report leads" value={n(c.leads)} />
       </div>
 
-      <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-faint">Traffic (ticker pages — see Vercel Analytics for site-wide visitors)</h2>
+      {/* Traffic */}
+      <SectionLabel>Traffic (ticker pages — see Vercel Analytics for site-wide visitors)</SectionLabel>
       <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Stat label="Ticker page views" value={c.tickerViews.toLocaleString()} />
-        <Stat label="Distinct tickers viewed" value={c.tickersViewed.toLocaleString()} />
+        <MetricTile label="Ticker page views" value={c.tickerViews.toLocaleString()} />
+        <MetricTile label="Distinct tickers viewed" value={c.tickersViewed.toLocaleString()} />
       </div>
 
-      {Object.keys(data.email).length > 0 && (
+      {/* Email deliverability — honest bucketed view (fixes the misleading raw split). */}
+      {em.sent > 0 && (
         <>
-          <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-faint">Email deliverability (Resend events)</h2>
+          <SectionLabel>Email deliverability (Resend events)</SectionLabel>
+          {em.health !== "ok" && (
+            <Banner
+              tone="info"
+              message={
+                em.health === "unknown"
+                  ? `${em.sent.toLocaleString()} emails sent but no delivery confirmations received — the Resend delivery webhook may not be reaching PubcoZone. This is likely a webhook/config issue, not failed sending. Check RESEND_WEBHOOK_SECRET and the Resend webhook endpoint.`
+                  : `Only ${em.resolvedRate}% of sent emails have a delivery/failure confirmation — the delivery webhook may be partly down. The delivery rate below is computed only over confirmed events.`
+              }
+            />
+          )}
           <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
-            {Object.entries(data.email).map(([status, count]) => (
-              <Stat key={status} label={status} value={count.toLocaleString()} />
-            ))}
+            <MetricTile label="Sent" value={em.sent.toLocaleString()} />
+            <MetricTile label="Delivered" value={em.delivered.toLocaleString()} trend={em.delivered > 0 ? "up" : null} upIsGood />
+            <MetricTile label="Failed" value={em.failed.toLocaleString()} trend={em.failed > 0 ? "up" : null} upIsGood={false} />
+            <MetricTile label="Awaiting confirmation" value={em.pending.toLocaleString()} />
           </div>
+          <SoftCard className="mb-6">
+            <div className="flex flex-wrap items-center gap-x-8 gap-y-2">
+              <span className="text-sm text-muted">Delivery rate <span className="text-faint">(of confirmed)</span>: <span className="font-bold text-app">{em.deliveryRate === null ? "—" : `${em.deliveryRate}%`}</span></span>
+              <span className="text-sm text-muted">Confirmation coverage: <span className="font-bold text-app">{em.resolvedRate === null ? "—" : `${em.resolvedRate}%`}</span></span>
+            </div>
+          </SoftCard>
         </>
       )}
 
+      {/* Trending */}
       {data.trending.length > 0 && (
-        <Card className="mb-6">
+        <SoftCard className="mb-6">
           <h2 className="mb-3 font-semibold text-app">🔥 Trending tickers — last 7 days</h2>
           <div className="flex flex-wrap gap-2">
             {data.trending.map((t) => (
@@ -88,19 +117,21 @@ export default function AdminMetrics() {
               </Link>
             ))}
           </div>
-        </Card>
+        </SoftCard>
       )}
 
-      <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-faint">Discussion boards</h2>
+      {/* Discussion boards */}
+      <SectionLabel>Discussion boards</SectionLabel>
       <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Stat label="Board posts" value={n(c.boardPosts)} />
-        <Stat label="Investor questions" value={c.questions.toLocaleString()} />
-        <Stat label="Answered by companies" value={`${c.questionsAnswered.toLocaleString()}${c.questions > 0 ? ` (${Math.round((c.questionsAnswered / c.questions) * 100)}%)` : ""}`} />
-        <Stat label="Reactions (deduped, real)" value={n(c.reactions)} />
+        <MetricTile label="Board posts" value={n(c.boardPosts)} />
+        <MetricTile label="Investor questions" value={c.questions.toLocaleString()} />
+        <MetricTile label="Answered by companies" value={answerRate === null ? "—" : `${c.questionsAnswered} (${answerRate}%)`} />
+        <MetricTile label="Reactions (deduped, real)" value={n(c.reactions)} />
       </div>
 
+      {/* Tables */}
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
+        <SoftCard>
           <h2 className="mb-3 font-semibold text-app">Most-viewed tickers</h2>
           <table className="w-full text-sm">
             <thead><tr className="border-b border-app text-left text-xs text-faint"><th className="py-2 font-medium">Ticker</th><th className="py-2 text-right font-medium">Views</th></tr></thead>
@@ -114,9 +145,9 @@ export default function AdminMetrics() {
               {data.topTickers.length === 0 && <tr><td colSpan={2} className="py-6 text-center text-faint">No views yet.</td></tr>}
             </tbody>
           </table>
-        </Card>
+        </SoftCard>
 
-        <Card>
+        <SoftCard>
           <h2 className="mb-3 font-semibold text-app">Newest investor accounts</h2>
           <table className="w-full text-sm">
             <thead><tr className="border-b border-app text-left text-xs text-faint"><th className="py-2 font-medium">Investor</th><th className="py-2 font-medium">Email</th><th className="py-2 font-medium">Username set</th><th className="py-2 text-right font-medium">Joined</th></tr></thead>
@@ -132,17 +163,8 @@ export default function AdminMetrics() {
               {data.recentMembers.length === 0 && <tr><td colSpan={4} className="py-6 text-center text-faint">No investor accounts yet.</td></tr>}
             </tbody>
           </table>
-        </Card>
+        </SoftCard>
       </div>
     </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string | number }) {
-  return (
-    <Card>
-      <p className="text-xs text-faint">{label}</p>
-      <p className="mt-1 text-2xl font-semibold text-app">{value}</p>
-    </Card>
   );
 }

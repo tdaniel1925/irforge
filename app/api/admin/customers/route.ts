@@ -21,7 +21,9 @@ export async function GET(req: Request) {
     if (!detail) return NextResponse.json({ error: "Not found." }, { status: 404 });
     return NextResponse.json({ customer: detail });
   }
-  const customers = await listCustomers({ includeArchived: url.searchParams.get("archived") === "1" });
+  const kindParam = url.searchParams.get("kind");
+  const kind = (["customer", "prospect", "phantom", "all"].includes(kindParam ?? "") ? kindParam : undefined) as "customer" | "prospect" | "phantom" | "all" | undefined;
+  const customers = await listCustomers({ includeArchived: url.searchParams.get("archived") === "1", kind });
   return NextResponse.json({ customers });
 }
 
@@ -53,4 +55,33 @@ export async function POST(req: Request) {
     return r.ok ? NextResponse.json({ ok: true }) : NextResponse.json({ error: r.error }, { status: 422 });
   }
   return NextResponse.json({ error: "Unknown action." }, { status: 422 });
+}
+
+// POST to /api/admin/customers/bulk isn't a thing (single route file); bulk is a
+// separate PATCH here to keep the verb distinct from single-item POST actions.
+// Body: { action: "archive"|"unarchive"|"delete", ids: string[], confirm?: string }
+export async function PATCH(req: Request) {
+  const g = await guard();
+  if (g) return g;
+  const b = await req.json().catch(() => ({}));
+  const ids: string[] = Array.isArray(b.ids) ? b.ids.map(String).slice(0, 200) : [];
+  if (!ids.length) return NextResponse.json({ error: "No customers selected." }, { status: 422 });
+
+  // Bulk delete is guarded by a count-based typed confirmation (typing each
+  // company name for a batch is impractical): the client must send confirm === "delete N".
+  if (b.action === "delete" && String(b.confirm ?? "").trim().toLowerCase() !== `delete ${ids.length}`) {
+    return NextResponse.json({ error: `Type “delete ${ids.length}” to confirm deleting ${ids.length} customers.` }, { status: 422 });
+  }
+
+  let succeeded = 0;
+  const failed: { id: string; error: string }[] = [];
+  for (const id of ids) {
+    let r: { ok: boolean; error?: string };
+    if (b.action === "archive") r = await archiveCompany(id, true);
+    else if (b.action === "unarchive") r = await archiveCompany(id, false);
+    else if (b.action === "delete") r = await deleteCompany(id);
+    else return NextResponse.json({ error: "Unknown bulk action." }, { status: 422 });
+    if (r.ok) succeeded++; else failed.push({ id, error: r.error ?? "failed" });
+  }
+  return NextResponse.json({ ok: succeeded, failed });
 }

@@ -4,11 +4,9 @@ import { useEffect, useState } from "react";
 import { Banner, Button, Card, LoadingState, PageHeader } from "@/components/ui";
 import CustomerConsole from "@/components/CustomerConsole";
 
-interface Company { id: string; name: string; ticker: string; tier: string; subscription_status: string; stripe_customer_id?: string; stripe_subscription_id?: string }
 interface EmailEvent { id: string; message_id?: string; to_email: string; kind: string; subject: string; status: string; sent_at?: string; delivered_at?: string; opened_at?: string; error?: string }
 
 export default function AdminCustomers() {
-  const [companies, setCompanies] = useState<Company[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState<{ text: string; tone: "success" | "error" | "info" } | null>(null);
@@ -46,15 +44,10 @@ export default function AdminCustomers() {
   })();
   const effectiveMsg = msgTouched ? promo.message : defaultMsg;
 
-  const load = async () => {
-    try {
-      const res = await fetch("/api/admin");
-      const d = await res.json();
-      if (!res.ok) setError(d.error ?? "Failed.");
-      else { setCompanies(d.companies ?? []); setError(null); }
-    } catch { setError("Network error."); } finally { setLoading(false); }
-  };
-  useEffect(() => { load(); }, []);
+  // Company-list actions (comp / invoice / act-as / cancel / archive / delete /
+  // bulk) all moved into <CustomerConsole/>, which does its own data loading.
+  // This page only keeps the create-customer + promo-invite forms below.
+  useEffect(() => { setLoading(false); }, []);
 
   const act = async (body: object, success?: string): Promise<{ ok?: boolean; invoiceUrl?: string; customerId?: string; error?: string }> => {
     setNotice(null);
@@ -62,42 +55,16 @@ export default function AdminCustomers() {
     const data = await res.json();
     if (!res.ok) { setNotice({ text: data.error ?? "Failed.", tone: "error" }); return data; }
     if (success) setNotice({ text: success, tone: "success" });
-    await load();
     return data;
   };
 
   const createCustomer = async () => {
     setBusy("create");
     const r = await act({ action: "create_customer", ...nc });
-    if (r.customerId) { setNotice({ text: `Stripe customer created (${r.customerId}). Now subscribe them below.`, tone: "success" }); setNc({ name: "", email: "", ticker: "", tier: "growth" }); }
+    if (r.customerId) { setNotice({ text: `Stripe customer created (${r.customerId}). Subscribe or comp them from the customer list above.`, tone: "success" }); setNc({ name: "", email: "", ticker: "", tier: "growth" }); }
     else if (r.ok) setNotice({ text: "Stripe customer created.", tone: "success" });
     setBusy("");
   };
-
-  const subscribe = async (c: Company, tier: string) => {
-    setBusy(c.id);
-    if (!c.stripe_customer_id) { setNotice({ text: "This company has no Stripe customer yet — create one first.", tone: "error" }); setBusy(""); return; }
-    const r = await act({ action: "send_subscription_invoice", customerId: c.stripe_customer_id, companyId: c.id, tier });
-    if (r.invoiceUrl) setNotice({ text: `Subscription created. Send this invoice to the customer: ${r.invoiceUrl}`, tone: "success" });
-    else if (r.ok) setNotice({ text: "Subscription created. The invoice is being generated in Stripe — check the Stripe dashboard for the hosted link.", tone: "info" });
-    setBusy("");
-  };
-
-
-  const comp = async (c: Company) => { setBusy(c.id + "comp"); await act({ action: "comp", companyId: c.id, tier: c.tier }, `${c.name} comped to active.`); setBusy(""); };
-  const compFull = async (c: Company) => { setBusy(c.id + "full"); await act({ action: "comp_full", companyId: c.id }, `${c.name || "Company"} now has everything free (Command tier + all features).`); setBusy(""); };
-  // Start impersonating a company, then go to their dashboard. Everything in the app
-  // then acts as that company until you click "Exit" in the impersonation banner.
-  const impersonate = async (c: Company) => {
-    setBusy(c.id + "imp");
-    try {
-      const res = await fetch("/api/admin/impersonate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId: c.id }) });
-      const d = await res.json();
-      if (!res.ok) { setNotice({ text: d.error ?? "Couldn't start impersonation.", tone: "error" }); setBusy(""); return; }
-      window.location.href = "/app";
-    } catch { setNotice({ text: "Network error.", tone: "error" }); setBusy(""); }
-  };
-  const cancel = async (c: Company) => { setBusy(c.id + "cancel"); await act({ action: "cancel_sub", subscriptionId: c.stripe_subscription_id, companyId: c.id }, "Subscription canceled."); setBusy(""); };
 
   const invitePromo = async () => {
     setBusy("promo");
@@ -243,46 +210,9 @@ export default function AdminCustomers() {
         <p className="mt-2 text-xs text-faint">This creates the Stripe customer. To also link it to an existing app account, use the table below after they sign up.</p>
       </Card>
 
-      {/* Existing companies */}
-      <Card>
-        <h2 className="mb-3 font-semibold text-app">Companies</h2>
-        <div className="space-y-3">
-          {companies.map((c) => {
-            // A company is already provisioned once it has an active/paid subscription.
-            // Don't offer "subscribe again" / "comp" actions in that state — they contradict
-            // the "active" status shown right above and would double-bill or re-comp.
-            const isActive = c.subscription_status === "active";
-            return (
-            <div key={c.id} className="rounded-lg border border-app bg-surface p-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="font-medium text-app">{c.name || "(not onboarded)"} {c.ticker && <span className="text-faint">${c.ticker}</span>}</p>
-                  <p className="text-xs text-muted">
-                    {c.tier} · <span className={c.subscription_status === "active" ? "text-emerald-600 dark:text-emerald-400" : c.subscription_status === "past_due" ? "text-red-500" : "text-faint"}>{c.subscription_status}</span>
-                    {c.stripe_customer_id ? ` · Stripe ✓` : " · no Stripe customer"}
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {!isActive && (
-                    <>
-                      <select defaultValue={c.tier} id={`tier-${c.id}`} className="rounded border border-app bg-surface-2 px-2 py-1.5 text-xs text-app focus:outline-none">
-                        <option value="starter">Starter</option><option value="growth">Growth</option><option value="pro">Command</option>
-                      </select>
-                      <Button onClick={() => subscribe(c, (document.getElementById(`tier-${c.id}`) as HTMLSelectElement).value)} disabled={busy === c.id}>{busy === c.id ? "…" : "Send subscription invoice"}</Button>
-                      <Button variant="secondary" onClick={() => comp(c)} disabled={busy === c.id + "comp"}>Comp</Button>
-                      <Button variant="secondary" onClick={() => compFull(c)} disabled={busy === c.id + "full"} title="Command tier + every feature, free">{busy === c.id + "full" ? "…" : "🎁 Comp full (free)"}</Button>
-                    </>
-                  )}
-                  <Button variant="secondary" onClick={() => impersonate(c)} disabled={busy === c.id + "imp"} title="Log in as this company to make changes">{busy === c.id + "imp" ? "…" : "👁 Act as"}</Button>
-                  {c.stripe_subscription_id && <Button variant="danger" onClick={() => cancel(c)} disabled={busy === c.id + "cancel"}>Cancel</Button>}
-                </div>
-              </div>
-            </div>
-            );
-          })}
-          {companies.length === 0 && <p className="py-6 text-center text-sm text-faint">No companies yet.</p>}
-        </div>
-      </Card>
+      {/* The legacy standalone "Companies" list was removed — every customer action
+          (comp, invoice, act-as, cancel, archive, delete, bulk) now lives in the
+          CustomerConsole above, so there's one customer list instead of two. */}
 
       <p className="mt-6 text-xs text-faint">For charging a card you hold on the customer&apos;s behalf, use the Stripe Dashboard directly — this console only sends hosted invoices, so you never touch raw card data (keeps you out of PCI scope).</p>
     </div>

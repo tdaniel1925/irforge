@@ -42,6 +42,9 @@ export async function POST(req: Request) {
   if (!me) {
     return NextResponse.json({ error: "Sign in as an investor to post.", needsAuth: true }, { status: 401 });
   }
+  if (me.member.suspended) {
+    return NextResponse.json({ error: "Your account is suspended and can't post." }, { status: 403 });
+  }
   // Require a chosen username before posting — so board posts always carry a real
   // investor identity, never an auto-generated placeholder.
   if (!me.member.profileComplete) {

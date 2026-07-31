@@ -7,6 +7,7 @@ interface Row {
   id: string; name: string; ticker: string; ownerEmail: string; tier: string;
   subscriptionStatus: string; comped: boolean; mrr: number; createdAt: string;
   archivedAt: string | null; postsTotal: number; lastActive: string | null; active30d: boolean;
+  kind: "customer" | "prospect" | "phantom"; onboardingComplete: boolean;
 }
 interface Detail {
   id: string; name: string; ticker: string; ownerEmail: string; tier: string;
@@ -32,21 +33,33 @@ export default function CustomerConsole() {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
-  const [filter, setFilter] = useState<"active" | "comped" | "inactive" | "archived" | "all">("active");
+  // kind drives the SERVER query: customer (paying/comped) | prospect (real but
+  // unpaid). Phantom team-member companies are NOT customers — they live on the
+  // Users page, so there's no "all" here that would leak them in.
+  const [kind, setKind] = useState<"customer" | "prospect">("customer");
+  const [showArchived, setShowArchived] = useState(false);
   const [sort, setSort] = useState<"recent" | "mrr" | "activity" | "name">("recent");
   const [detail, setDetail] = useState<Detail | null>(null);
   const [drawerLoading, setDrawerLoading] = useState(false);
   const [delConfirm, setDelConfirm] = useState("");
   const [msg, setMsg] = useState("");
+  // Bulk selection
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkConfirm, setBulkConfirm] = useState("");
+  const [bulkBusy, setBulkBusy] = useState(false);
+  // Pagination
+  const [pageSize, setPageSize] = useState(50);
+  const [page, setPage] = useState(0);
 
   const load = async () => {
     setLoading(true);
-    const res = await fetch(`/api/admin/customers?archived=1`, { cache: "no-store" });
+    const p = new URLSearchParams({ kind, archived: showArchived ? "1" : "0" });
+    const res = await fetch(`/api/admin/customers?${p}`, { cache: "no-store" });
     const d = await res.json();
     if (res.ok) setRows(d.customers ?? []);
     setLoading(false);
   };
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); /* eslint-disable-line */ }, [kind, showArchived]);
 
   const openDetail = async (id: string) => {
     setDrawerLoading(true); setDetail(null); setDelConfirm(""); setMsg("");
@@ -65,16 +78,51 @@ export default function CustomerConsole() {
     return true;
   };
 
-  // Filter + sort.
+  // Billing / lifecycle actions live on the OTHER admin route (/api/admin/customer,
+  // singular). Ported from the old standalone Companies list so this console is the
+  // single place to comp, invoice, or act-as a customer.
+  const [actBusy, setActBusy] = useState("");
+  const billing = async (body: object, okMsg: string) => {
+    setActBusy(JSON.stringify(body)); setMsg("");
+    try {
+      const res = await fetch("/api/admin/customer", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) { setMsg(d.error ?? "Action failed."); return null; }
+      setMsg(d.invoiceUrl ? `Invoice ready: ${d.invoiceUrl}` : okMsg);
+      await load();
+      if (detail) await openDetail(detail.id);
+      return d;
+    } catch { setMsg("Network error."); return null; } finally { setActBusy(""); }
+  };
+  const impersonate = async (companyId: string) => {
+    setMsg("");
+    const res = await fetch("/api/admin/impersonate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId }) });
+    if (res.ok) window.location.href = "/app";
+    else setMsg("Couldn't start impersonation.");
+  };
+
+  // Bulk action over the selected ids. Delete needs a count-based typed confirm.
+  const bulk = async (action: "archive" | "unarchive" | "delete") => {
+    const ids = Array.from(selected);
+    if (!ids.length) return;
+    setBulkBusy(true); setMsg("");
+    try {
+      const res = await fetch("/api/admin/customers", {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, ids, confirm: action === "delete" ? bulkConfirm : undefined }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) { setMsg(d.error ?? "Bulk action failed."); return; }
+      setMsg(`${action === "delete" ? "Deleted" : action === "archive" ? "Archived" : "Unarchived"} ${d.ok}${d.failed?.length ? ` · ${d.failed.length} failed` : ""}.`);
+      setSelected(new Set()); setBulkConfirm("");
+      await load();
+    } catch { setMsg("Network error."); } finally { setBulkBusy(false); }
+  };
+
+  const toggle = (id: string) => setSelected((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+
+  // Search + sort. Kind + archived are already applied server-side.
   const visible = rows
-    .filter((r) => {
-      if (filter === "archived") return Boolean(r.archivedAt);
-      if (r.archivedAt) return false;
-      if (filter === "active") return r.subscriptionStatus === "active" && !r.comped;
-      if (filter === "comped") return r.comped;
-      if (filter === "inactive") return !r.active30d;
-      return true;
-    })
     .filter((r) => !q || `${r.name} ${r.ticker} ${r.ownerEmail}`.toLowerCase().includes(q.toLowerCase()))
     .sort((a, b) => {
       if (sort === "mrr") return b.mrr - a.mrr;
@@ -82,6 +130,13 @@ export default function CustomerConsole() {
       if (sort === "name") return a.name.localeCompare(b.name);
       return (b.createdAt ?? "").localeCompare(a.createdAt ?? "");
     });
+
+  // Client-side pagination over the filtered/sorted set. Reset to page 1 whenever
+  // the result set changes so we never sit on an out-of-range page.
+  useEffect(() => { setPage(0); }, [q, kind, showArchived, sort, pageSize]);
+  const pageCount = Math.max(1, Math.ceil(visible.length / pageSize));
+  const safePage = Math.min(page, pageCount - 1);
+  const paged = visible.slice(safePage * pageSize, safePage * pageSize + pageSize);
 
   const stats = rows.filter((r) => !r.archivedAt).reduce(
     (s, r) => {
@@ -105,29 +160,56 @@ export default function CustomerConsole() {
         <Stat label="MRR" value={`$${stats.mrr.toLocaleString()}`} tone="good" />
       </div>
 
+      {/* Kind segment — Customers (paying/comped) · Prospects. Phantom
+          team-member companies are NOT here; they live on the Users page. */}
+      <div className="mb-3 inline-flex rounded-lg border border-app bg-surface-2 p-0.5 text-sm">
+        {([["customer", "Customers"], ["prospect", "Prospects"]] as const).map(([k, label]) => (
+          <button key={k} onClick={() => setKind(k)} className={`rounded-md px-3 py-1.5 font-medium transition ${kind === k ? "bg-emerald-600 text-white" : "text-muted hover:text-app"}`}>{label}</button>
+        ))}
+      </div>
+
       {/* Controls */}
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="🔍 Search name / ticker / email…" className="flex-1 rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-app focus:border-emerald-500 focus:outline-none" />
-        <select value={filter} onChange={(e) => setFilter(e.target.value as typeof filter)} className="rounded-lg border border-app bg-surface-2 px-2 py-2 text-sm">
-          {["active", "comped", "inactive", "archived", "all"].map((f) => <option key={f} value={f}>{f === "inactive" ? "dormant" : f}</option>)}
-        </select>
+        <label className="flex items-center gap-1.5 rounded-lg border border-app bg-surface-2 px-3 py-2 text-sm text-muted"><input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} className="h-4 w-4" /> Archived</label>
         <select value={sort} onChange={(e) => setSort(e.target.value as typeof sort)} className="rounded-lg border border-app bg-surface-2 px-2 py-2 text-sm">
           <option value="recent">Newest</option><option value="mrr">MRR</option><option value="activity">Last active</option><option value="name">Name</option>
         </select>
+        <select value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))} className="rounded-lg border border-app bg-surface-2 px-2 py-2 text-sm" aria-label="Per page">
+          <option value={25}>25 / page</option><option value={50}>50 / page</option><option value={100}>100 / page</option>
+        </select>
       </div>
-      {msg && <p className="mb-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-600">{msg}</p>}
+      {msg && <p className="mb-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">{msg}</p>}
+
+      {/* Bulk action bar — appears when rows are selected */}
+      {selected.size > 0 && (
+        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/[0.06] px-3 py-2">
+          <span className="text-sm font-semibold text-app">{selected.size} selected</span>
+          <button onClick={() => bulk("archive")} disabled={bulkBusy} className="rounded-lg border border-amber-400/50 bg-amber-500/10 px-3 py-1.5 text-sm font-semibold text-amber-700 hover:bg-amber-500/20 dark:text-amber-300 disabled:opacity-40">Archive selected</button>
+          <button onClick={() => bulk("unarchive")} disabled={bulkBusy} className="rounded-lg border border-app px-3 py-1.5 text-sm font-semibold text-app hover:bg-app-hover disabled:opacity-40">Unarchive</button>
+          <div className="ml-auto flex items-center gap-2">
+            <input value={bulkConfirm} onChange={(e) => setBulkConfirm(e.target.value)} placeholder={`type "delete ${selected.size}"`} className="w-40 rounded-lg border border-red-500/30 bg-surface-2 px-2 py-1.5 text-xs text-app focus:outline-none" />
+            <button onClick={() => bulk("delete")} disabled={bulkBusy || bulkConfirm.trim().toLowerCase() !== `delete ${selected.size}`} className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-500/20 dark:text-red-300 disabled:opacity-40">{bulkBusy ? "…" : "Delete selected"}</button>
+            <button onClick={() => { setSelected(new Set()); setBulkConfirm(""); }} className="text-xs text-faint hover:text-app">Clear</button>
+          </div>
+        </div>
+      )}
 
       {/* Table */}
       <div className="overflow-x-auto rounded-xl border border-app">
         <table className="w-full text-sm">
           <thead className="bg-surface-2 text-left text-xs uppercase tracking-wide text-faint">
-            <tr><th className="px-3 py-2">Company</th><th className="px-3 py-2">Plan</th><th className="px-3 py-2">MRR</th><th className="px-3 py-2">Posts</th><th className="px-3 py-2">Last active</th><th className="px-3 py-2"></th></tr>
+            <tr>
+              <th className="px-3 py-2 w-8"><input type="checkbox" aria-label="Select all on this page" checked={paged.length > 0 && paged.every((r) => selected.has(r.id))} onChange={(e) => setSelected((prev) => { const n = new Set(prev); paged.forEach((r) => e.target.checked ? n.add(r.id) : n.delete(r.id)); return n; })} className="h-4 w-4" /></th>
+              <th className="px-3 py-2">Company</th><th className="px-3 py-2">Plan</th><th className="px-3 py-2">MRR</th><th className="px-3 py-2">Posts</th><th className="px-3 py-2">Last active</th><th className="px-3 py-2"></th>
+            </tr>
           </thead>
           <tbody>
-            {loading && <tr><td colSpan={6} className="px-3 py-6 text-center text-faint">Loading…</td></tr>}
-            {!loading && visible.length === 0 && <tr><td colSpan={6} className="px-3 py-6 text-center text-faint">No customers match.</td></tr>}
-            {visible.map((r) => (
-              <tr key={r.id} className={`border-t border-app hover:bg-app-hover ${r.archivedAt ? "opacity-50" : ""}`}>
+            {loading && <tr><td colSpan={7} className="px-3 py-6 text-center text-faint">Loading…</td></tr>}
+            {!loading && visible.length === 0 && <tr><td colSpan={7} className="px-3 py-6 text-center text-faint">No customers match.</td></tr>}
+            {paged.map((r) => (
+              <tr key={r.id} className={`border-t border-app hover:bg-app-hover ${r.archivedAt ? "opacity-50" : ""} ${selected.has(r.id) ? "bg-emerald-500/[0.04]" : ""}`}>
+                <td className="px-3 py-2.5"><input type="checkbox" aria-label={`Select ${r.name}`} checked={selected.has(r.id)} onChange={() => toggle(r.id)} className="h-4 w-4" /></td>
                 <td className="px-3 py-2.5">
                   <button onClick={() => openDetail(r.id)} className="text-left">
                     <span className="font-medium text-app">{r.name}</span> {r.ticker && <span className="text-xs text-faint">${r.ticker}</span>}
@@ -149,6 +231,18 @@ export default function CustomerConsole() {
           </tbody>
         </table>
       </div>
+
+      {/* Pagination */}
+      {visible.length > pageSize && (
+        <div className="mt-3 flex items-center justify-between text-sm">
+          <span className="text-faint">{safePage * pageSize + 1}–{Math.min((safePage + 1) * pageSize, visible.length)} of {visible.length}</span>
+          <div className="flex gap-2">
+            <button onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={safePage === 0} className="rounded-lg border border-app px-3 py-1.5 text-app hover:bg-app-hover disabled:opacity-40">← Prev</button>
+            <span className="px-1 py-1.5 text-muted">Page {safePage + 1} / {pageCount}</span>
+            <button onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))} disabled={safePage >= pageCount - 1} className="rounded-lg border border-app px-3 py-1.5 text-app hover:bg-app-hover disabled:opacity-40">Next →</button>
+          </div>
+        </div>
+      )}
 
       {/* Detail drawer */}
       {(detail || drawerLoading) && (
@@ -206,6 +300,25 @@ export default function CustomerConsole() {
                 </Section>
 
                 {msg && <p className="mb-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-600">{msg}</p>}
+
+                {/* Billing / lifecycle */}
+                <Section title="Billing & access">
+                  <div className="flex flex-wrap gap-2">
+                    {detail.subscriptionStatus !== "active" && (
+                      <>
+                        <button disabled={!!actBusy} onClick={() => billing({ action: "comp", companyId: detail.id, tier: detail.tier }, `${detail.name} comped to active.`)} className="rounded-lg border border-app px-3 py-1.5 text-sm text-app hover:bg-app-hover disabled:opacity-40">Comp</button>
+                        <button disabled={!!actBusy} onClick={() => billing({ action: "comp_full", companyId: detail.id }, `${detail.name} now has everything free.`)} className="rounded-lg border border-emerald-400/50 bg-emerald-500/10 px-3 py-1.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-300 disabled:opacity-40">🎁 Comp full (free)</button>
+                        {detail.stripeCustomerId && (
+                          <button disabled={!!actBusy} onClick={() => billing({ action: "send_subscription_invoice", customerId: detail.stripeCustomerId, companyId: detail.id, tier: detail.tier }, "Subscription invoice created.")} className="rounded-lg border border-app px-3 py-1.5 text-sm text-app hover:bg-app-hover disabled:opacity-40">Send invoice</button>
+                        )}
+                      </>
+                    )}
+                    <button onClick={() => impersonate(detail.id)} className="rounded-lg border border-app px-3 py-1.5 text-sm text-app hover:bg-app-hover" title="Log in as this company">👁 Act as</button>
+                    {detail.stripeSubscriptionId && (
+                      <InlineConfirm onConfirm={() => billing({ action: "cancel_sub", subscriptionId: detail.stripeSubscriptionId, companyId: detail.id }, "Subscription canceled.")} label="Cancel subscription" confirmLabel="Confirm cancel" className="rounded-lg border border-red-400/40 px-3 py-1.5 text-sm text-red-600 dark:text-red-300" />
+                    )}
+                  </div>
+                </Section>
 
                 {/* Danger zone */}
                 <Section title="Actions">

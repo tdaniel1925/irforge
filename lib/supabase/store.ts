@@ -108,7 +108,21 @@ export async function getMyCompany(): Promise<{ id: string; company: Company } |
     .maybeSingle();
   if (membership?.company_id) {
     const { data: c } = await supabase.from("companies").select("*").eq("id", membership.company_id).maybeSingle();
-    if (c) return { id: c.id as string, company: rowToCompany(c) };
+    if (c) {
+      // Prevention: this user belongs to a REAL company via membership, but an
+      // earlier standalone signup may have left them owning an EMPTY phantom
+      // company (the signup trigger mints one for every company signup). That
+      // phantom would otherwise linger forever and pollute the admin lists.
+      // Clean it up now — safe, because their real membership is what we return.
+      try {
+        const svc = createServiceClient();
+        await svc.from("companies").delete()
+          .eq("owner_id", user.id).eq("name", "").eq("ticker", "")
+          .neq("id", membership.company_id)
+          .is("archived_at", null);
+      } catch { /* best-effort cleanup; never block resolution */ }
+      return { id: c.id as string, company: rowToCompany(c) };
+    }
   }
 
   // Member (investor) accounts must NOT get a phantom company minted.

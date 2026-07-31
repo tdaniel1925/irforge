@@ -12,6 +12,7 @@ export interface Member {
   plan: "free" | "member_plus";
   subscriptionStatus: string;
   profileComplete: boolean; // true once the investor set their own username — required to post
+  suspended: boolean;       // set by an admin — blocks posting / asking questions
   stripeCustomerId?: string;
 }
 
@@ -25,6 +26,7 @@ function rowToMember(r: Record<string, unknown>): Member {
     plan: ((r.plan as string) ?? "free") as Member["plan"],
     subscriptionStatus: (r.subscription_status as string) ?? "none",
     profileComplete: Boolean(r.profile_complete),
+    suspended: !!r.suspended_at,
     stripeCustomerId: (r.stripe_customer_id as string) ?? undefined,
   };
 }
