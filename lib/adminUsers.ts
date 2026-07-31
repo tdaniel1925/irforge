@@ -1,5 +1,5 @@
 import { createServiceClient } from "./supabase/server";
-import { isSuperAdmin } from "./platform";
+import { isSuperAdmin, writeAudit, getCurrentUser } from "./platform";
 
 // Admin Users data layer — EVERY human on the platform, classified by the account
 // they belong to. This is the counterpart to the Customers list: customers are
@@ -127,4 +127,58 @@ export async function listUsers(opts: { search?: string } = {}): Promise<UsersRe
       unlinked: filtered.filter((u) => u.kind === "unlinked").length,
     },
   };
+}
+
+// ── Real companies for the "link to company" picker (customers + prospects,
+// never phantoms — those have no name/ticker to pick). ──
+export async function listLinkableCompanies(): Promise<{ id: string; name: string; ticker: string }[]> {
+  if (!(await isSuperAdmin())) return [];
+  const svc = createServiceClient();
+  const { data } = await svc
+    .from("companies")
+    .select("id, name, ticker")
+    .is("archived_at", null)
+    .or("name.neq.,ticker.neq.")   // has a name OR a ticker (real, not phantom)
+    .order("name", { ascending: true })
+    .limit(1000);
+  return (data ?? [])
+    .filter((c) => (c.name && String(c.name).trim()) || (c.ticker && String(c.ticker).trim()))
+    .map((c) => ({ id: String(c.id), name: String(c.name ?? "") || "(unnamed)", ticker: String(c.ticker ?? "") }));
+}
+
+// Link a user to a company as an active member/admin. Idempotent on
+// (company_id, user_id). Also cleans up any empty phantom company the user owned,
+// so linking fully resolves the "floating user" case.
+export async function linkUserToCompany(input: { userId: string; companyId: string; role: "admin" | "member" }): Promise<{ ok: boolean; error?: string }> {
+  if (!(await isSuperAdmin())) return { ok: false, error: "Admin only." };
+  const svc = createServiceClient();
+
+  const { data: company } = await svc.from("companies").select("id, name").eq("id", input.companyId).maybeSingle();
+  if (!company) return { ok: false, error: "Company not found." };
+  const { data: user } = await svc.auth.admin.getUserById(input.userId);
+  const email = user?.user?.email ?? "";
+
+  const { error } = await svc.from("company_users").upsert(
+    { company_id: input.companyId, user_id: input.userId, role: input.role, status: "active", invited_email: email },
+    { onConflict: "company_id,user_id" }
+  );
+  if (error) return { ok: false, error: error.message };
+
+  // Remove the user's empty phantom company, if any (they now belong somewhere real).
+  await svc.from("companies").delete()
+    .eq("owner_id", input.userId).eq("name", "").eq("ticker", "").is("archived_at", null);
+
+  const me = await getCurrentUser();
+  await writeAudit({ companyId: input.companyId, actorEmail: me?.email, action: "user.linked_to_company", entityType: "user", entityId: input.userId, payload: { role: input.role, email } });
+  return { ok: true };
+}
+
+// Remove a user's membership from a company.
+export async function unlinkUserFromCompany(input: { userId: string; companyId: string }): Promise<{ ok: boolean; error?: string }> {
+  if (!(await isSuperAdmin())) return { ok: false, error: "Admin only." };
+  const svc = createServiceClient();
+  await svc.from("company_users").delete().eq("company_id", input.companyId).eq("user_id", input.userId);
+  const me = await getCurrentUser();
+  await writeAudit({ companyId: input.companyId, actorEmail: me?.email, action: "user.unlinked_from_company", entityType: "user", entityId: input.userId });
+  return { ok: true };
 }
