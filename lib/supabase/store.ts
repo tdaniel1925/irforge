@@ -363,5 +363,9 @@ export async function getFullDb(): Promise<Record<string, unknown> | null> {
   const byColl: Record<string, unknown> = {};
   for (const c of COLLECTIONS) byColl[c] = [];
   for (const row of data ?? []) byColl[row.collection as string] = row.data;
-  return { company: mine.company, ...byColl };
+  // Include the company id on the returned company object. The Company type has
+  // no id (it lives on mine.id), but /api/state needs it to resolve capabilities
+  // (comped/tier). Without it, co.id was undefined and every company fell to the
+  // no-access fallback — which blocked comped companies like AMFN.
+  return { company: { ...mine.company, id: mine.id }, ...byColl };
 }
