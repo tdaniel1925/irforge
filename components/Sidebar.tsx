@@ -64,10 +64,10 @@ const NAV: NavGroup[] = [
     // platform. Deliberately NOT called "Admin": company-level administration
     // (team, roles, settings) is a different thing done elsewhere by a company
     // admin. This section is only visible to platform super-admins.
-    section: "Platform Operations",
+    section: "Platform Admin",
     platformOnly: true,
     items: [
-      { href: "/admin", label: "Operations Console", icon: "🛠", hint: "Customers, users, investors, metrics, claims (platform admins only)", detail: "Platform-operator console: customers and prospects, all users grouped by company, investor accounts, platform metrics, per-company feature toggles, the claim-request queue, and the audit log. This runs the whole platform — separate from any single company's own settings." },
+      { href: "/admin", label: "Admin Console", icon: "🛠", hint: "Customers, users, investors, metrics, claims (platform admins only)", detail: "Platform-operator console: customers and prospects, all users grouped by company, investor accounts, platform metrics, per-company feature toggles, the claim-request queue, and the audit log. This runs the whole platform — separate from any single company's own settings." },
       { href: "/admin/leads", label: "Lead Finder", icon: "🧲", hint: "Build outreach lists from SEC EDGAR (platform admins only)", detail: "Build prospecting lists from live SEC EDGAR filings (company, ticker, phone, address, recent filing), add verified IR emails, export to CSV, and send capped, approved cold outreach tracked back to delivery status." },
     ],
   },
