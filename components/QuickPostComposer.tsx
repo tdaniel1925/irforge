@@ -10,6 +10,21 @@ import SmartTextarea from "@/components/SmartTextarea";
 // always appended, blocked language stops the post, and a Reg-FD "red" requires
 // explicit acknowledgement before sending. Inline-only (no popups/toasts).
 
+// Parse a response defensively. A timed-out or crashed API route returns an EMPTY
+// body; calling res.json() on it throws "Unexpected end of JSON input" (the raw
+// error users were seeing). Read as text first and fall back to a readable message.
+// Read a response body defensively. A timed-out/crashed route returns an EMPTY
+// body; res.json() on it throws "Unexpected end of JSON input". Read as text and
+// fall back to a readable message. Returns the parsed value (matches res.json()).
+async function readJson(res: Response): Promise<ReturnType<typeof JSON.parse>> {
+  const text = await res.text();
+  try {
+    return text ? JSON.parse(text) : {};
+  } catch {
+    return { error: res.ok ? "Unexpected server response." : "The server hit an error (it may have timed out). Try again." };
+  }
+}
+
 const NETWORKS: { key: string; label: string; icon: string }[] = [
   { key: "twitter", label: "X (Twitter)", icon: "𝕏" },
   { key: "linkedin", label: "LinkedIn", icon: "in" },
@@ -172,8 +187,8 @@ export default function QuickPostComposer({ embedded = false }: { embedded?: boo
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "preview", text, channels, mediaUrls: media.map((m) => m.url) }),
       });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error ?? "Couldn't build preview.");
+      const d = await readJson(r);
+      if (!r.ok) throw new Error(String(d.error ?? "Couldn't build preview."));
       setPreview(d);
       setPreviewTab(Array.isArray(d.channels) ? d.channels[0] : null);
       setAck(false);
@@ -204,8 +219,8 @@ export default function QuickPostComposer({ embedded = false }: { embedded?: boo
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text, channel: tightest.c }),
       });
-      const d = await r.json();
-      if (!r.ok) { setFitErr(d.error ?? "Couldn't shorten it — edit it down manually."); return; }
+      const d = await readJson(r);
+      if (!r.ok) { setFitErr(String(d.error ?? "Couldn't shorten it — edit it down manually.")); return; }
       // Update the editor with the fitted body, then rebuild the preview so the
       // length warnings refresh.
       setText(d.body); setAck(false);
@@ -214,7 +229,7 @@ export default function QuickPostComposer({ embedded = false }: { embedded?: boo
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "preview", text: d.body, channels, mediaUrls: media.map((m) => m.url) }),
       });
-      const pd = await pr.json();
+      const pd = await readJson(pr);
       if (pr.ok) { setPreview(pd); setPreviewTab((t) => (pd.channels?.includes(t) ? t : pd.channels?.[0] ?? null)); }
       else {
         // The text WAS shortened but the preview rebuild failed — clear the stale
@@ -238,14 +253,14 @@ export default function QuickPostComposer({ embedded = false }: { embedded?: boo
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "publish", text, channels, mediaUrls: media.map((m) => m.url), acknowledgeRisk: ack }),
       });
-      const d = await r.json();
+      const d = await readJson(r);
       if (!r.ok) {
         if (d.requiresAcknowledgement) {
           // Surface the Reg-FD stop inline and let the user acknowledge.
           setPreview((p) => (p ? { ...p, regFd: d.regFd } : p));
-          throw new Error(d.error ?? "This post needs review before it can go out.");
+          throw new Error(String(d.error ?? "This post needs review before it can go out."));
         }
-        throw new Error(d.error ?? "Couldn't publish.");
+        throw new Error(String(d.error ?? "Couldn't publish."));
       }
       setDone({ posted: d.posted, postUrl: d.postUrl, channels: d.channels });
       setPreview(null); setText(""); setMedia([]); setChannels([]); setAck(false);

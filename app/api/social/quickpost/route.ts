@@ -6,6 +6,11 @@ import { tierHasFeature, type Tier } from "@/lib/billing";
 import { classifyRegFD } from "@/lib/ai";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+// "Post now" runs an AI Reg-FD classification AND an Ayrshare publish inline —
+// well past the default ~10-15s function timeout, which returned an EMPTY body
+// (the client's res.json() then threw "Unexpected end of JSON input"). Give it room.
+export const maxDuration = 60;
 
 type Body = {
   action: "preview" | "publish";
@@ -18,6 +23,17 @@ type Body = {
 const validChannel = (c: string) => AYRSHARE_CHANNELS.some((a) => a.key === c);
 
 export async function POST(req: Request) {
+  try {
+    return await handlePost(req);
+  } catch (e) {
+    // Never let an unhandled throw return an empty body — the client's res.json()
+    // would fail with "Unexpected end of JSON input". Always return real JSON.
+    console.error("[quickpost] failed:", e instanceof Error ? e.message : e);
+    return NextResponse.json({ error: "Couldn't post — something went wrong. Try again." }, { status: 500 });
+  }
+}
+
+async function handlePost(req: Request) {
   const body = (await req.json().catch(() => ({}))) as Body;
   const { db, save, authed } = await getStore();
   // AI-cost guard: when auth is enforced, anonymous callers must not reach the
