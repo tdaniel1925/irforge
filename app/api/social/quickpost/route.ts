@@ -7,9 +7,10 @@ import { classifyRegFD } from "@/lib/ai";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-// "Post now" runs an AI Reg-FD classification AND an Ayrshare publish inline —
-// well past the default ~10-15s function timeout, which returned an EMPTY body
-// (the client's res.json() then threw "Unexpected end of JSON input"). Give it room.
+// "Post now" runs an AI Reg-FD classification AND a Zernio publish inline (the
+// lib is named ayrshare.ts for legacy reasons but the provider is Zernio) — well
+// past the default ~10-15s function timeout, which returned an EMPTY body (the
+// client's res.json() then threw "Unexpected end of JSON input"). Give it room.
 export const maxDuration = 60;
 
 type Body = {
