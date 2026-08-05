@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import InlineConfirm from "./InlineConfirm";
+import InvestorUpdates from "./InvestorUpdates";
 
 // ── shared types (mirror lib/crm.ts) ──
 interface Contact { id: string; crmCompanyId: string | null; companyName: string; fullName: string; title: string; email: string; phone: string; category: string; stage: string; topics: string[]; aum: string; sharesHeld: number | null; optedIn: boolean; peersHeld: string[]; notes: string; nextFollowup: string | null; lastTouchAt: string | null; ownerEmail?: string }
@@ -45,6 +46,7 @@ export default function CrmWorkspace({ initialContacts, initialCompanies, initia
     { k: "companies", label: `🏢 Companies (${sCompanies.length})` },
     { k: "deals", label: `💼 Deals (${sDeals.filter((d) => d.status === "open").length})` },
     { k: "tasks", label: `✅ Tasks (${sTasks.filter((t) => !t.done).length})` },
+    { k: "updates", label: "📣 Investor Updates" },
   ];
 
   return (
@@ -68,6 +70,7 @@ export default function CrmWorkspace({ initialContacts, initialCompanies, initia
       {tab === "companies" && <Companies companies={sCompanies} setCompanies={setCompanies} />}
       {tab === "deals" && <Deals deals={sDeals} setDeals={setDeals} contacts={contacts} />}
       {tab === "tasks" && <Tasks tasks={sTasks} setTasks={setTasks} contacts={contacts} />}
+      {tab === "updates" && <InvestorUpdates />}
     </div>
   );
 }
