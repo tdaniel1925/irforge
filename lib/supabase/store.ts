@@ -293,7 +293,22 @@ export async function loadCompanyDb(): Promise<{ db: Database; companyId: string
   const mine = await getMyCompany();
   if (!mine) return null;
   const supabase = await createServerSupabase();
-  const { data } = await supabase.from("company_data").select("collection, data, version").eq("company_id", mine.id);
+  // Try to load WITH the optimistic-concurrency version column. If migration 0002
+  // hasn't been applied (column missing), that SELECT errors — fall back to the
+  // pre-versioning shape so reads/writes keep working. `hasVersioning` then gates
+  // the guarded save path below.
+  let data: { collection: string; data: unknown; version?: number }[] | null = null;
+  let hasVersioning = true;
+  {
+    const withVer = await supabase.from("company_data").select("collection, data, version").eq("company_id", mine.id);
+    if (withVer.error) {
+      hasVersioning = false;
+      const noVer = await supabase.from("company_data").select("collection, data").eq("company_id", mine.id);
+      data = noVer.data;
+    } else {
+      data = withVer.data;
+    }
+  }
 
   const db = { company: mine.company } as unknown as Database;
   for (const c of COLLECTIONS) (db as unknown as Record<string, unknown>)[c] = [];
@@ -319,6 +334,19 @@ export async function loadCompanyDb(): Promise<{ db: Database; companyId: string
     );
     if (dirty.length === 0) return;
     const ts = new Date().toISOString();
+
+    // FALLBACK: if migration 0002 (the version column) isn't applied, use the
+    // pre-versioning dirty-only upsert. No optimistic-concurrency protection, but
+    // it works — never hard-fail a save because a migration is pending.
+    if (!hasVersioning) {
+      const rows = dirty.map((c) => ({
+        company_id: mine.id, collection: c,
+        data: (db as unknown as Record<string, unknown>)[c] ?? [], updated_at: ts,
+      }));
+      await supabase.from("company_data").upsert(rows, { onConflict: "company_id,collection" });
+      for (const c of dirty) baseline[c] = JSON.stringify((db as unknown as Record<string, unknown>)[c] ?? []);
+      return;
+    }
 
     // OPTIMISTIC CONCURRENCY: write each dirty collection only if its version is
     // still the one we loaded; bump it. If the row already existed, use a

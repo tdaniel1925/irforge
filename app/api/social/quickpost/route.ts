@@ -29,8 +29,11 @@ export async function POST(req: Request) {
   } catch (e) {
     // Never let an unhandled throw return an empty body — the client's res.json()
     // would fail with "Unexpected end of JSON input". Always return real JSON.
-    console.error("[quickpost] failed:", e instanceof Error ? e.message : e);
-    return NextResponse.json({ error: "Couldn't post — something went wrong. Try again." }, { status: 500 });
+    // Surface the actual message so the failure is diagnosable on screen (this
+    // route is company-scoped; the message is the provider/DB error, not a secret).
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("[quickpost] failed:", msg, e instanceof Error ? e.stack : "");
+    return NextResponse.json({ error: `Couldn't post: ${msg}`.slice(0, 300) }, { status: 500 });
   }
 }
 
