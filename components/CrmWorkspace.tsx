@@ -134,7 +134,7 @@ function Contacts({ contacts, setContacts, companies }: { contacts: Contact[]; s
   const compNameOf = (c: Contact) => c.companyName || companies.find((co) => co.id === c.crmCompanyId)?.name || "";
 
   // Sort — click a column header to sort; click again to flip direction.
-  type SortKey = "fullName" | "company" | "category" | "email" | "sharesHeld";
+  type SortKey = "fullName" | "company" | "category" | "email" | "phone" | "sharesHeld" | "optedIn";
   const [sortKey, setSortKey] = useState<SortKey>("fullName");
   const [sortDir, setSortDir] = useState<1 | -1>(1);
   const toggleSort = (k: SortKey) => {
@@ -146,7 +146,9 @@ function Contacts({ contacts, setContacts, companies }: { contacts: Contact[]; s
       case "company": return compNameOf(c).toLowerCase();
       case "category": return c.category.toLowerCase();
       case "email": return c.email.toLowerCase();
+      case "phone": return c.phone || "￿"; // blanks sort last ascending
       case "sharesHeld": return c.sharesHeld ?? -1; // blanks sort last ascending
+      case "optedIn": return c.optedIn ? 0 : 1; // opted-in first when ascending
       default: return c.fullName.toLowerCase();
     }
   };
@@ -208,11 +210,12 @@ function Contacts({ contacts, setContacts, companies }: { contacts: Contact[]; s
       </div>
       <div className="overflow-x-auto rounded-xl border border-app">
         <table className="w-full text-sm">
-          <thead><tr className="border-b border-app bg-surface text-left text-xs text-faint"><Th k="fullName">Name</Th><Th k="company">Company</Th><Th k="category">Category</Th><Th k="email">Email</Th><th className="px-3 py-2">Phone</th><th className="px-3 py-2">AUM</th><Th k="sharesHeld">Shares</Th><th className="px-3 py-2">Updates</th><th className="px-3 py-2"></th></tr></thead>
+          <thead><tr className="border-b border-app bg-surface text-left text-xs text-faint"><Th k="fullName">Name</Th><Th k="company">Company</Th><Th k="category">Category</Th><Th k="email">Email</Th><Th k="phone">Phone</Th><th className="px-3 py-2">AUM</th><Th k="sharesHeld">Shares</Th><Th k="optedIn">Updates</Th><th className="px-3 py-2"></th></tr></thead>
           <tbody>
             {pageRows.map((c) => (
               <tr key={c.id} className="border-b border-app bg-surface">
-                <td className="px-3 py-2.5"><span className="font-medium text-app">{c.fullName}</span>{c.title && <span className="block text-xs text-faint">{c.title}</span>}</td>
+                {/* Name is clickable — opens the contact editor directly (no need to reach for the Edit link). */}
+                <td className="px-3 py-2.5"><button onClick={() => setEditing(c)} className="text-left font-medium text-app hover:text-emerald-600 hover:underline dark:hover:text-emerald-400">{c.fullName}</button>{c.title && <span className="block text-xs text-faint">{c.title}</span>}</td>
                 <td className="px-3 py-2.5 text-muted">{compNameOf(c) || <span className="text-faint">—</span>}</td>
                 <td className="px-3 py-2.5"><span className="rounded bg-surface-2 px-1.5 py-0.5 text-[11px] text-muted">{catLabel(c.category)}</span></td>
                 <td className="px-3 py-2.5 text-muted">{c.email || <span className="text-faint">—</span>}</td>
