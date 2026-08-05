@@ -1,4 +1,10 @@
 --
+-- ⚠️  DO NOT RUN THIS AGAINST PRODUCTION.  ⚠️
+-- This is a DUMP of the production schema — production ALREADY has everything in
+-- it. Re-running it there errors on every object ("... already exists"). It exists
+-- ONLY to build a FRESH database (new env / CI). To change prod schema, write a
+-- NEW numbered migration (0004_*.sql, ...) and run only that file.
+--
 -- PostgreSQL database dump  (production baseline — supabase/migrations/0001)
 -- Portability edits from the raw pg_dump: `\restrict/\unrestrict` psql artifacts
 -- removed; `CREATE SCHEMA public` made IF NOT EXISTS so it applies to a fresh DB.
