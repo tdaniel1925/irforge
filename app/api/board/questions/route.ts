@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getMyCompany } from "@/lib/supabase/store";
+import { assertCompanyWritable } from "@/lib/authz/guard";
 import { listOpenQuestions, postVerifiedReply } from "@/lib/board";
 import { checkContent, hasBlockingFlags, buildChannelPost, CHANNEL_LIMITS } from "@/lib/compliance";
 import { classifyRegFD, fitToLimit } from "@/lib/ai";
@@ -34,6 +35,8 @@ export async function GET() {
 export async function POST(req: Request) {
   const mine = await getMyCompany();
   if (!mine) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
+  const frozen = await assertCompanyWritable(mine);
+  if (frozen) return frozen;
   if (!(await companyHasTierFeature(mine.id, mine.company.tier, "qa"))) {
     return NextResponse.json({ error: "Answering investor questions is part of the Board plan.", needsUpgrade: true, needsFeature: "qa" }, { status: 403 });
   }

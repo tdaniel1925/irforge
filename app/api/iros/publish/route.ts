@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getMyCompany } from "@/lib/supabase/store";
+import { assertCompanyWritable } from "@/lib/authz/guard";
 import { companyHasFeature, writeAudit } from "@/lib/platform";
 import { getPost, updatePostFields } from "@/lib/iros";
 import { publishToChannels } from "@/lib/ayrshare";
@@ -11,6 +12,8 @@ export const runtime = "nodejs";
 export async function POST(req: Request) {
   const mine = await getMyCompany();
   if (!mine) return NextResponse.json({ error: "Sign in." }, { status: 401 });
+  const frozen = await assertCompanyWritable(mine);
+  if (frozen) return frozen;
   if (!(await companyHasFeature(mine.id, "publishing"))) {
     return NextResponse.json({ error: "Publishing not enabled." }, { status: 403 });
   }

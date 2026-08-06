@@ -272,6 +272,18 @@ export class StaleWriteError extends Error {
   }
 }
 
+// Thrown by a company's save() when the company is SUSPENDED. This is the deep,
+// server-side backstop for suspension: every getStore()-based write route funnels
+// through save(), so a frozen company cannot persist ANY change (posts, drafts,
+// CRM, calendar, etc.) even if it reaches the route directly. Super-admins are
+// exempt (resolved once in loadCompanyDb). Routes translate this to a 403.
+export class SuspendedCompanyError extends Error {
+  constructor() {
+    super("This account is suspended. Contact support.");
+    this.name = "SuspendedCompanyError";
+  }
+}
+
 export async function setCollection<T>(companyId: string, collection: string, items: T[]): Promise<void> {
   const supabase = await createServerSupabase();
   await supabase
@@ -327,7 +339,15 @@ export async function loadCompanyDb(): Promise<{ db: Database; companyId: string
   for (const c of COLLECTIONS) baseline[c] = JSON.stringify((db as unknown as Record<string, unknown>)[c] ?? []);
   const companyBaseline = JSON.stringify(db.company);
 
+  // Suspension backstop: if the resolved company is frozen, block ALL writes
+  // unless the caller is a super-admin (who may be impersonating to manage it).
+  // Resolved once here; getMyCompany already routed impersonation to mine.company.
+  const suspendedBlock = mine.company.suspended
+    ? !(await import("../platform").then((m) => m.isSuperAdmin()))
+    : false;
+
   const save = async () => {
+    if (suspendedBlock) throw new SuspendedCompanyError();
     // Company profile: only when this request actually changed it.
     if (JSON.stringify(db.company) !== companyBaseline) await updateMyCompany(db.company);
     const dirty = COLLECTIONS.filter(

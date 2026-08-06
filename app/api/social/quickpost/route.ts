@@ -44,6 +44,15 @@ async function handlePost(req: Request) {
   // model call below (token burn). Demo mode (AUTH_ENABLED off) still works.
   if (process.env.AUTH_ENABLED === "1" && !authed) return NextResponse.json({ error: "Sign in first." }, { status: 401 });
 
+  // SUSPENSION: "Post now" publishes to the live social provider BEFORE save(), so
+  // the save() backstop wouldn't stop the outbound send — block it explicitly here,
+  // ahead of any model call or publish. Super-admins (may be impersonating to
+  // manage the account) are exempt.
+  if (db.company?.suspended) {
+    const { isSuperAdmin } = await import("@/lib/platform");
+    if (!(await isSuperAdmin())) return NextResponse.json({ error: "This account is suspended. Contact support.", suspended: true }, { status: 403 });
+  }
+
   const text = String(body.text ?? "").trim();
   if (!text) return NextResponse.json({ error: "Write something to post first." }, { status: 422 });
 

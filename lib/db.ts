@@ -87,12 +87,15 @@ export async function getStore(): Promise<{ db: Database; save: () => Promise<vo
 //   if (conflict) return conflict;
 // Returns null on success, or a 409 NextResponse when a StaleWriteError occurred.
 export async function saveOr409(save: () => Promise<void>): Promise<import("next/server").NextResponse | null> {
-  const { StaleWriteError } = await import("./supabase/store");
+  const { StaleWriteError, SuspendedCompanyError } = await import("./supabase/store");
   const { NextResponse } = await import("next/server");
   try {
     await save();
     return null;
   } catch (e) {
+    if (e instanceof SuspendedCompanyError) {
+      return NextResponse.json({ error: e.message, suspended: true }, { status: 403 });
+    }
     if (e instanceof StaleWriteError) {
       return NextResponse.json({ error: e.message, conflict: true }, { status: 409 });
     }

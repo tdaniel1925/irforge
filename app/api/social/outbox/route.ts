@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getMyCompany } from "@/lib/supabase/store";
+import { assertCompanyWritable } from "@/lib/authz/guard";
 import { companyHasFeature } from "@/lib/platform";
 import { listOutbox, reconcileScheduledPosts } from "@/lib/social/calendar";
 
@@ -25,6 +26,8 @@ export async function GET() {
 export async function POST() {
   const g = await guard();
   if (g.error) return g.error;
+  const frozen = await assertCompanyWritable(g.mine);
+  if (frozen) return frozen;
   const result = await reconcileScheduledPosts();
   const posts = await listOutbox();
   return NextResponse.json({ ...result, posts });
