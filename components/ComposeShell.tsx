@@ -10,7 +10,10 @@ import UpgradePrompt from "@/components/UpgradePrompt";
 
 // One unified Compose surface. A mode toggle picks how you want to create:
 //   • Post now      → Quick Post (compose → preview → publish immediately)
-//   • Schedule      → Editorial board (draft → Reg-FD → approve → schedule)
+//   • Draft & queue → Editorial board (draft → Reg-FD → approve). Renamed from
+//                     "Schedule" — that word ALSO meant the Posts→Scheduled
+//                     calendar, so users clicked here expecting the review queue.
+//                     Scheduling is now a send-time choice, not a create mode.
 //   • Plan a month  → AI engine (bulk-generate a month of posts)
 //   • Press release → long-form press release builder
 // Each mode reuses its existing, proven component — same compliance gates intact.
@@ -33,7 +36,7 @@ interface ComposeProps {
 
 const TABS: { key: Mode; label: string; hint: string }[] = [
   { key: "now", label: "⚡ Post now", hint: "Compose and publish immediately" },
-  { key: "schedule", label: "🗓️ Schedule", hint: "Draft, check, approve & schedule" },
+  { key: "schedule", label: "🧩 Draft & queue", hint: "Draft, Reg-FD check, send to the approval queue" },
   { key: "month", label: "✨ Plan a month", hint: "AI builds a month of posts" },
   { key: "press", label: "📝 Press release", hint: "Long-form, AP-style release" },
 ];
@@ -43,7 +46,16 @@ export default function ComposeShell(props: ComposeProps) {
 
   return (
     <div>
-      <PageHeader title="Compose" subtitle="Create a post your way — publish now, schedule it, plan a whole month, or draft a press release. Every path runs the same compliance checks, and nothing publishes without your approval." />
+      <PageHeader title="Compose" subtitle="Create a post your way — publish now, draft & queue it for approval, plan a whole month, or draft a press release. Every path runs the same compliance checks.">
+        <a href="/posts" className="rounded-lg border border-app px-4 py-2 text-sm font-semibold text-app hover:bg-app-hover">📬 Review & approve in Posts →</a>
+      </PageHeader>
+
+      {/* Signpost: the #1 confusion was "where do I review drafts?" — they live in
+          Posts → Needs approval, not here. Make the path explicit. */}
+      <div className="mb-4 flex items-start gap-2 rounded-lg border border-sky-500/25 bg-sky-500/[0.06] px-4 py-2.5 text-sm text-sky-700 dark:text-sky-300">
+        <span aria-hidden>💡</span>
+        <p>This is where you <strong>create</strong> posts. To <strong>review, approve, schedule, or see what published</strong>, go to <a href="/posts" className="font-semibold underline">Posts</a>.</p>
+      </div>
 
       {/* Mode toggle */}
       <div className="mb-5 flex flex-wrap gap-2">
@@ -75,8 +87,8 @@ export default function ComposeShell(props: ComposeProps) {
         ) : (
           <UpgradePrompt
             icon="🧩"
-            title="Schedule & pipeline"
-            pitch="One board to take any post from idea to published — with the Reg FD check and approvals built in."
+            title="Draft & approval pipeline"
+            pitch="One board to take any post from idea to approved — with the Reg FD check and approvals built in. Scheduling happens when you publish."
             bullets={[
               "Type a topic, AI drafts it (in an executive's voice)",
               "1-click Reg FD check routes risky posts to counsel",

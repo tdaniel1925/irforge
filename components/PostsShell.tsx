@@ -24,15 +24,20 @@ interface PostsProps {
   month: number;
 }
 
-const TABS: { key: Tab; label: string; hint: string }[] = [
-  { key: "approve", label: "✅ Needs approval", hint: "Review, edit, approve or reject" },
-  { key: "scheduled", label: "🗓️ Scheduled", hint: "Upcoming posts on a calendar" },
-  { key: "published", label: "📤 Published", hint: "What went out + delivery status" },
-];
-
 export default function PostsShell(props: PostsProps) {
   const [tab, setTab] = useState<Tab>("approve");
   const [schedView, setSchedView] = useState<"calendar" | "list">("calendar");
+
+  // Count of social-review drafts awaiting a decision (drafted slots not yet
+  // approved/scheduled) — shown on the tab so pending work is visible, not buried.
+  const pendingReview = (props.reviewSlots as { body?: string; status?: string }[])
+    .filter((s) => s?.body && (s.status === "draft" || s.status === "reviewed")).length;
+
+  const TABS: { key: Tab; label: string; hint: string }[] = [
+    { key: "approve", label: `✅ Needs approval${pendingReview ? ` (${pendingReview})` : ""}`, hint: "Review, edit, approve or reject" },
+    { key: "scheduled", label: "🗓️ Scheduled", hint: "Upcoming posts on a calendar" },
+    { key: "published", label: "📤 Published", hint: "What went out + delivery status" },
+  ];
 
   return (
     <div>
