@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+// Canonical status vocabulary/colors — one source so this calendar agrees with
+// every other view (previously said "Pending"/"Posted" for draft/published).
+import { POST_STATUS_DOT as STATUS_DOT, POST_STATUS_LABEL as STATUS_LABEL } from "@/lib/postStatus";
 
 interface Post {
   id: string;
@@ -25,19 +28,6 @@ const PLATFORMS = [
 ];
 
 // Post status → chip color.
-const STATUS_DOT: Record<string, string> = {
-  draft: "bg-purple-500",      // pending
-  reviewed: "bg-blue-400",
-  approved: "bg-emerald-500",
-  scheduled: "bg-sky-500",
-  published: "bg-teal-600",
-  pulled: "bg-gray-400",
-};
-const STATUS_LABEL: Record<string, string> = {
-  draft: "Pending", reviewed: "Reviewed", approved: "Approved",
-  scheduled: "Scheduled", published: "Posted", pulled: "Pulled",
-};
-
 const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 function ymd(d: Date): string {

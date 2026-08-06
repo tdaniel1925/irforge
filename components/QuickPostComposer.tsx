@@ -274,7 +274,11 @@ export default function QuickPostComposer({ embedded = false }: { embedded?: boo
   const canPreview = text.trim().length > 0 && channels.length > 0 && !busy;
   const regRed = preview?.regFd?.classification === "red";
   const overLimit = preview?.tooLong ?? [];
-  const canPublish = preview && !preview.blocked && !preview.quietMode && preview.notConnected.length === 0 && overLimit.length === 0 && (!regRed || ack) && !busy;
+  // Role rule: company admins may publish directly; members can only send a post
+  // to the approval queue (via Compose → Draft & queue). The server enforces this
+  // too — this makes the UI honest instead of letting a member click and hit a 403.
+  const isMember = (db as { role?: string } | null)?.role === "member";
+  const canPublish = !isMember && preview && !preview.blocked && !preview.quietMode && preview.notConnected.length === 0 && overLimit.length === 0 && (!regRed || ack) && !busy;
   const labelFor = (k: string) => NETWORKS.find((n) => n.key === k)?.label ?? k;
 
   return (
@@ -506,8 +510,13 @@ export default function QuickPostComposer({ embedded = false }: { embedded?: boo
             </div>
           )}
 
+          {isMember && (
+            <div className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/[0.08] px-3 py-2.5 text-sm text-amber-700 dark:text-amber-300">
+              Members can&apos;t publish directly. Use <a href="/compose" className="font-semibold underline">Compose → Draft &amp; queue</a> to send this for a company admin&apos;s approval.
+            </div>
+          )}
           <div className="mt-4 flex flex-wrap gap-2">
-            <Button onClick={publish} disabled={!canPublish}>{busy ? "Publishing…" : "✓ Approve & publish now"}</Button>
+            {!isMember && <Button onClick={publish} disabled={!canPublish}>{busy ? "Publishing…" : "✓ Approve & publish now"}</Button>}
             <Button variant="ghost" onClick={() => setPreview(null)} disabled={busy}>← Edit</Button>
           </div>
         </Card>
