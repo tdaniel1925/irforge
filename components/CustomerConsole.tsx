@@ -11,7 +11,7 @@ interface Row {
 }
 interface Detail {
   id: string; name: string; ticker: string; ownerEmail: string; tier: string;
-  subscriptionStatus: string; comped: boolean; mrr: number; createdAt: string; archivedAt: string | null;
+  subscriptionStatus: string; comped: boolean; mrr: number; createdAt: string; archivedAt: string | null; suspendedAt: string | null;
   stripeCustomerId: string | null; stripeSubscriptionId: string | null;
   team: { email: string; role: string; status: string }[];
   connectedSocials: string[]; features: Record<string, boolean>;
@@ -323,12 +323,21 @@ export default function CustomerConsole() {
                 {/* Danger zone */}
                 <Section title="Actions">
                   <div className="flex flex-wrap gap-2">
+                    {/* SUSPEND — the real freeze: locks the workspace, makes the
+                        public page "not available", stops chats/posts/publishing. */}
+                    {detail.suspendedAt ? (
+                      <button onClick={async () => { if (await act("unsuspend", detail.id)) openDetail(detail.id); }} className="rounded-lg border border-emerald-400/50 bg-emerald-500/10 px-3 py-1.5 text-sm font-semibold text-emerald-700 dark:text-emerald-300">▶ Un-suspend</button>
+                    ) : (
+                      <InlineConfirm onConfirm={async () => { if (await act("suspend", detail.id)) openDetail(detail.id); }} label="⏸ Suspend" confirmLabel="Suspend (freeze account)" className="rounded-lg border border-red-400/50 bg-red-500/10 px-3 py-1.5 text-sm font-semibold text-red-600 dark:text-red-300" />
+                    )}
+                    {/* ARCHIVE — just hides from admin lists (not a freeze). */}
                     {detail.archivedAt ? (
                       <button onClick={async () => { if (await act("unarchive", detail.id)) openDetail(detail.id); }} className="rounded-lg border border-app px-3 py-1.5 text-sm">Unarchive</button>
                     ) : (
-                      <InlineConfirm onConfirm={async () => { if (await act("archive", detail.id)) openDetail(detail.id); }} label="Archive" confirmLabel="Archive (revoke access)" className="rounded-lg border border-amber-300 px-3 py-1.5 text-sm text-amber-600" />
+                      <InlineConfirm onConfirm={async () => { if (await act("archive", detail.id)) openDetail(detail.id); }} label="Archive" confirmLabel="Archive (hide from lists)" className="rounded-lg border border-amber-300 px-3 py-1.5 text-sm text-amber-600" />
                     )}
                   </div>
+                  {detail.suspendedAt && <p className="mt-1.5 text-xs font-medium text-red-600 dark:text-red-300">⏸ This company is SUSPENDED — its workspace is locked and its public page shows &ldquo;not available.&rdquo;</p>}
                   <div className="mt-3 rounded-lg border border-red-500/30 bg-red-500/5 p-3">
                     <p className="text-xs font-semibold text-red-600">Delete permanently — irreversible</p>
                     <p className="mt-1 text-xs text-muted">Type <b>{detail.name || detail.ticker}</b> to confirm.</p>

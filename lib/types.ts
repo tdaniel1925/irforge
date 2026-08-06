@@ -156,6 +156,7 @@ export interface Company {
   tier: "free" | "starter" | "growth" | "pro";
   subscription_status?: string; // none | active | trialing | past_due | canceled
   comped?: boolean; // free/promo access — no Stripe subscription; hide pricing/checkout
+  suspended?: boolean; // admin froze this company — locks the workspace + public page
   onboarding_complete: boolean;
   // This company's Ayrshare user profile (their own linked socials). NOTE: this is
   // the only handle to the profile — Ayrshare's delete API needs this exact value

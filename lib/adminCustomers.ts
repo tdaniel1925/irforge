@@ -110,7 +110,7 @@ export async function listCustomers(opts: { includeArchived?: boolean; kind?: Co
 
 export interface CustomerDetail {
   id: string; name: string; ticker: string; ownerEmail: string; tier: string;
-  subscriptionStatus: string; comped: boolean; mrr: number; createdAt: string; archivedAt: string | null;
+  subscriptionStatus: string; comped: boolean; mrr: number; createdAt: string; archivedAt: string | null; suspendedAt: string | null;
   stripeCustomerId: string | null; stripeSubscriptionId: string | null;
   team: { email: string; role: string; status: string }[];
   connectedSocials: string[];
@@ -181,6 +181,7 @@ export async function getCustomerDetail(companyId: string): Promise<CustomerDeta
     mrr: mrrFor((c.tier as string) || "free", comped, (c.subscription_status as string) || "none"),
     createdAt: String(c.created_at ?? ""),
     archivedAt: c.archived_at ? String(c.archived_at) : null,
+    suspendedAt: c.suspended_at ? String(c.suspended_at) : null,
     stripeCustomerId: (c.stripe_customer_id as string) || null,
     stripeSubscriptionId: (c.stripe_subscription_id as string) || null,
     team: teamRows,
@@ -198,6 +199,21 @@ export async function archiveCompany(companyId: string, archived: boolean): Prom
   if (error) return { ok: false, error: error.message };
   const me = await getCurrentUser();
   await writeAudit({ companyId, actorEmail: me?.email, action: archived ? "admin.company_archived" : "admin.company_unarchived", entityType: "company", entityId: companyId });
+  return { ok: true };
+}
+
+// SUSPEND a company — a real freeze (distinct from archive). suspended_at != null
+// locks the workspace (team sees a suspension screen), makes the public page
+// "not available", and stops chats/posts/publishing. Reversible.
+export async function setCompanySuspended(companyId: string, suspended: boolean, reason = ""): Promise<{ ok: boolean; error?: string }> {
+  if (!(await isSuperAdmin())) return { ok: false, error: "Admin only." };
+  const svc = createServiceClient();
+  const { error } = await svc.from("companies")
+    .update({ suspended_at: suspended ? new Date().toISOString() : null, suspended_reason: suspended ? reason.slice(0, 300) : "" })
+    .eq("id", companyId);
+  if (error) return { ok: false, error: error.message };
+  const me = await getCurrentUser();
+  await writeAudit({ companyId, actorEmail: me?.email, action: suspended ? "admin.company_suspended" : "admin.company_unsuspended", entityType: "company", entityId: companyId, payload: { reason } });
   return { ok: true };
 }
 

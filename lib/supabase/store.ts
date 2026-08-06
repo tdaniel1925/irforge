@@ -23,6 +23,7 @@ export function rowToCompany(r: Record<string, unknown>): Company {
     // Comped/promo: active access with no Stripe subscription behind it (they were
     // given free access, not billed). Lets the UI hide pricing/checkout for them.
     comped: (r.subscription_status as string) === "active" && !r.stripe_subscription_id,
+    suspended: !!r.suspended_at,
     quietMode: Boolean(r.quiet_mode),
     disclosureText: (r.disclosure_text as string) ?? "",
     flsText: (r.fls_text as string) ?? "",

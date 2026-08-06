@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { isSuperAdmin } from "@/lib/platform";
-import { listCustomers, getCustomerDetail, archiveCompany, deleteCompany } from "@/lib/adminCustomers";
+import { listCustomers, getCustomerDetail, archiveCompany, deleteCompany, setCompanySuspended } from "@/lib/adminCustomers";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -41,6 +41,10 @@ export async function POST(req: Request) {
   }
   if (b.action === "unarchive") {
     const r = await archiveCompany(companyId, false);
+    return r.ok ? NextResponse.json({ ok: true }) : NextResponse.json({ error: r.error }, { status: 422 });
+  }
+  if (b.action === "suspend" || b.action === "unsuspend") {
+    const r = await setCompanySuspended(companyId, b.action === "suspend", String(b.reason ?? ""));
     return r.ok ? NextResponse.json({ ok: true }) : NextResponse.json({ error: r.error }, { status: 422 });
   }
   if (b.action === "delete") {

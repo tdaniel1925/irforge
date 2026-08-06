@@ -13,6 +13,7 @@ import AiChat from "./AiChat";
 import ImpersonationBanner from "./ImpersonationBanner";
 import CommsSidebar from "./CommsSidebar";
 import { featureForPath } from "@/lib/routeFeatures";
+import { fetchAppState } from "@/lib/appStateClient";
 
 // The landing page (/) and other public routes render full-bleed with no app sidebar —
 // these are what a logged-out visitor (e.g. someone running a free ticker report) sees.
@@ -28,11 +29,40 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
   useEffect(() => { setNavOpen(false); }, [pathname]);
   const bare = BARE_EXACT.includes(pathname) || BARE_PREFIXES.some((p) => pathname.startsWith(p));
 
+  // Company SUSPENSION gate. If the signed-in user's company is frozen by an admin,
+  // the whole workspace is replaced with a suspension screen — no dashboard, no
+  // chats, no publishing. Super-admins are exempt (they need in to manage/lift it,
+  // incl. while impersonating). Checked here because AppFrame wraps every
+  // company-side page; /api/state carries company.suspended.
+  const [suspended, setSuspended] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    fetchAppState().then((r) => {
+      if (cancelled) return;
+      const d = r.data as { company?: { suspended?: boolean }; superAdmin?: boolean; authed?: boolean };
+      setSuspended(Boolean(d?.authed && d?.company?.suspended && !d?.superAdmin));
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [pathname]);
+
   if (bare) return <>{children}</>;
 
   // Member (individual investor) back office gets its own shell, not the company
   // dashboard sidebar / tier gating.
   if (pathname.startsWith("/member")) return <MemberShell>{children}</MemberShell>;
+
+  if (suspended) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-app p-6">
+        <div className="max-w-md text-center">
+          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-amber-500/40 bg-amber-500/10 text-3xl">⏸</div>
+          <h1 className="text-2xl font-bold text-app">Your account is suspended</h1>
+          <p className="mt-3 text-muted">Access to this workspace is currently paused. Please contact support to resolve it.</p>
+          <a href="mailto:support@pubcozone.com" className="mt-6 inline-block rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-500">Contact support</a>
+        </div>
+      </div>
+    );
+  }
 
   const feature = featureForPath(pathname);
 

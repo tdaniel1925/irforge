@@ -79,6 +79,32 @@ export default async function PublicTickerPage({ params, searchParams }: Props) 
   const ticker = params.ticker.toUpperCase().slice(0, 8);
   const peers = (searchParams.peers ?? "").split(",").map((p) => p.trim()).filter(Boolean).slice(0, 5);
 
+  // Company suspension: if a CLAIMED company that owns this ticker has been frozen
+  // by an admin, its public profile is unavailable (no page, no board/chats).
+  try {
+    const { createServiceClient } = await import("@/lib/supabase/server");
+    const svc = createServiceClient();
+    const { data: co } = await svc
+      .from("companies")
+      .select("suspended_at")
+      .ilike("ticker", ticker)
+      .eq("onboarding_complete", true)
+      .not("suspended_at", "is", null)
+      .limit(1)
+      .maybeSingle();
+    if (co?.suspended_at) {
+      return (
+        <PageShell>
+          <div className="mx-auto max-w-md py-20 text-center">
+            <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-app bg-surface-2 text-2xl">🚫</div>
+            <h1 className="text-2xl font-bold text-app">This profile is not available at this time</h1>
+            <p className="mt-3 text-muted">The company page for ${ticker} is temporarily unavailable.</p>
+          </div>
+        </PageShell>
+      );
+    }
+  } catch { /* suspension check is best-effort — never take the page down over it */ }
+
   let audit;
   try {
     audit = await getPublicTickerAudit(ticker, peers);
